@@ -1,0 +1,38 @@
+# Eclipse
+.classpath
+.project
+.settings
+.metadata
+bin/
+/.recommenders/
+
+# Idea
+*.iml
+/.idea/
+
+*/target/
+
+# Gradle
+/.gradle/
+*/build/
+gradle.properties
+
+
+.DS_Store
+.directory
+*.log
+
+# Locally stored "Eclipse launch configurations"
+*.launch
+
+# Maven target directory
+target/
+
+cache/
+
+logs/
+
+*.jar
+
+# Find bugs configuration file
+/.fbprefs
