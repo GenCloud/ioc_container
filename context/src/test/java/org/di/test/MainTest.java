@@ -3,8 +3,13 @@ package org.di.test;
 import org.apache.log4j.BasicConfigurator;
 import org.di.annotations.ScanPackage;
 import org.di.context.AppContext;
-import org.di.context.runner.DIStarter;
+import org.di.context.runner.IoCStarter;
 import org.di.factories.DependencyFactory;
+import org.di.test.components.ComponentA;
+import org.di.test.components.ComponentB;
+import org.di.test.components.ComponentC;
+import org.di.test.components.ComponentD;
+import org.di.test.environments.ExampleEnvironment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,36 +18,34 @@ import org.slf4j.LoggerFactory;
  * @date 04.09.2018
  */
 @ScanPackage(packages = {"org.di.test", "org.di"})
-public class AppMain {
-    private static final Logger log = LoggerFactory.getLogger(AppMain.class);
+public class MainTest {
+    private static final Logger log = LoggerFactory.getLogger(MainTest.class);
 
     public static void main(String... args) {
         BasicConfigurator.configure();
 
-        final AppContext context = DIStarter.start(AppMain.class, args);
+        final AppContext context = IoCStarter.start(MainTest.class, args);
         printStatistic(context);
-        log.info("Getting type from context");
-        final DefaultComponent defaultComponent = (DefaultComponent) context.getType(DefaultComponent.class);
-        log.info(defaultComponent.toString());
+
+        log.info("Getting configuration instance");
+        final ExampleEnvironment exampleEnvironment = (ExampleEnvironment) context.getType(ExampleEnvironment.class);
+        log.info(exampleEnvironment.toString());
 
         log.info("Getting type from context");
-        final DefaultService defaultService = (DefaultService) context.getType(DefaultService.class);
-        log.info(defaultService.toString());
-
-        defaultService.printInfo();
+        final ComponentA componentA = (ComponentA) context.getType(ComponentA.class);
+        log.info(componentA.toString());
 
         log.info("Getting type from context");
-        final Object o = context.getType(DefConstructorComponent.class);
-        final DefConstructorComponent defConstructorComponent = (DefConstructorComponent) o;
-        log.info(defConstructorComponent.toString());
+        final ComponentB componentB = (ComponentB) context.getType(ComponentB.class);
+        log.info(componentB.toString());
 
-        defConstructorComponent.printInfo();
+        log.info("Getting type from context");
+        final ComponentC componentC = (ComponentC) context.getType(ComponentC.class);
+        log.info(componentC.toString());
 
         log.info("Getting MainController from context");
-        final MainController mainController = (MainController) context.getType(MainController.class);
-        log.info(mainController.toString());
-
-        mainController.printInfo();
+        final ComponentD componentD = (ComponentD) context.getType(ComponentD.class);
+        log.info(componentD.toString());
     }
 
     private static void printStatistic(AppContext context) {
@@ -59,5 +62,7 @@ public class AppMain {
         for (Object o : dependencyFactory.getPrototypes().values()) {
             log.info("------- {}", o.getClass().getSimpleName());
         }
+
+
     }
 }

@@ -16,19 +16,33 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.di.context.analyze.enums;
+package org.di.enviroment.storetypes.impl;
+
+import java.util.Map;
 
 /**
+ * Store generator for ini-files format.
+ * <p>
+ *
  * @author GenCloud
- * @date 06.09.2018
+ * @date 05.09.2018
  */
-public enum CyclicDependencyState {
-    /**
-     * have cyclic dependencies
-     */
-    TRUE,
-    /**
-     * don't have cyclic dependencies
-     */
-    FALSE
+public class PropertyFormatterIni extends PropertyFormatter {
+    @Override
+    public String generate() {
+        String lineSeparator = System.getProperty("line.separator");
+        boolean isFirstField = true;
+        StringBuilder builder = new StringBuilder();
+
+        for (Map.Entry<String, String> pair : pairs.entrySet()) {
+            if (isFirstField)
+                isFirstField = false;
+            else
+                builder.append(lineSeparator).append(lineSeparator);
+
+            builder.append(pair.getKey()).append(" = ").append(pair.getValue());
+        }
+
+        return builder.toString();
+    }
 }

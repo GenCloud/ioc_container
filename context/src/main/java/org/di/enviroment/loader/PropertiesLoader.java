@@ -1,6 +1,28 @@
-package org.di.enviroment;
+/*
+ * Copyright (c) 2018 DI (IoC) Container (Team: GC Dev, Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
+ *
+ * This file is part of DI (IoC) Container Project.
+ *
+ * DI (IoC) Container Project is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * DI (IoC) Container Project is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
+ */
+package org.di.enviroment.loader;
 
 import org.di.annotations.property.Property;
+import org.di.enviroment.listeners.IPropertyListener;
+import org.di.enviroment.storetypes.IPropertyFormatter;
+import org.di.enviroment.storetypes.impl.PropertyFormatterIni;
+import org.di.enviroment.storetypes.impl.PropertyFormatterXml;
 import org.di.enviroment.typecaster.PropertyCaster;
 import org.di.enviroment.typecaster.exception.IllegalPropertyException;
 
@@ -22,135 +44,6 @@ public class PropertiesLoader {
     private final static Pattern parametersPattern = Pattern.compile("\\$\\{([^}]*)\\}");
 
     /**
-     * Parses property set with using of annotations and string path to property source.
-     *
-     * @param object annotated object, that represents Java property storage.
-     * @param path   Path to properties file.
-     * @throws InvocationTargetException Failed invoke some annotated method.
-     * @throws NoSuchMethodException     Appears on adding splitter properties to lists.
-     * @throws InstantiationException    When failed to create instance of an custom object. Such exception can appered when property field is of custom type.
-     * @throws IllegalAccessException    If tries access inaccessible entities in annotated object.
-     * @throws IOException               If configuration file does not exists or due to system IO errors.
-     */
-    public static Properties parse(Object object, String path) throws InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException, IOException {
-        return parse(object, new File(path));
-    }
-
-    /**
-     * Parses XML property set with using of annotations and string path to property XML source.
-     *
-     * @param object annotated object, that represents Java property storage.
-     * @param path   Path to properties file.
-     * @throws InvocationTargetException Failed invoke some annotated method.
-     * @throws NoSuchMethodException     Appears on adding splitter properties to lists.
-     * @throws InstantiationException    When failed to create instance of an custom object. Such exception can appered when property field is of custom type.
-     * @throws IllegalAccessException    If tries access inaccessible entities in annotated object.
-     * @throws IOException               If configuration file does not exists or due to system IO errors.
-     */
-    public static Properties parseXml(Object object, String path) throws InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException, IOException {
-        return parseXml(object, new File(path));
-    }
-
-    /**
-     * Parses property set with using of annotations and File object referenced to property source.
-     *
-     * @param object annotated object, that represents Java property storage.
-     * @param file   File to read properties from.
-     * @throws InvocationTargetException Failed invoke some annotated method.
-     * @throws NoSuchMethodException     Appears on adding splitter properties to lists.
-     * @throws InstantiationException    When failed to create instance of an custom object. Such exception can appered when property field is of custom type.
-     * @throws IllegalAccessException    If tries access inaccessible entities in annotated object.
-     * @throws IOException               If configuration file does not exists or due to system IO errors.
-     */
-    public static Properties parse(Object object, File file) throws IOException, InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
-        Properties props;
-
-        try (FileInputStream stream = new FileInputStream(file)) {
-            props = parse(object, stream, file.getPath());
-        }
-
-        return props;
-    }
-
-    /**
-     * Parses XML property set with using of annotations and XML File object referenced to property source.
-     *
-     * @param object annotated object, that represents Java property storage.
-     * @param file   File to read properties from.
-     * @throws InvocationTargetException Failed invoke some annotated method.
-     * @throws NoSuchMethodException     Appears on adding splitter properties to lists.
-     * @throws InstantiationException    When failed to create instance of an custom object. Such exception can appered when property field is of custom type.
-     * @throws IllegalAccessException    If tries access inaccessible entities in annotated object.
-     * @throws IOException               If configuration file does not exists or due to system IO errors.
-     */
-    public static Properties parseXml(Object object, File file) throws IOException, InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
-        Properties props;
-
-        try (FileInputStream stream = new FileInputStream(file)) {
-            props = parseXml(object, stream, file.getPath());
-        }
-
-        return props;
-    }
-
-    /**
-     * Parses property set with using of annotations and using abstract input io stream (it can be a file, network or any other thing Java can provide within io streams).
-     *
-     * @param object     annotated object, that represents Java property storage.
-     * @param stream     IO stream from properties will be read.
-     * @param streamName Name of stream (this will be used instead of file name, because of using IO stream we cannot retrieve file name).
-     * @throws InvocationTargetException Failed invoke some annotated method.
-     * @throws NoSuchMethodException     Appears on adding splitter properties to lists.
-     * @throws InstantiationException    When failed to create instance of an custom object. Such exception can appered when property field is of custom type.
-     * @throws IllegalAccessException    If tries access inaccessible entities in annotated object.
-     * @throws IOException               If configuration file does not exists or due to system IO errors.
-     */
-    public static Properties parse(Object object, InputStream stream, String streamName) throws InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException, IOException {
-        Properties props = new Properties();
-        props.load(stream);
-
-        return parse0(object, props, streamName);
-    }
-
-    /**
-     * Parses XML property set with using of annotations and using abstract input XML io stream (it can be a file, network or any other thing Java can provide within io streams).
-     *
-     * @param object     annotated object, that represents Java property storage.
-     * @param stream     IO stream from properties will be read.
-     * @param streamName Name of stream (this will be used instead of file name, because of using IO stream we cannot retrieve file name).
-     * @throws InvocationTargetException Failed invoke some annotated method.
-     * @throws NoSuchMethodException     Appears on adding splitter properties to lists.
-     * @throws InstantiationException    When failed to create instance of an custom object. Such exception can appered when property field is of custom type.
-     * @throws IllegalAccessException    If tries access inaccessible entities in annotated object.
-     * @throws IOException               If configuration file does not exists or due to system IO errors.
-     */
-    public static Properties parseXml(Object object, InputStream stream, String streamName) throws InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException, IOException {
-        Properties props = new Properties();
-        props.loadFromXML(stream);
-
-        return parse0(object, props, streamName);
-    }
-
-    /**
-     * Parses property set with using of annotations and using abstract input io stream reader (it can be a file, network or any other thing Java can provide within io streams).
-     *
-     * @param object     annotated object, that represents Java property storage.
-     * @param reader     IO stream reader.
-     * @param streamName Name of stream (this will be used instead of file name, because of using IO stream we cannot retrieve file name).
-     * @throws InvocationTargetException Failed invoke some annotated method.
-     * @throws NoSuchMethodException     Appears on adding splitter properties to lists.
-     * @throws InstantiationException    When failed to create instance of an custom object. Such exception can appered when property field is of custom type.
-     * @throws IllegalAccessException    If tries access inaccessible entities in annotated object.
-     * @throws IOException               If configuration file does not exists or due to system IO errors.
-     */
-    public static Properties parse(Object object, Reader reader, String streamName) throws InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException, IOException {
-        Properties props = new Properties();
-        props.load(reader);
-
-        return parse0(object, props, streamName);
-    }
-
-    /**
      * Parses property set with using of annotations.
      *
      * @param object annotated object, that represents Java property storage.
@@ -162,11 +55,11 @@ public class PropertiesLoader {
      * @throws InvocationTargetException Failed invoke some annotated method.
      */
     @SuppressWarnings("unchecked")
-    private static Properties parse0(Object object, Properties props, String path) throws IOException, IllegalAccessException, InstantiationException, NoSuchMethodException, InvocationTargetException {
+    private static Properties parse0(Object object, Properties props, String path) throws Exception {
         boolean callEvents = object instanceof IPropertyListener;
 
         if (callEvents) {
-            ((IPropertyListener) object).onStart(path);
+            ((IPropertyListener) object).preParseEnvironment(path);
         }
 
         boolean isClass = (object instanceof Class);
@@ -273,7 +166,7 @@ public class PropertiesLoader {
                                 Array.set(array, index, PropertyCaster.cast(baseType, value));
                             } catch (IllegalPropertyException | NumberFormatException e) {
                                 if (callEvents) {
-                                    ((IPropertyListener) object).onInvalidPropertyCast(name, value);
+                                    ((IPropertyListener) object).typeCastException(name, value);
                                 }
                             }
                             ++index;
@@ -297,7 +190,7 @@ public class PropertiesLoader {
                                 ((List<Object>) field.get(object)).add(PropertyCaster.cast(genericType, value));
                             } catch (IllegalPropertyException | NumberFormatException e) {
                                 if (callEvents) {
-                                    ((IPropertyListener) object).onInvalidPropertyCast(name, value);
+                                    ((IPropertyListener) object).typeCastException(name, value);
                                 }
                             }
                         }
@@ -312,7 +205,7 @@ public class PropertiesLoader {
                                 PropertyCaster.cast(object, field, propValue);
                             } catch (IllegalPropertyException | NumberFormatException e) {
                                 if (callEvents) {
-                                    ((IPropertyListener) object).onInvalidPropertyCast(name, propValue);
+                                    ((IPropertyListener) object).typeCastException(name, propValue);
                                 }
                             }
                         }
@@ -328,7 +221,7 @@ public class PropertiesLoader {
                 }
             } else {
                 if (object instanceof IPropertyListener) {
-                    ((IPropertyListener) object).onPropertyMiss(name);
+                    ((IPropertyListener) object).missPropertyEvent(name);
                 }
             }
             field.setAccessible(oldAccess);
@@ -347,7 +240,7 @@ public class PropertiesLoader {
 
                 if (!props.containsKey(propName)) {
                     if (object instanceof IPropertyListener) {
-                        ((IPropertyListener) object).onPropertyMiss(propName);
+                        ((IPropertyListener) object).missPropertyEvent(propName);
                     }
                     continue;
                 }
@@ -362,7 +255,7 @@ public class PropertiesLoader {
                             method.invoke(object, PropertyCaster.cast(method.getParameterTypes()[0], propValue));
                         } catch (IllegalPropertyException | NumberFormatException | InvocationTargetException e) {
                             if (callEvents) {
-                                ((IPropertyListener) object).onInvalidPropertyCast(propName, propValue);
+                                ((IPropertyListener) object).typeCastException(propName, propValue);
                             }
                         }
                     } else {
@@ -375,10 +268,139 @@ public class PropertiesLoader {
         }
 
         if (callEvents) {
-            ((IPropertyListener) object).onDone(path);
+            ((IPropertyListener) object).postPArseEnvironment(path);
         }
 
         return props;
+    }
+
+    /**
+     * Parses property set with using of annotations and string path to property source.
+     *
+     * @param object annotated object, that represents Java property storage.
+     * @param path   Path to properties file.
+     * @throws InvocationTargetException Failed invoke some annotated method.
+     * @throws NoSuchMethodException     Appears on adding splitter properties to lists.
+     * @throws InstantiationException    When failed to create instance of an custom object. Such exception can appered when property field is of custom type.
+     * @throws IllegalAccessException    If tries access inaccessible entities in annotated object.
+     * @throws IOException               If configuration file does not exists or due to system IO errors.
+     */
+    public static Properties parse(Object object, String path) throws Exception {
+        return parse(object, new File(path));
+    }
+
+    /**
+     * Parses XML property set with using of annotations and string path to property XML source.
+     *
+     * @param object annotated object, that represents Java property storage.
+     * @param path   Path to properties file.
+     * @throws InvocationTargetException Failed invoke some annotated method.
+     * @throws NoSuchMethodException     Appears on adding splitter properties to lists.
+     * @throws InstantiationException    When failed to create instance of an custom object. Such exception can appered when property field is of custom type.
+     * @throws IllegalAccessException    If tries access inaccessible entities in annotated object.
+     * @throws IOException               If configuration file does not exists or due to system IO errors.
+     */
+    public static Properties parseXml(Object object, String path) throws Exception {
+        return parseXml(object, new File(path));
+    }
+
+    /**
+     * Parses property set with using of annotations and File object referenced to property source.
+     *
+     * @param object annotated object, that represents Java property storage.
+     * @param file   File to read properties from.
+     * @throws InvocationTargetException Failed invoke some annotated method.
+     * @throws NoSuchMethodException     Appears on adding splitter properties to lists.
+     * @throws InstantiationException    When failed to create instance of an custom object. Such exception can appered when property field is of custom type.
+     * @throws IllegalAccessException    If tries access inaccessible entities in annotated object.
+     * @throws IOException               If configuration file does not exists or due to system IO errors.
+     */
+    public static Properties parse(Object object, File file) throws Exception {
+        Properties props;
+
+        try (FileInputStream stream = new FileInputStream(file)) {
+            props = parse(object, stream, file.getPath());
+        }
+
+        return props;
+    }
+
+    /**
+     * Parses XML property set with using of annotations and XML File object referenced to property source.
+     *
+     * @param object annotated object, that represents Java property storage.
+     * @param file   File to read properties from.
+     * @throws InvocationTargetException Failed invoke some annotated method.
+     * @throws NoSuchMethodException     Appears on adding splitter properties to lists.
+     * @throws InstantiationException    When failed to create instance of an custom object. Such exception can appered when property field is of custom type.
+     * @throws IllegalAccessException    If tries access inaccessible entities in annotated object.
+     * @throws IOException               If configuration file does not exists or due to system IO errors.
+     */
+    public static Properties parseXml(Object object, File file) throws Exception {
+        Properties props;
+
+        try (FileInputStream stream = new FileInputStream(file)) {
+            props = parseXml(object, stream, file.getPath());
+        }
+
+        return props;
+    }
+
+    /**
+     * Parses property set with using of annotations and using abstract input io stream (it can be a file, network or any other thing Java can provide within io streams).
+     *
+     * @param object     annotated object, that represents Java property storage.
+     * @param stream     IO stream from properties will be read.
+     * @param streamName Name of stream (this will be used instead of file name, because of using IO stream we cannot retrieve file name).
+     * @throws InvocationTargetException Failed invoke some annotated method.
+     * @throws NoSuchMethodException     Appears on adding splitter properties to lists.
+     * @throws InstantiationException    When failed to create instance of an custom object. Such exception can appered when property field is of custom type.
+     * @throws IllegalAccessException    If tries access inaccessible entities in annotated object.
+     * @throws IOException               If configuration file does not exists or due to system IO errors.
+     */
+    public static Properties parse(Object object, InputStream stream, String streamName) throws Exception {
+        Properties props = new Properties();
+        props.load(stream);
+
+        return parse0(object, props, streamName);
+    }
+
+    /**
+     * Parses XML property set with using of annotations and using abstract input XML io stream (it can be a file, network or any other thing Java can provide within io streams).
+     *
+     * @param object     annotated object, that represents Java property storage.
+     * @param stream     IO stream from properties will be read.
+     * @param streamName Name of stream (this will be used instead of file name, because of using IO stream we cannot retrieve file name).
+     * @throws InvocationTargetException Failed invoke some annotated method.
+     * @throws NoSuchMethodException     Appears on adding splitter properties to lists.
+     * @throws InstantiationException    When failed to create instance of an custom object. Such exception can appered when property field is of custom type.
+     * @throws IllegalAccessException    If tries access inaccessible entities in annotated object.
+     * @throws IOException               If configuration file does not exists or due to system IO errors.
+     */
+    public static Properties parseXml(Object object, InputStream stream, String streamName) throws Exception {
+        Properties props = new Properties();
+        props.loadFromXML(stream);
+
+        return parse0(object, props, streamName);
+    }
+
+    /**
+     * Parses property set with using of annotations and using abstract input io stream reader (it can be a file, network or any other thing Java can provide within io streams).
+     *
+     * @param object     annotated object, that represents Java property storage.
+     * @param reader     IO stream reader.
+     * @param streamName Name of stream (this will be used instead of file name, because of using IO stream we cannot retrieve file name).
+     * @throws InvocationTargetException Failed invoke some annotated method.
+     * @throws NoSuchMethodException     Appears on adding splitter properties to lists.
+     * @throws InstantiationException    When failed to create instance of an custom object. Such exception can appered when property field is of custom type.
+     * @throws IllegalAccessException    If tries access inaccessible entities in annotated object.
+     * @throws IOException               If configuration file does not exists or due to system IO errors.
+     */
+    public static Properties parse(Object object, Reader reader, String streamName) throws Exception {
+        Properties props = new Properties();
+        props.load(reader);
+
+        return parse0(object, props, streamName);
     }
 
     /**
@@ -442,7 +464,7 @@ public class PropertiesLoader {
      * @throws IllegalAccessException When failed to access objects' data.
      */
     public static void store(Object object, OutputStream stream) throws IOException, IllegalAccessException {
-        PropertyStoreFormatterIni formatter = new PropertyStoreFormatterIni();
+        PropertyFormatterIni formatter = new PropertyFormatterIni();
         store0(object, formatter);
         stream.write(formatter.generate().getBytes());
     }
@@ -456,7 +478,7 @@ public class PropertiesLoader {
      * @throws IllegalAccessException When failed to access objects' data.
      */
     public static void storeXml(Object object, OutputStream stream) throws IOException, IllegalAccessException {
-        PropertyStoreFormatterXml formatter = new PropertyStoreFormatterXml();
+        PropertyFormatterXml formatter = new PropertyFormatterXml();
         store0(object, formatter);
         stream.write(formatter.generate().getBytes());
     }
@@ -470,7 +492,7 @@ public class PropertiesLoader {
      * @throws IllegalAccessException When failed to access objects' data.
      */
     public static void store(Object object, Writer writer) throws IOException, IllegalAccessException {
-        PropertyStoreFormatterIni formatter = new PropertyStoreFormatterIni();
+        PropertyFormatterIni formatter = new PropertyFormatterIni();
         store0(object, formatter);
         writer.write(formatter.generate());
     }
@@ -484,7 +506,7 @@ public class PropertiesLoader {
      * @throws IllegalAccessException When failed to access objects' data.
      */
     public static void storeXml(Object object, Writer writer) throws IOException, IllegalAccessException {
-        PropertyStoreFormatterXml formatter = new PropertyStoreFormatterXml();
+        PropertyFormatterXml formatter = new PropertyFormatterXml();
         store0(object, formatter);
         writer.write(formatter.generate());
     }
@@ -496,7 +518,7 @@ public class PropertiesLoader {
      * @throws IOException            If any I/O error occurs.
      * @throws IllegalAccessException When failed to access objects' data.
      */
-    private static void store0(Object object, IPropertyStoreFormatter formatter) throws IOException, IllegalAccessException {
+    private static void store0(Object object, IPropertyFormatter formatter) throws IOException, IllegalAccessException {
         boolean isClass = (object instanceof Class);
         boolean classAnnotationPresent;
         String prefix = null;

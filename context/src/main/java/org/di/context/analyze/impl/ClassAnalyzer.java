@@ -1,6 +1,24 @@
+/*
+ * Copyright (c) 2018 DI (IoC) Container (Team: GC Dev, Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
+ *
+ * This file is part of DI (IoC) Container Project.
+ *
+ * DI (IoC) Container Project is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * DI (IoC) Container Project is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
+ */
 package org.di.context.analyze.impl;
 
-import org.di.annotations.Dependency;
+import org.di.annotations.IoCDependency;
 import org.di.context.analyze.Analyzer;
 import org.di.context.analyze.results.ClassAnalyzeResult;
 
@@ -27,7 +45,7 @@ public class ClassAnalyzer implements Analyzer<ClassAnalyzeResult, Class<?>> {
 
         final Constructor<?> constructor = constructors[0];
         if (constructor.getParameterCount() > 0) {
-            if (!constructor.isAnnotationPresent(Dependency.class)) {
+            if (!constructor.isAnnotationPresent(IoCDependency.class)) {
                 return new ClassAnalyzeResult("Impossibility of injection into the standard class constructor. Use the Introduction annotation to introduce dependencies!");
             }
 
@@ -36,14 +54,14 @@ public class ClassAnalyzer implements Analyzer<ClassAnalyzeResult, Class<?>> {
 
         final Field[] fields = tested.getDeclaredFields();
         for (Field field : fields) {
-            if (field.isAnnotationPresent(Dependency.class)) {
+            if (field.isAnnotationPresent(IoCDependency.class)) {
                 return new ClassAnalyzeResult(INJECTED_FIELDS);
             }
         }
 
         final Method[] methods = tested.getDeclaredMethods();
         for (Method method : methods) {
-            if (method.isAnnotationPresent(Dependency.class)) {
+            if (method.isAnnotationPresent(IoCDependency.class)) {
                 if (method.getParameterCount() == 0) {
                     return new ClassAnalyzeResult("Impossibility of injection into a function with fewer parameters than one");
                 }

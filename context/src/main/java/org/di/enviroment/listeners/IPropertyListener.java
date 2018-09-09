@@ -16,19 +16,42 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.di.context.analyze.enums;
+package org.di.enviroment.listeners;
 
 /**
+ * Properties event listener. Target class should implement this interface to be available to listen nProperty events.
+ * In other cases events will not be called.
+ *
  * @author GenCloud
- * @date 06.09.2018
+ * @date 05.09.2018
  */
-public enum CyclicDependencyState {
+public interface IPropertyListener {
     /**
-     * have cyclic dependencies
+     * When parsing of configuration file starts.
+     *
+     * @param path Path to configuration file.
      */
-    TRUE,
+    void preParseEnvironment(String path);
+
     /**
-     * don't have cyclic dependencies
+     * When some property is missing.
+     *
+     * @param name Missed property name.
      */
-    FALSE
+    void missPropertyEvent(String name);
+
+    /**
+     * When done parsing configuration file.
+     *
+     * @param path File path.
+     */
+    void postPArseEnvironment(String path);
+
+    /**
+     * When property value casting is invalid.
+     *
+     * @param name  Property name.
+     * @param value Casted value.
+     */
+    void typeCastException(String name, String value);
 }

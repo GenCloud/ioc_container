@@ -1,25 +1,45 @@
+/*
+ * Copyright (c) 2018 DI (IoC) Container (Team: GC Dev, Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
+ *
+ * This file is part of DI (IoC) Container Project.
+ *
+ * DI (IoC) Container Project is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * DI (IoC) Container Project is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
+ */
 package org.di.context;
 
-import org.di.annotations.Component;
-import org.di.annotations.Dependency;
+import org.di.annotations.IoCComponent;
 import org.di.annotations.property.Property;
 import org.di.context.analyze.Analyzer;
 import org.di.context.analyze.impl.ClassAnalyzer;
+import org.di.context.analyze.impl.CyclicDependenciesAnalyzer;
 import org.di.context.analyze.results.ClassAnalyzeResult;
-import org.di.enviroment.PropertiesLoader;
-import org.di.excepton.instantiate.IntroInstantiateException;
+import org.di.context.analyze.results.CyclicDependencyResult;
+import org.di.enviroment.loader.PropertiesLoader;
+import org.di.excepton.instantiate.IoCInstantiateException;
 import org.di.factories.DependencyFactory;
 import org.di.utils.factory.ReflectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.annotation.Annotation;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.di.utils.factory.ReflectionUtils.checkClass;
+import static org.di.context.analyze.enums.CyclicDependencyState.FALSE;
 
 /**
  * Central class to provide configuration for an application.
@@ -53,11 +73,11 @@ public class AppContext {
     public void initEnvironment(Set<Class<?>> properties) {
         for (Class<?> type : properties) {
             final Property property = type.getAnnotation(Property.class);
-            final String path = property.path();
+            final Path path = Paths.get(property.path());
             try {
-                PropertiesLoader.parse(type, path);
                 final Object o = type.newInstance();
-                scanClass(o.getClass());
+                PropertiesLoader.parse(o, path.toFile());
+                dependencyFactory.addSingleton(o);
             } catch (Exception e) {
                 throw new Error("Failed to Load " + path + " Properties File", e);
             }
@@ -77,55 +97,64 @@ public class AppContext {
     private Analyzer<?, ?> mapAnalyzer(Class<? extends Analyzer> cls) {
         try {
             return ReflectionUtils.instantiate(cls);
-        } catch (IntroInstantiateException e) {
+        } catch (IoCInstantiateException e) {
             log.error("", e);
         }
         return null;
     }
 
+    /**
+     * The main function for initializing component dependencies.
+     * <p>
+     * Starts the analyzers and, if properly executed, starts the initialization of components.
+     *
+     * @param components - collection of components found in the classpatch
+     * @throws Exception - if component have grammar error, cyclic dependencies, etc.
+     */
     public void initializeComponents(Set<Class<?>> components) throws Exception {
-        for (Class<?> component : components) {
-            if (checkClass(component)) {
+        final CyclicDependenciesAnalyzer analyzer = (CyclicDependenciesAnalyzer) getAnalyzer(CyclicDependenciesAnalyzer.class);
+        final CyclicDependencyResult result = analyzer.analyze(new ArrayList<>(components));
+        if (result.getCyclicDependencyState() == FALSE) {
+            for (Class<?> component : components) {
                 scanClass(component);
             }
+
+            dependencyFactory.instantiateDefinitions(null);
+            return;
         }
 
-        dependencyFactory.instantiateDefinitions(null);
-        dependencyFactory.instantiateLazyDefinitions(null);
+        throw new IoCInstantiateException(result.getThrowMessage());
     }
 
+    /**
+     * Function of scanning a component after detecting the dependencies
+     * of their initialization.
+     *
+     * @param component - class for scan
+     * @throws Exception - @throws Exception - if component have grammar error
+     */
     private void scanClass(Class<?> component) throws Exception {
         final ClassAnalyzer classAnalyzer = (ClassAnalyzer) getAnalyzer(ClassAnalyzer.class);
         if (!classAnalyzer.supportFor(component)) {
-            throw new IntroInstantiateException("It is impossible to test, check the class for type match!");
+            throw new IoCInstantiateException("It is impossible to test, check the class for type match!");
         }
 
         final ClassAnalyzeResult result = classAnalyzer.analyze(component);
         dependencyFactory.addDefinition(component, result);
     }
 
-    private Object getType(Class<?> type, Annotation annotation) {
-        String name = null;
-        if (annotation != null) {
-            if (annotation instanceof Component) {
-                final Component component = (Component) annotation;
-                name = !component.name().isEmpty() ? component.name() : type.getSimpleName();
-            } else if (annotation instanceof Dependency) {
-                final Dependency dependency = (Dependency) annotation;
-                name = !dependency.name().isEmpty() ? dependency.name() : type.getSimpleName();
-            }
-        } else {
-            name = type.getSimpleName();
-        }
-
-        return dependencyFactory.getType(name);
-    }
-
+    /**
+     * Returns the component from the factory.
+     * Depending on its type, the initialized component or an existing one
+     *
+     * @param type - type for get
+     * @return instantiated object from context
+     */
     public Object getType(Class<?> type) {
         String name;
-        if (type.isAnnotationPresent(Component.class)) {
-            final Component component = type.getAnnotation(Component.class);
-            name = !component.name().isEmpty() ? component.name() : type.getSimpleName();
+        if (type.isAnnotationPresent(IoCComponent.class)) {
+            final IoCComponent ioCComponent = type.getAnnotation(IoCComponent.class);
+            name = !ioCComponent.name().isEmpty() ? ioCComponent.name() : type.getSimpleName();
         } else {
             name = type.getSimpleName();
         }
@@ -133,10 +162,20 @@ public class AppContext {
         return getType(name);
     }
 
+    /**
+     * @param name - name of component for get
+     * @return instantiated object from context factory
+     */
     private Object getType(String name) {
         return dependencyFactory.getType(name);
     }
 
+    /**
+     * The analyzer search function by its class name.
+     *
+     * @param cls - class analyzer
+     * @return found analyzer
+     */
     public Analyzer<?, ?> getAnalyzer(Class<? extends Analyzer> cls) {
         return analyzers.stream().filter(a -> a.getClass().getSimpleName().equals(cls.getSimpleName())).findFirst().orElse(null);
     }

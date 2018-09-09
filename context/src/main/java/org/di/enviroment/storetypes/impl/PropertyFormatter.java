@@ -16,19 +16,26 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.di.context.analyze.enums;
+package org.di.enviroment.storetypes.impl;
+
+import org.di.enviroment.storetypes.IPropertyFormatter;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
+ * Formatter base with using LinkedHashMap to store property pairs.
+ *
  * @author GenCloud
- * @date 06.09.2018
+ * @date 05.09.2018
  */
-public enum CyclicDependencyState {
-    /**
-     * have cyclic dependencies
-     */
-    TRUE,
-    /**
-     * don't have cyclic dependencies
-     */
-    FALSE
+public abstract class PropertyFormatter implements IPropertyFormatter {
+    protected Map<String, String> pairs = new LinkedHashMap<>();
+
+    @Override
+    public void addPair(String key, String value) {
+        if (!pairs.containsKey(key)) {
+            pairs.put(key, value);
+        }
+    }
 }

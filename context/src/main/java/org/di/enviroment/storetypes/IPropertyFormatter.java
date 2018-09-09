@@ -16,19 +16,31 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.di.context.analyze.enums;
+package org.di.enviroment.storetypes;
+
+import java.io.IOException;
 
 /**
+ * Interface for store configuration files in different formats.
+ * <p>
+ *
  * @author GenCloud
- * @date 06.09.2018
+ * @date 05.09.2018
  */
-public enum CyclicDependencyState {
+public interface IPropertyFormatter {
     /**
-     * have cyclic dependencies
+     * Adds property entry.
+     *
+     * @param key   Entry key.
+     * @param value Entry value.
      */
-    TRUE,
+    void addPair(String key, String value);
+
     /**
-     * don't have cyclic dependencies
+     * Generates configuration file text based on type of this store formatter.
+     *
+     * @return Generated configuration file.
+     * @throws IOException Used to re-throw unusual exceptions during format.
      */
-    FALSE
+    String generate() throws IOException;
 }

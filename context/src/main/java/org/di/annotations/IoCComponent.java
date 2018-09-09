@@ -16,19 +16,26 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.di.context.analyze.enums;
+package org.di.annotations;
+
+import java.lang.annotation.*;
 
 /**
+ * Specifies that the class marked with the annotation must be initialized in the
+ * context of the application, its automatic search when scanning application packages.
+ *
  * @author GenCloud
- * @date 06.09.2018
+ * @date 04.09.2018
  */
-public enum CyclicDependencyState {
+@Documented
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface IoCComponent {
     /**
-     * have cyclic dependencies
+     * If the value is redefined, then the component (class) will be placed in
+     * the injection factory by its value, otherwise the original class name will be used.
+     *
+     * @return the name of the component (class), or the null value
      */
-    TRUE,
-    /**
-     * don't have cyclic dependencies
-     */
-    FALSE
+    String name() default "";
 }

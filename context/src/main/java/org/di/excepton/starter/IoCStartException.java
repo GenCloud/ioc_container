@@ -16,19 +16,28 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.di.context.analyze.enums;
+package org.di.excepton.starter;
+
+import org.di.excepton.IoCException;
 
 /**
  * @author GenCloud
- * @date 06.09.2018
+ * @date 04.09.2018
  */
-public enum CyclicDependencyState {
-    /**
-     * have cyclic dependencies
-     */
-    TRUE,
-    /**
-     * don't have cyclic dependencies
-     */
-    FALSE
+public class IoCStartException extends IoCException {
+    public IoCStartException() {
+        super();
+    }
+
+    public IoCStartException(String message) {
+        super(message);
+    }
+
+    protected IoCStartException(String message, Throwable cause) {
+        super(message, cause);
+    }
+
+    protected IoCStartException(Throwable cause) {
+        super(cause);
+    }
 }

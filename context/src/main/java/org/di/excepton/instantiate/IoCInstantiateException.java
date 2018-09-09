@@ -16,19 +16,32 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.di.context.analyze.enums;
+package org.di.excepton.instantiate;
+
+import org.di.excepton.IoCException;
 
 /**
  * @author GenCloud
- * @date 06.09.2018
+ * @date 04.09.2018
  */
-public enum CyclicDependencyState {
-    /**
-     * have cyclic dependencies
-     */
-    TRUE,
-    /**
-     * don't have cyclic dependencies
-     */
-    FALSE
+public class IoCInstantiateException extends IoCException {
+    public IoCInstantiateException() {
+        super();
+    }
+
+    public IoCInstantiateException(String message) {
+        super(message);
+    }
+
+    public IoCInstantiateException(String message, Throwable cause) {
+        super(message, cause);
+    }
+
+    public IoCInstantiateException(Throwable cause) {
+        super(cause);
+    }
+
+    public <T> IoCInstantiateException(Class<T> clazz, String message) {
+        super("Failed to instantiate [" + clazz.getName() + "]: " + message);
+    }
 }
