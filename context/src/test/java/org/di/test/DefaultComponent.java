@@ -1,7 +1,6 @@
 package org.di.test;
 
 import org.di.annotations.Component;
-import org.di.annotations.Dependency;
 import org.di.annotations.LoadOpt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,11 +15,4 @@ import static org.di.annotations.LoadOpt.Opt.PROTOTYPE;
 @LoadOpt(PROTOTYPE)
 public class DefaultComponent {
     private static final Logger log = LoggerFactory.getLogger(DefaultComponent.class);
-
-    @Dependency
-    private DefaultService defaultService;
-
-    public void printInfo() {
-        log.info(String.valueOf(defaultService));
-    }
 }

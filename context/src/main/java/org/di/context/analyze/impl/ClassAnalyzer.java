@@ -55,7 +55,7 @@ public class ClassAnalyzer implements Analyzer<ClassAnalyzeResult, Class<?>> {
                 return new ClassAnalyzeResult(INJECTED_METHODS);
             }
         }
-        return null;
+        return new ClassAnalyzeResult(INJECTED_NOTHING);
     }
 
     @Override

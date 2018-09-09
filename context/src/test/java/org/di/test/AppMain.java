@@ -4,6 +4,7 @@ import org.apache.log4j.BasicConfigurator;
 import org.di.annotations.ScanPackage;
 import org.di.context.AppContext;
 import org.di.context.runner.DIStarter;
+import org.di.factories.DependencyFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,14 +20,44 @@ public class AppMain {
         BasicConfigurator.configure();
 
         final AppContext context = DIStarter.start(AppMain.class, args);
-        final DefaultService defaultService = (DefaultService) context.getSingleton(DefaultService.class);
+        printStatistic(context);
+        log.info("Getting type from context");
+        final DefaultComponent defaultComponent = (DefaultComponent) context.getType(DefaultComponent.class);
+        log.info(defaultComponent.toString());
+
+        log.info("Getting type from context");
+        final DefaultService defaultService = (DefaultService) context.getType(DefaultService.class);
         log.info(defaultService.toString());
 
         defaultService.printInfo();
 
-        final DefConstructorComponent defConstructorComponent = (DefConstructorComponent) context.getSingleton(DefConstructorComponent.class);
+        log.info("Getting type from context");
+        final Object o = context.getType(DefConstructorComponent.class);
+        final DefConstructorComponent defConstructorComponent = (DefConstructorComponent) o;
         log.info(defConstructorComponent.toString());
 
         defConstructorComponent.printInfo();
+
+        log.info("Getting MainController from context");
+        final MainController mainController = (MainController) context.getType(MainController.class);
+        log.info(mainController.toString());
+
+        mainController.printInfo();
+    }
+
+    private static void printStatistic(AppContext context) {
+        DependencyFactory dependencyFactory = context.getDependencyFactory();
+        log.info("Initializing singleton types - {}", dependencyFactory.getSingletons().size());
+        log.info("Initializing proto types - {}", dependencyFactory.getPrototypes().size());
+
+        log.info("For Each singleton types");
+        for (Object o : dependencyFactory.getSingletons().values()) {
+            log.info("------- {}", o.getClass().getSimpleName());
+        }
+
+        log.info("For Each proto types");
+        for (Object o : dependencyFactory.getPrototypes().values()) {
+            log.info("------- {}", o.getClass().getSimpleName());
+        }
     }
 }

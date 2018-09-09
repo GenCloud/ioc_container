@@ -2,6 +2,7 @@ package org.di.test;
 
 import org.di.annotations.Component;
 import org.di.annotations.Dependency;
+import org.di.annotations.Lazy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,6 +11,7 @@ import org.slf4j.LoggerFactory;
  * @date 04.09.2018
  */
 @Component
+@Lazy
 public class DefaultService {
     private static final Logger log = LoggerFactory.getLogger(DefaultService.class);
 
