@@ -27,6 +27,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 import static org.di.context.analyze.enums.ClassStateInjection.*;
+import static org.di.utils.factory.ReflectionUtils.findConstructor;
 
 
 /**
@@ -38,17 +39,8 @@ import static org.di.context.analyze.enums.ClassStateInjection.*;
 public class ClassAnalyzer implements Analyzer<ClassAnalyzeResult, Class<?>> {
     @Override
     public ClassAnalyzeResult analyze(Class<?> tested) {
-        final Constructor<?>[] constructors = tested.getConstructors();
-        if (constructors.length > 1) {
-            return new ClassAnalyzeResult("Inability to inject a class with more than one constructor!");
-        }
-
-        final Constructor<?> constructor = constructors[0];
-        if (constructor.getParameterCount() > 0) {
-            if (!constructor.isAnnotationPresent(IoCDependency.class)) {
-                return new ClassAnalyzeResult("Impossibility of injection into the standard class constructor. Use the Introduction annotation to introduce dependencies!");
-            }
-
+        final Constructor<?> constructor = findConstructor(tested);
+        if (constructor != null) {
             return new ClassAnalyzeResult(INJECTED_CONSTRUCTOR);
         }
 
@@ -78,6 +70,6 @@ public class ClassAnalyzer implements Analyzer<ClassAnalyzeResult, Class<?>> {
 
     @Override
     public boolean supportFor(Class<?> tested) {
-        return !tested.isAnnotation() & !tested.isArray() && !tested.isEnum() && !tested.isInterface();
+        return !tested.isAnnotation() & !tested.isArray() && !tested.isEnum();
     }
 }

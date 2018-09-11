@@ -18,28 +18,23 @@
  */
 package org.di.context;
 
-import org.di.annotations.IoCComponent;
 import org.di.annotations.property.Property;
 import org.di.context.analyze.Analyzer;
 import org.di.context.analyze.impl.ClassAnalyzer;
-import org.di.context.analyze.impl.CyclicDependenciesAnalyzer;
 import org.di.context.analyze.results.ClassAnalyzeResult;
-import org.di.context.analyze.results.CyclicDependencyResult;
 import org.di.enviroment.loader.PropertiesLoader;
 import org.di.excepton.instantiate.IoCInstantiateException;
 import org.di.factories.DependencyFactory;
-import org.di.utils.factory.ReflectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.di.context.analyze.enums.CyclicDependencyState.FALSE;
+import static org.di.utils.factory.ReflectionUtils.instantiate;
 
 /**
  * Central class to provide configuration for an application.
@@ -54,11 +49,6 @@ public class AppContext {
      * Factory initialized context components
      */
     private final DependencyFactory dependencyFactory = new DependencyFactory();
-
-    /**
-     * Context Analyzers
-     */
-    private final List<Analyzer<?, ?>> analyzers = new ArrayList<>();
 
     /**
      * @return dependencyFactory - factory initialized context components
@@ -77,7 +67,8 @@ public class AppContext {
             try {
                 final Object o = type.newInstance();
                 PropertiesLoader.parse(o, path.toFile());
-                dependencyFactory.addSingleton(o);
+                dependencyFactory.addInstalledConfiguration(o);
+                dependencyFactory.instantiatePropertyMethods(o);
             } catch (Exception e) {
                 throw new Error("Failed to Load " + path + " Properties File", e);
             }
@@ -91,12 +82,12 @@ public class AppContext {
      */
     public void initAnalyzers(Set<Class<? extends Analyzer>> analyzers) {
         final List<Analyzer<?, ?>> list = analyzers.stream().map(this::mapAnalyzer).collect(Collectors.toList());
-        this.analyzers.addAll(list);
+        dependencyFactory.addAnalyzers(list);
     }
 
     private Analyzer<?, ?> mapAnalyzer(Class<? extends Analyzer> cls) {
         try {
-            return ReflectionUtils.instantiate(cls);
+            return instantiate(cls);
         } catch (IoCInstantiateException e) {
             log.error("", e);
         }
@@ -109,21 +100,11 @@ public class AppContext {
      * Starts the analyzers and, if properly executed, starts the initialization of components.
      *
      * @param components - collection of components found in the classpatch
-     * @throws Exception - if component have grammar error, cyclic dependencies, etc.
      */
-    public void initializeComponents(Set<Class<?>> components) throws Exception {
-        final CyclicDependenciesAnalyzer analyzer = (CyclicDependenciesAnalyzer) getAnalyzer(CyclicDependenciesAnalyzer.class);
-        final CyclicDependencyResult result = analyzer.analyze(new ArrayList<>(components));
-        if (result.getCyclicDependencyState() == FALSE) {
-            for (Class<?> component : components) {
-                scanClass(component);
-            }
-
-            dependencyFactory.instantiateDefinitions(null);
-            return;
+    public void initializeComponents(Set<Class<?>> components) {
+        for (Class<?> component : components) {
+            scanClass(component);
         }
-
-        throw new IoCInstantiateException(result.getThrowMessage());
     }
 
     /**
@@ -131,52 +112,30 @@ public class AppContext {
      * of their initialization.
      *
      * @param component - class for scan
-     * @throws Exception - @throws Exception - if component have grammar error
      */
-    private void scanClass(Class<?> component) throws Exception {
-        final ClassAnalyzer classAnalyzer = (ClassAnalyzer) getAnalyzer(ClassAnalyzer.class);
+    private void scanClass(Class<?> component) {
+        final ClassAnalyzer classAnalyzer = getAnalyzer(ClassAnalyzer.class);
         if (!classAnalyzer.supportFor(component)) {
             throw new IoCInstantiateException("It is impossible to test, check the class for type match!");
         }
 
         final ClassAnalyzeResult result = classAnalyzer.analyze(component);
-        dependencyFactory.addDefinition(component, result);
+        dependencyFactory.instantiate(component, result);
     }
 
     /**
      * Returns the component from the factory.
-     * Depending on its type, the initialized component or an existing one
+     * Depending on its type, the initialized component or an existing one.
      *
      * @param type - type for get
-     * @return instantiated object from context
-     */
-    public Object getType(Class<?> type) {
-        String name;
-        if (type.isAnnotationPresent(IoCComponent.class)) {
-            final IoCComponent ioCComponent = type.getAnnotation(IoCComponent.class);
-            name = !ioCComponent.name().isEmpty() ? ioCComponent.name() : type.getSimpleName();
-        } else {
-            name = type.getSimpleName();
-        }
-
-        return getType(name);
-    }
-
-    /**
-     * @param name - name of component for get
      * @return instantiated object from context factory
      */
-    private Object getType(String name) {
-        return dependencyFactory.getType(name);
+    @SuppressWarnings("unchecked")
+    public <O> O getType(Class<O> type) {
+        return (O) dependencyFactory.getType(type);
     }
 
-    /**
-     * The analyzer search function by its class name.
-     *
-     * @param cls - class analyzer
-     * @return found analyzer
-     */
-    public Analyzer<?, ?> getAnalyzer(Class<? extends Analyzer> cls) {
-        return analyzers.stream().filter(a -> a.getClass().getSimpleName().equals(cls.getSimpleName())).findFirst().orElse(null);
+    private <O extends Analyzer<?, ?>> O getAnalyzer(Class<O> cls) {
+        return dependencyFactory.getAnalyzer(cls);
     }
 }

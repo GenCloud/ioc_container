@@ -18,10 +18,7 @@
  */
 package org.di.annotations.property;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.lang.annotation.*;
 
 /**
  * The Property annotation represents ability to annotate fields and methods for lazy configuration files parsing.<br /><br />
@@ -68,6 +65,7 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.FIELD, ElementType.METHOD, ElementType.CONSTRUCTOR, ElementType.TYPE})
+@Documented
 public @interface Property {
     /**
      * Path to configuration file.

@@ -16,26 +16,23 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.di.excepton;
+package org.di.context.analyze.impl;
+
+import org.di.annotations.property.Property;
+import org.di.context.analyze.Analyzer;
 
 /**
  * @author GenCloud
- * @date 04.09.2018
+ * @date 11.09.2018
  */
-public class IoCException extends RuntimeException {
-    public IoCException() {
-        super();
+public class EnvironmentAnalyzer implements Analyzer<Void, Object> {
+    @Override
+    public Void analyze(Object tested) throws Exception {
+        return null;
     }
 
-    protected IoCException(String message) {
-        super(message);
-    }
-
-    protected IoCException(String message, Throwable cause) {
-        super(message, cause);
-    }
-
-    protected IoCException(Throwable cause) {
-        super(cause);
+    @Override
+    public boolean supportFor(Object tested) {
+        return tested.getClass().isAnnotationPresent(Property.class);
     }
 }

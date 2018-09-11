@@ -9,7 +9,14 @@ import org.di.test.components.ComponentA;
 import org.di.test.components.ComponentB;
 import org.di.test.components.ComponentC;
 import org.di.test.components.ComponentD;
+import org.di.test.components.abstrac.AbstractComponent;
+import org.di.test.components.abstrac.TestAbstractComponent;
+import org.di.test.components.inter.InterfaceComponent;
+import org.di.test.components.inter.MyInterface;
 import org.di.test.environments.ExampleEnvironment;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,38 +25,20 @@ import org.slf4j.LoggerFactory;
  * @date 04.09.2018
  */
 @ScanPackage(packages = {"org.di.test", "org.di"})
-public class MainTest {
+public class MainTest extends Assert {
     private static final Logger log = LoggerFactory.getLogger(MainTest.class);
 
-    public static void main(String... args) {
+    private AppContext appContext;
+
+    @Before
+    public void initializeContext() {
         BasicConfigurator.configure();
-
-        final AppContext context = IoCStarter.start(MainTest.class, args);
-        printStatistic(context);
-
-        log.info("Getting configuration instance");
-        final ExampleEnvironment exampleEnvironment = (ExampleEnvironment) context.getType(ExampleEnvironment.class);
-        log.info(exampleEnvironment.toString());
-
-        log.info("Getting type from context");
-        final ComponentA componentA = (ComponentA) context.getType(ComponentA.class);
-        log.info(componentA.toString());
-
-        log.info("Getting type from context");
-        final ComponentB componentB = (ComponentB) context.getType(ComponentB.class);
-        log.info(componentB.toString());
-
-        log.info("Getting type from context");
-        final ComponentC componentC = (ComponentC) context.getType(ComponentC.class);
-        log.info(componentC.toString());
-
-        log.info("Getting MainController from context");
-        final ComponentD componentD = (ComponentD) context.getType(ComponentD.class);
-        log.info(componentD.toString());
+        appContext = IoCStarter.start(MainTest.class, (String) null);
     }
 
-    private static void printStatistic(AppContext context) {
-        DependencyFactory dependencyFactory = context.getDependencyFactory();
+    @Test
+    public void printStatistic() {
+        DependencyFactory dependencyFactory = appContext.getDependencyFactory();
         log.info("Initializing singleton types - {}", dependencyFactory.getSingletons().size());
         log.info("Initializing proto types - {}", dependencyFactory.getPrototypes().size());
 
@@ -62,7 +51,50 @@ public class MainTest {
         for (Object o : dependencyFactory.getPrototypes().values()) {
             log.info("------- {}", o.getClass().getSimpleName());
         }
+    }
 
+    @Test
+    public void testInstantiatedComponents() {
+        log.info("Getting ExampleEnvironment from context");
+        final ExampleEnvironment exampleEnvironment = appContext.getType(ExampleEnvironment.class);
+        assertNotNull(exampleEnvironment);
+        log.info(exampleEnvironment.toString());
 
+        log.info("Getting ComponentB from context");
+        final ComponentB componentB = appContext.getType(ComponentB.class);
+        assertNotNull(componentB);
+        log.info(componentB.toString());
+
+        log.info("Getting ComponentC from context");
+        final ComponentC componentC = appContext.getType(ComponentC.class);
+        assertNotNull(componentC);
+        log.info(componentC.toString());
+
+        log.info("Getting ComponentD from context");
+        final ComponentD componentD = appContext.getType(ComponentD.class);
+        assertNotNull(componentD);
+        log.info(componentD.toString());
+    }
+
+    @Test
+    public void testProto() {
+        log.info("Getting ComponentA from context (first call)");
+        final ComponentA componentAFirst = appContext.getType(ComponentA.class);
+        log.info("Getting ComponentA from context (second call)");
+        final ComponentA componentASecond = appContext.getType(ComponentA.class);
+        assertNotSame(componentAFirst, componentASecond);
+        log.info(componentAFirst.toString());
+        log.info(componentASecond.toString());
+    }
+
+    @Test
+    public void testInterfacesAndAbstracts() {
+        log.info("Getting MyInterface from context");
+        final InterfaceComponent myInterface = appContext.getType(MyInterface.class);
+        log.info(myInterface.toString());
+
+        log.info("Getting TestAbstractComponent from context");
+        final AbstractComponent testAbstractComponent = appContext.getType(TestAbstractComponent.class);
+        log.info(testAbstractComponent.toString());
     }
 }

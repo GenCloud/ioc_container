@@ -16,26 +16,15 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.di.excepton;
+package org.di.test.components.abstrac;
 
 /**
  * @author GenCloud
- * @date 04.09.2018
+ * @date 11.09.2018
  */
-public class IoCException extends RuntimeException {
-    public IoCException() {
-        super();
-    }
-
-    protected IoCException(String message) {
-        super(message);
-    }
-
-    protected IoCException(String message, Throwable cause) {
-        super(message, cause);
-    }
-
-    protected IoCException(Throwable cause) {
-        super(cause);
+public abstract class AbstractComponent {
+    @Override
+    public String toString() {
+        return "AbstractComponent{}";
     }
 }

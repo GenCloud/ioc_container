@@ -18,23 +18,18 @@
  */
 package org.di.factories;
 
-import org.di.annotations.IoCComponent;
-import org.di.annotations.IoCDependency;
-import org.di.annotations.Lazy;
+import org.di.annotations.IoCProvider;
 import org.di.annotations.LoadOpt;
-import org.di.annotations.property.Property;
+import org.di.context.analyze.Analyzer;
 import org.di.context.analyze.enums.ClassStateInjection;
+import org.di.context.analyze.impl.ClassAnalyzer;
 import org.di.context.analyze.results.ClassAnalyzeResult;
 import org.di.excepton.instantiate.IoCInstantiateException;
-import org.di.factories.model.ClassDefinitions;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.di.utils.factory.ReflectionUtils;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
+import java.lang.reflect.*;
 import java.util.*;
-import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import static org.di.annotations.LoadOpt.Opt.PROTOTYPE;
 import static org.di.annotations.LoadOpt.Opt.SINGLETON;
@@ -42,24 +37,600 @@ import static org.di.context.analyze.enums.ClassStateInjection.*;
 import static org.di.utils.factory.ReflectionUtils.*;
 
 /**
- * Simple template class for implementations that creates a singleton or
- * a prototype object {@link LoadOpt.Opt}, depending on a flag.
- *
- * <p>If the "singleton" flag is true (the default), this class will create
- * the object that it creates exactly once on initialization and subsequently
- * return said singleton instance on all calls to the method.</p>
- *
  * @author GenCloud
- * @date 04.09.2018
+ * @date 10.09.2018
  */
 public class DependencyFactory {
-    private static final Logger log = LoggerFactory.getLogger(DependencyFactory.class);
-
+    /**
+     * Context Analyzers
+     */
+    private final List<Analyzer<?, ?>> analyzers = new ArrayList<>();
+    private Set<Class<?>> classRequests = new HashSet<>();
+    /**
+     * Factory instantiatable classes
+     */
+    private Set<Class<?>> classesInstantiatable = new HashSet<>();
+    /**
+     * Factory instantiatable classes (singletons)
+     */
+    private Set<Class<?>> classSingletons = new HashSet<>();
+    /**
+     * Factory instantiatable classes (proto)
+     */
+    private Set<Class<?>> classPrototypes = new HashSet<>();
+    /**
+     * Factory providers
+     */
+    private Map<String, IoCProvider> providers = new HashMap<>();
+    /**
+     * Factory singletons
+     */
     private Map<String, Object> singletons = new HashMap<>();
-
-    private Set<ClassDefinitions> definitions = new HashSet<>();
-
+    /**
+     * Factory prototypes
+     */
     private Map<String, Object> prototypes = new HashMap<>();
+    /**
+     * Factory interfaces
+     */
+    private Map<String, Class> interfaces = new HashMap<>();
+
+    /**
+     * Return an instance, which may be shared or independent, of the specified component.
+     *
+     * @param type type of the component to retrieve
+     * @return instance of object from factory
+     */
+    public Object getType(Class<?> type) {
+        final ClassAnalyzeResult result = classAnalyze(type);
+
+        final String typeName = getComponentName(type);
+        if (prototypes.containsKey(typeName)) {
+            return instantiateType(prototypes.get(typeName).getClass(), result);
+        }
+
+        if (singletons.containsKey(typeName)) {
+            return singletons.get(typeName);
+        }
+        return null;
+    }
+
+    /**
+     * Function object instantiation in the factory.
+     *
+     * @param requestedType type to init instance
+     * @param result        result of class analyzer
+     * @param <O>           the generic type of the interface.
+     * @return instantiated object in factory
+     */
+    @SuppressWarnings("unchecked")
+    public <O> O instantiate(Class<O> requestedType, ClassAnalyzeResult result) {
+        final O instance = instantiate(requestedType, null, result);
+        final Class subclass = requestedType.getSuperclass();
+        if (subclass != Object.class) {
+            if (isAbstract(subclass)) {
+                installIoCInstance(subclass, instance);
+            }
+        }
+
+        return instance;
+    }
+
+    /**
+     * Function object instantiation in the factory.
+     *
+     * @param request type to init instance
+     * @param parent  type-owner of {@param requestedType}
+     * @param result  result of class analyzer
+     * @param <O>     the generic type of the interface.
+     * @return instantiated object in factory
+     */
+    @SuppressWarnings("unchecked")
+    private <O> O instantiate(Class<O> request, Class<?> parent, ClassAnalyzeResult result) {
+        try {
+            final O instance = findInstalledObject(request, result);
+            if (instance != null) {
+                return instance;
+            }
+
+            return instantiateType(request, result);
+        } catch (Exception e) {
+            String msg = "IoCError - Unavailable create your class collection. ";
+
+            if (parent != null) {
+                msg += "\nCannot instantiate the type [" + parent.getName() + "]. "
+                        + "At least one of parameters type [" + request + "] can't be instantiated. ";
+            }
+
+            throw new IoCInstantiateException(msg, e);
+        }
+    }
+
+    /**
+     * Search function for an instantiated object in the factory.
+     *
+     * @param requestedType type to get its initialized instance already
+     * @param result        result of class analyzer
+     * @param <O>           the generic type of the interface.
+     * @return {@code null} object if type not found
+     */
+    @SuppressWarnings("unchecked")
+    private <O> O findInstalledObject(Class<O> requestedType, ClassAnalyzeResult result) {
+        Class<O> type = requestedType;
+        if (requestedType.isInterface()) {
+            if (interfaces.containsKey(requestedType.getSimpleName())) {
+                type = interfaces.get(requestedType.getSimpleName());
+            } else if (providers.containsKey(requestedType.getSimpleName())) {
+                return getInstanceFromProvider(requestedType);
+            } else {
+                throw new IoCInstantiateException("IoCError - Unavailable create instance of type [" + requestedType + "]. " +
+                        "It is an interface and there was no implementation class mapping defined for this type. " +
+                        "Please use the 'installInterface' method to define what implementing class should be used for a given interface.");
+            }
+        }
+
+        if (isAbstract(requestedType)) {
+            if (providers.containsKey(requestedType.getSimpleName())) {
+                return getInstanceFromProvider(requestedType);
+            } else {
+                throw new IoCInstantiateException("IoCError - Unavailable create instance of type [" + type + "]. " +
+                        "It is an abstract class and there is no subclass for this class available. " +
+                        "Please define a provider with the `installIoCProvider` method for this abstract class type.");
+            }
+        }
+
+        if (classRequests.contains(type)) {
+            if (!classesInstantiatable.contains(type)) {
+                throw new IoCInstantiateException("IoCError - Unavailable create instance of type [" + type + "]. " +
+                        "Requested component is currently in creation: Is there an unresolvable circular reference?");
+            }
+        } else {
+            classRequests.add(type);
+        }
+
+        final String typeName = getComponentName(type);
+        if (prototypes.containsKey(typeName)) {
+            return (O) instantiateType(prototypes.get(typeName).getClass(), result);
+        }
+
+        if (singletons.containsKey(typeName)) {
+            return (O) singletons.get(typeName);
+        }
+
+        if (providers.containsKey(typeName)) {
+            final O instanceFromProvider = getInstanceFromProvider(type);
+            addInstantiable(type);
+
+            if (isSingleton(type)) {
+                singletons.put(typeName, instanceFromProvider);
+            } else if (isPrototype(type)) {
+                prototypes.put(typeName, instanceFromProvider);
+            }
+
+            return instanceFromProvider;
+        }
+
+        return null;
+    }
+
+    /**
+     * Create a instance of the given type.
+     *
+     * @param type   type for instantiate
+     * @param result result of {@link org.di.context.analyze.impl.ClassAnalyzer#analyze(Class)}
+     * @param <O>    the generic type of the interface.
+     * @return new instance of type
+     * @throws IoCInstantiateException when type is not instantiatable
+     */
+    private <O> O instantiateType(Class<O> type, ClassAnalyzeResult result) throws IoCInstantiateException {
+        final ClassStateInjection state = result.getClassStateInjection();
+        if (state == INJECTED_CONSTRUCTOR) {
+            return instantiateConstructorType(type);
+        } else if (state == INJECTED_FIELDS) {
+            return instantiateFieldsType(type);
+        } else if (state == INJECTED_METHODS) {
+            return instantiateMethodsType(type);
+        } else if (state == INJECTED_NOTHING) {
+            return instantiateNothingType(type);
+        } else if (state == GRAMMAR_THROW_EXCEPTION) {
+            throw new IoCInstantiateException("IoCError - Unavailable create instance of type [" + type + "]."
+                    + result.getThrowableMessage());
+        }
+
+        return null;
+    }
+
+    /**
+     * Initializing components by just instantiate type.
+     *
+     * @param type type for instantiation
+     */
+    private <O> O instantiateNothingType(Class<O> type) {
+        final O instance = ReflectionUtils.instantiate(type);
+        addInstantiable(type);
+
+        final String typeName = getComponentName(type);
+        if (isSingleton(type)) {
+            singletons.put(typeName, instance);
+        } else if (isPrototype(type)) {
+            prototypes.put(typeName, instance);
+        }
+
+        return instance;
+    }
+
+    /**
+     * Functional method for initializing component dependencies.
+     *
+     * @param type  type for instantiation
+     */
+    private <O> O instantiateMethodsType(Class<O> type) {
+        final List<Method> methodList = findMethodsFromType(type);
+        final List<Object> argumentList = methodList.stream()
+                .map(method -> mapMethodType(method, type))
+                .collect(Collectors.toList());
+
+        try {
+            final O instance = ReflectionUtils.instantiate(type);
+            addInstantiable(type);
+
+            for (Method method : methodList) {
+                final Object toInstantiate = argumentList
+                        .stream()
+                        .filter(m -> m.getClass().getSimpleName().equals(method.getParameterTypes()[0].getSimpleName()))
+                        .findFirst()
+                        .get();
+
+                method.invoke(instance, toInstantiate);
+            }
+
+            final String typeName = getComponentName(type);
+            if (isSingleton(type)) {
+                singletons.put(typeName, instance);
+            } else if (isPrototype(type)) {
+                prototypes.put(typeName, instance);
+            }
+
+            return instance;
+        } catch (Exception e) {
+            throw new IoCInstantiateException("IoCError - Unavailable create instance of type [" + type + "].", e);
+        }
+    }
+
+    private Object mapMethodType(Method method, Class<?> type) {
+        final Class<?> paramType = method.getParameterTypes()[0];
+        if (paramType.getGenericSuperclass().equals(IoCProvider.class)) {
+            return populateProviderMethod(method, type, classAnalyze(paramType));
+        } else {
+            return instantiate(paramType, type, classAnalyze(paramType));
+        }
+    }
+
+    /**
+     * Initializing components by analyzing member fields.
+     *
+     * @param type  type for instantiation
+     */
+    private <O> O instantiateFieldsType(Class<O> type) {
+        final List<Field> fieldList = findFieldsFromType(type);
+        final List<Object> argumentList = fieldList.stream()
+                .map(field -> mapFieldType(field, type))
+                .collect(Collectors.toList());
+
+        try {
+            final O instance = ReflectionUtils.instantiate(type);
+            addInstantiable(type);
+
+            for (Field field : fieldList) {
+                final Object toInstantiate = argumentList
+                        .stream()
+                        .filter(f -> f.getClass().getSimpleName().equals(field.getType().getSimpleName()))
+                        .findFirst()
+                        .get();
+
+                final boolean access = field.isAccessible();
+                field.setAccessible(true);
+                field.set(instance, toInstantiate);
+                field.setAccessible(access);
+            }
+
+            final String typeName = getComponentName(type);
+            if (isSingleton(type)) {
+                singletons.put(typeName, instance);
+            } else if (isPrototype(type)) {
+                prototypes.put(typeName, instance);
+            }
+
+            return instance;
+        } catch (Exception e) {
+            throw new IoCInstantiateException("IoCError - Unavailable create instance of type [" + type + "].", e);
+        }
+    }
+
+    private Object mapFieldType(Field field, Class<?> type) {
+        final Class<?> fieldType = field.getType();
+        if (field.getType().equals(IoCProvider.class)) {
+            return populateProviderField(field, type, classAnalyze(fieldType));
+        } else {
+            return instantiate(field.getType(), type, classAnalyze(fieldType));
+        }
+    }
+
+    /**
+     * Initializing a component by analyzing a parameters constructor.
+     *
+     * @param type type for instantiation
+     */
+    private <O> O instantiateConstructorType(Class<O> type) {
+        final Constructor<O> oConstructor = findConstructor(type);
+
+        if (oConstructor != null) {
+            final Parameter[] constructorParameters = oConstructor.getParameters();
+            final List<Object> argumentList = Arrays.stream(constructorParameters)
+                    .map(param -> mapConstType(param, type))
+                    .collect(Collectors.toList());
+
+            try {
+                final O instance = oConstructor.newInstance(argumentList.toArray());
+
+                addInstantiable(type);
+
+                final String typeName = getComponentName(type);
+                if (isSingleton(type)) {
+                    singletons.put(typeName, instance);
+                } else if (isPrototype(type)) {
+                    prototypes.put(typeName, instance);
+                }
+
+                return instance;
+            } catch (Exception e) {
+                throw new IoCInstantiateException("IoCError - Unavailable create instance of type [" + type + "].", e);
+            }
+        }
+
+        return null;
+    }
+
+    private Object mapConstType(Parameter param, Class<?> type) {
+        final Class<?> paramType = param.getType();
+        if (param.getType().equals(IoCProvider.class)) {
+            return populateProviderArgument(param, type, classAnalyze(paramType));
+        } else {
+            return instantiate(param.getType(), type, classAnalyze(paramType));
+        }
+    }
+
+    /**
+     * This method is used to define what implementing class should be used for a given interface.
+     * <p>
+     * This way you can use interface types as dependencies in your classes and doesn't have to
+     * depend on specific implementations.
+     * <p>
+     * But IoC needs to know what implementing class should be used when an interface type is
+     * defined as dependency.
+     * <p>
+     * ** The second parameter has to be an actual implementing class of the interface.
+     * It may not be an abstract class!
+     *
+     * @param interfaceType      the class type of the interface.
+     * @param implementationType the class type of the implementing class.
+     * @param <O>                the generic type of the interface.
+     * @throws IoCInstantiateException if the first parameter is <b>not</b> an interface or the second
+     *                                 parameter <b>is</b> an interface or an abstract class.
+     */
+    public <O> void installInterface(Class<O> interfaceType, Class<? extends O> implementationType) throws IoCInstantiateException {
+        if (interfaceType.isInterface()) {
+            if (implementationType.isInterface()) {
+                throw new IoCInstantiateException("Type is an interface. Expecting the second argument to not be an interface but an actual class");
+            } else if (isAbstract(implementationType)) {
+                throw new IoCInstantiateException("Type is an abstract class. Expecting the second argument to be an actual implementing class");
+            } else {
+                interfaces.put(interfaceType.getSimpleName(), implementationType);
+            }
+        } else {
+            throw new IoCInstantiateException("Type is not an interface. Expecting the first argument to be an interface.");
+        }
+    }
+
+    /**
+     * This method is used to define a {@link IoCProvider} for a given type.
+     * <p>
+     * Providers can be combined with {@link LoadOpt.Opt#SINGLETON}'s.
+     * When a type is marked as singleton (has the annotation {@link LoadOpt.Opt#SINGLETON} and there is a provider
+     * defined for this type, then this provider will only executed exactly one time when the type is requested the
+     * first time.
+     *
+     * @param classType the type of the class for which the provider is used.
+     * @param provider  the provider that will be called to get an instance of the given type.
+     * @param <O>       the generic type of the class/interface.
+     */
+    public <O> void installIoCProvider(Class<O> classType, IoCProvider<O> provider) {
+        final String typeName = getComponentName(classType);
+        providers.put(typeName, provider);
+    }
+
+    /**
+     * Function used to an instance that is used every time the given class type is requested.
+     * <p>
+     * This way the given instance is effectively a singleton.
+     * <p>
+     * This method can also be used to define instances for interfaces or abstract classes
+     * that otherwise couldn't be instantiated without further configuration.
+     *
+     * @param classType the class type for that the instance will be bound.
+     * @param instance  the instance that will be bound.
+     * @param <O>       the generic type of the class.
+     */
+    public <O> void installIoCInstance(Class<O> classType, O instance) {
+        installIoCProvider(classType, () -> instance);
+    }
+
+    /**
+     * Custom function to mark a class as singleton.
+     * <p>
+     * It is an alternative for situations when you can't use the {@link LoadOpt.Opt#SINGLETON} annotation.
+     * For example when you want a class from a third-party library to be a singleton.
+     *
+     * @param type the type that will be marked as singleton.
+     */
+    public void addSingleton(Class<?> type) {
+        if (type.isInterface()) {
+            throw new IllegalArgumentException("The given type is an interface. Expecting the param to be an actual class");
+        }
+
+        classSingletons.add(type);
+    }
+
+    /**
+     * Custom function to mark a class as prototype.
+     * <p>
+     * It is an alternative for situations when you can't use the {@link LoadOpt.Opt#SINGLETON} annotation.
+     * For example when you want a class from a third-party library to be a singleton.
+     *
+     * @param type the type that will be marked as singleton.
+     */
+    public void addPrototype(Class<?> type) {
+        if (type.isInterface()) {
+            throw new IllegalArgumentException("Type is an interface. Expecting the param to be an actual class");
+        }
+
+        classPrototypes.add(type);
+    }
+
+
+    /**
+     * Custom function to create a {@link IoCProvider} instance when such a provider is declared as constructor parameter.
+     *
+     * @param param         parameter declared by the constructor
+     * @param requestedType type that requested by the user. This is used to generate a proper error messages.
+     * @return created provider.
+     */
+    private IoCProvider populateProviderArgument(Parameter param, Class<?> requestedType, ClassAnalyzeResult result) {
+        try {
+            if (param.getParameterizedType() instanceof ParameterizedType) {
+                final ParameterizedType typeParam = (ParameterizedType) param.getParameterizedType();
+                final Type providerType = typeParam.getActualTypeArguments()[0];
+
+                return () -> instantiate((Class<?>) providerType, result);
+            } else {
+                throw new IoCInstantiateException("IoCError - Unavailable create instance of type [" + requestedType + "]. There is a IoCProvider without a type parameter declared as dependency. "
+                        + "When using IoCProvider dependency you need to define type parameter for this provider!");
+            }
+        } catch (Exception ignored) {
+
+        }
+
+        return null;
+    }
+
+    /**
+     * Custom function to create a {@link IoCProvider} instance when such a provider is declared as field type.
+     *
+     * @param field         parameter declared by field
+     * @param requestedType type that requested by the user. This is used to generate a proper error messages.
+     * @return created provider.
+     */
+    private IoCProvider populateProviderField(Field field, Class<?> requestedType, ClassAnalyzeResult result) {
+        try {
+            if (field.getGenericType() instanceof ParameterizedType) {
+                final ParameterizedType typeParam = (ParameterizedType) field.getGenericType();
+                final Type providerType = typeParam.getActualTypeArguments()[0];
+
+                return () -> instantiate((Class<?>) providerType, result);
+            } else {
+                throw new IoCInstantiateException("IoCError - Unavailable create instance of type [" + requestedType + "]. There is a IoCProvider without a type parameter declared as dependency. "
+                        + "When using IoCProvider dependency you need to define type parameter for this provider!");
+            }
+        } catch (Exception ignored) {
+
+        }
+
+        return null;
+    }
+
+    /**
+     * Custom function to create a {@link IoCProvider} instance when such a provider is declared as method type.
+     *
+     * @param method        parameter declared by field
+     * @param requestedType type that requested by the user. This is used to generate a proper error messages.
+     * @return created provider.
+     */
+    private IoCProvider populateProviderMethod(Method method, Class<?> requestedType, ClassAnalyzeResult result) {
+        try {
+            final Type type = method.getParameterTypes()[0].getGenericSuperclass();
+            if (type instanceof ParameterizedType) {
+                final ParameterizedType typeParam = (ParameterizedType) type;
+                final Type providerType = typeParam.getActualTypeArguments()[0];
+
+                return () -> instantiate((Class<?>) providerType, result);
+            } else {
+                throw new IoCInstantiateException("IoCError - Unavailable create instance of type [" + requestedType + "]. There is a IoCProvider without a type parameter declared as dependency. "
+                        + "When using IoCProvider dependency you need to define type parameter for this provider!");
+            }
+        } catch (Exception ignored) {
+
+        }
+
+        return null;
+    }
+
+    /**
+     * Add type to instantiable collection.
+     *
+     * @param type type for adding in to collection
+     */
+    private void addInstantiable(Class<?> type) {
+        classesInstantiatable.add(type);
+    }
+
+    /**
+     * Add collection of analyzers to main collection.
+     *
+     * @param collection analyzers
+     */
+    public void addAnalyzers(Collection<Analyzer<?, ?>> collection) {
+        analyzers.addAll(collection);
+    }
+
+    /**
+     * Custom function for initialization of environments.
+     *
+     * @param o environment instantiated object
+     */
+    public void addInstalledConfiguration(Object o) {
+        addInstantiable(o.getClass());
+        singletons.put(o.getClass().getSimpleName(), o);
+    }
+
+    /**
+     * Check if type is singleton.
+     *
+     * @param type type for check
+     * @return {@code true} if type have state injection of {@link LoadOpt.Opt#SINGLETON}
+     */
+    private boolean isSingleton(Class<?> type) {
+        if (type.isAnnotationPresent(LoadOpt.class)) {
+            return type.getAnnotation(LoadOpt.class).value() == SINGLETON;
+        } else if (classSingletons.contains(type)) {
+            return true;
+        } else {
+            return !classPrototypes.contains(type);
+        }
+    }
+
+    /**
+     * Check if type is prototype.
+     *
+     * @param type  type for check
+     * @return {@code true} if type have state injection of {@link LoadOpt.Opt#PROTOTYPE}
+     */
+    private boolean isPrototype(Class<?> type) {
+        if (type.isAnnotationPresent(LoadOpt.class)) {
+            return type.getAnnotation(LoadOpt.class).value() == PROTOTYPE;
+        } else {
+            return classPrototypes.contains(type);
+        }
+    }
 
     public Map<String, Object> getSingletons() {
         return singletons;
@@ -70,402 +641,46 @@ public class DependencyFactory {
     }
 
     /**
-     * Return an instance, which may be shared or independent, of the specified component.
+     * Get instance type from a provider.
      *
-     * @param name - name of the component to retrieve
-     * @return - instance of component
+     * @param type type for instantiate provider.
+     * @param <O>  the generic type of the class.
+     * @return instance provider of type
+     * @throws IoCInstantiateException
      */
-    public Object getType(String name) {
-        Object o = singletons.get(name);
-        if (o == null) {
-            o = prototypes.get(name);
-            if (o != null) {
-                try {
-                    o = instantiate(o.getClass());
-                    return o;
-                } catch (IoCInstantiateException e) {
-                    log.error("", e);
-                }
-            }
-        } else {
-            return o;
-        }
-
-        return null;
-    }
-
-    /**
-     * The function of enumerating the collection of information of uninitialized components by a filter.
-     *
-     * @param definitions - information classes collection of uninitialized components
-     * @param predicate   - filter
-     * @return filtered ClassDefinitions
-     */
-    private ClassDefinitions test(List<ClassDefinitions> definitions, Predicate<ClassDefinitions> predicate) {
-        return definitions.stream().filter(predicate).findFirst().orElse(null);
-    }
-
-    /**
-     * Component initialization function. Assembling an information class to identify dependencies
-     * and initialization type.
-     *
-     * @param def - information class of component
-     * @throws Exception
-     */
-    public void instantiateDefinitions(ClassDefinitions def) throws Exception {
-        if (def != null) {
-            forStateInjection(def);
-        } else {
-            for (ClassDefinitions definition : definitions) {
-                forStateInjection(definition);
-            }
+    @SuppressWarnings("unchecked")
+    private <O> O getInstanceFromProvider(Class<O> type) throws IoCInstantiateException {
+        try {
+            final String typeName = getComponentName(type);
+            final IoCProvider<O> provider = providers.get(typeName);
+            return provider.getInstance();
+        } catch (Exception e) {
+            throw new IoCInstantiateException("IoCError - Unavailable create instance of type [" + type + "].", e);
         }
     }
 
-    /**
-     * Function of identify initialization type.
-     *
-     * @param def - information class of uninitialized component
-     * @throws Exception
-     */
-    private void forStateInjection(ClassDefinitions def) throws Exception {
-        final ClassStateInjection state = def.getStateInjection();
-        if (state == INJECTED_CONSTRUCTOR) {
-            instantiateDefConstructor(def);
-        } else if (state == INJECTED_FIELDS) {
-            instantiateDefFields(def);
-        } else if (state == INJECTED_METHODS) {
-            instantiateDefMethods(def);
+    private ClassAnalyzeResult classAnalyze(Class<?> type) {
+        final ClassAnalyzer analyzer = getAnalyzer(ClassAnalyzer.class);
+        if (!analyzer.supportFor(type)) {
+            throw new IoCInstantiateException("It is impossible to test, check the class for type match!");
         }
+
+        return analyzer.analyze(type);
     }
 
     /**
-     * Functional method for initializing component dependencies.
+     * The analyzer search function by its class name.
      *
-     * @param definition - information class of uninitialized component
-     * @throws Exception
+     * @param cls   class analyzer
+     * @return found analyzer
      */
-    private void instantiateDefMethods(ClassDefinitions definition) throws Exception {
-        final List<Class<?>> deps = definition.getDependencies();
-        if (!deps.isEmpty()) {
-            final List<Object> objects = new ArrayList<>();
-            forEachTypes(deps, objects);
-
-            for (Method method : definition.getType().getClass().getDeclaredMethods()) {
-                if (method.isAnnotationPresent(IoCDependency.class)) {
-                    final IoCDependency ioCDependency = method.getAnnotation(IoCDependency.class);
-                    final Class<?> methodParameterType = method.getParameterTypes()[0];
-                    final String name = !ioCDependency.name().isEmpty() ? ioCDependency.name() : methodParameterType.getSimpleName();
-                    if (methodParameterType.isAnnotationPresent(Lazy.class)) {
-                        continue;
-                    }
-
-                    final Optional<Object> o = objects.stream().filter(obj -> obj.getClass().getSimpleName().equals(name)).findFirst();
-                    if (o.isPresent()) {
-                        method.invoke(definition.getType(), o.get());
-                    }
-                }
-            }
-        }
-
-        initializeDefInMap(definition);
+    @SuppressWarnings("unchecked")
+    public <O extends Analyzer<?, ?>> O getAnalyzer(Class<O> cls) {
+        return (O) analyzers.stream().filter(a -> a.getClass().getSimpleName().equals(cls.getSimpleName())).findFirst().orElse(null);
     }
 
-    /**
-     * Initializing components by analyzing member fields.
-     *
-     * @param definition - information class of uninitialized component
-     * @throws Exception
-     */
-    private void instantiateDefFields(ClassDefinitions definition) throws Exception {
-        final List<Class<?>> deps = definition.getDependencies();
-        if (!deps.isEmpty()) {
-            final List<Object> objects = new ArrayList<>();
-            forEachTypes(deps, objects);
-
-            for (Field field : definition.getType().getClass().getDeclaredFields()) {
-                if (field.isAnnotationPresent(IoCDependency.class)) {
-                    final IoCDependency ioCDependency = field.getAnnotation(IoCDependency.class);
-                    final Class<?> fieldType = field.getType();
-                    final String name = !ioCDependency.name().isEmpty() ? ioCDependency.name() : fieldType.getSimpleName();
-
-                    final Optional<Object> o = objects.stream().filter(obj -> obj.getClass().getSimpleName().equals(name)).findFirst();
-                    if (o.isPresent()) {
-                        final Object object = o.get();
-                        initializeFields(definition.getType(), field, object);
-                    }
-                }
-            }
-        }
-
-        initializeDefInMap(definition);
-    }
-
-    /**
-     * Initializing a component by analyzing a component constructor.
-     *
-     * @param definition - information class of uninitialized component
-     * @throws Exception
-     */
-    private void instantiateDefConstructor(ClassDefinitions definition) throws Exception {
-        final List<Class<?>> deps = definition.getDependencies();
-        if (!deps.isEmpty()) {
-            final List<Object> objects = new ArrayList<>();
-            forEachTypes(deps, objects);
-
-            if (definition.getType() instanceof Class) {
-                final Constructor<?> constructor = ((Class) definition.getType()).getConstructors()[0];
-                if (constructor.isAnnotationPresent(IoCDependency.class)) {
-                    final Object o = constructor.newInstance(objects.toArray());
-                    definition.setType(o);
-                }
-            }
-        }
-
-        initializeDefInMap(definition);
-    }
-
-    /**
-     * The function of enumerating the dependencies of the component and initializing them with
-     * the addition to the collection.
-     *
-     * @param deps    - dependencies of component
-     * @param objects - empty collection for adding initialized components
-     * @throws Exception
-     */
-    private void forEachTypes(List<Class<?>> deps, List<Object> objects) throws Exception {
-        for (Class<?> type : deps) {
-            final IoCComponent annotation = type.getAnnotation(IoCComponent.class);
-            String typeName;
-            if (!type.isAnnotationPresent(Property.class)) {
-                typeName = !annotation.name().isEmpty() ? annotation.name() : type.getSimpleName();
-            } else {
-                typeName = type.getSimpleName();
-            }
-
-            final Object object = getType(typeName);
-            if (object != null) {
-                objects.add(object);
-                continue;
-            }
-
-            final ClassDefinitions tested = test(new ArrayList<>(definitions),
-                    d -> d.getQualifiedName().equals(typeName));
-            if (tested != null) {
-                instantiateConstType(objects, typeName, tested);
-            }
-        }
-    }
-
-    /**
-     * Function of initializing a component if it is not initialized in the factory.
-     *
-     * @param definition - information class of maybe uninitialized component
-     * @throws Exception
-     */
-    private void initializeDefInMap(ClassDefinitions definition) throws Exception {
-        if (!definition.isInitialized()) {
-            definition.setInitialized(true);
-
-            final IoCComponent annotation = definition.getType().getClass().getAnnotation(IoCComponent.class);
-            final String typeName = !annotation.name().isEmpty() ? annotation.name() : definition.getType().getClass().getSimpleName();
-
-            instantiateType(typeName, definition);
-        }
-    }
-
-    /**
-     * Function of initializing the insertion of a value in the component field.
-     *
-     * @param mainObject - main instantiated object who have field
-     * @param field      - field for set value
-     * @param typeToInit - value for set
-     * @throws IllegalAccessException
-     */
-    private void initializeFields(Object mainObject, Field field, Object typeToInit) throws IllegalAccessException {
-        final boolean access = field.isAccessible();
-        field.setAccessible(true);
-        field.set(mainObject, typeToInit);
-        field.setAccessible(access);
-    }
-
-    /**
-     * Function of initializing a component and adding it to boot parameters in a collection.
-     *
-     * @param typeName - name of component
-     * @param def      - information class of uninitialized component
-     * @throws Exception
-     */
-    private void instantiateType(String typeName, ClassDefinitions def) throws Exception {
-        if (def.isSingleton()) {
-            singletons.computeIfAbsent(typeName, k -> def.getType());
-        } else if (def.isPrototype()) {
-            Object o = prototypes.get(typeName);
-            if (o == null) {
-                instantiateDefinitions(def);
-                prototypes.put(typeName, def.getType());
-            }
-        }
-    }
-
-    /**
-     * Analog of the @instantiateType function with the addition of initialized components to the collection.
-     *
-     * @param objects  - empty collection for adding initialized components
-     * @param typeName - name of head component
-     * @param def      - information class of uninitialized component
-     * @throws Exception
-     * @see DependencyFactory#instantiateType(String, ClassDefinitions)
-     */
-    private void instantiateConstType(List<Object> objects, String typeName, ClassDefinitions def) throws Exception {
-        if (def.getType() instanceof Class) {
-            instantiateDefinitions(def);
-        }
-
-        if (def.isSingleton()) {
-            final Object o = singletons.computeIfAbsent(typeName, k -> def.getType());
-            objects.add(o);
-        } else if (def.isPrototype()) {
-            Object o = prototypes.get(typeName);
-            if (o != null) {
-                instantiateDefinitions(def);
-                prototypes.put(typeName, o);
-                objects.add(o);
-                return;
-            }
-
-            if (def.getStateInjection() == INJECTED_CONSTRUCTOR) {
-                o = def.getType();
-            } else {
-                o = instantiate(def.getType().getClass());
-            }
-
-            def.setType(o);
-
-            instantiateDefinitions(def);
-
-            objects.add(o);
-        }
-    }
-
-    /**
-     * Custom function for adding singleton component in factory.
-     *
-     * @param o - instantiated object
-     */
-    public void addSingleton(Object o) {
-        singletons.putIfAbsent(o.getClass().getSimpleName(), o);
-    }
-
-    /**
-     * The function of creating an information class-component for its further analysis.
-     *
-     * @param type   - uninitialized component class
-     * @param result - result of analyzer for detecting type initialization dependencies
-     * @throws Exception
-     */
-    public void addDefinition(Class<?> type, ClassAnalyzeResult result) throws Exception {
-        boolean flagSigleton = false, flagPrototype = false, flagLazy = type.isAnnotationPresent(Lazy.class);
-        if (type.isAnnotationPresent(LoadOpt.class)) {
-            final LoadOpt loadOpt = type.getAnnotation(LoadOpt.class);
-            if (loadOpt.value() == SINGLETON) {
-                flagSigleton = true;
-            } else if (loadOpt.value() == PROTOTYPE) {
-                flagPrototype = true;
-            }
-        } else {
-            flagSigleton = true;
-        }
-
-        final IoCComponent intro = type.getAnnotation(IoCComponent.class);
-        final String qualifiedName = !intro.name().isEmpty() ? intro.name() : type.getSimpleName();
-
-        final ClassStateInjection state = result.getClassStateInjection();
-        final ClassDefinitions def = new ClassDefinitions();
-
-        if (state != GRAMMAR_THROW_EXCEPTION) {
-            def.setLazy(flagLazy);
-            def.setPrototype(flagPrototype);
-            def.setSingleton(flagSigleton);
-            def.setQualifiedName(qualifiedName);
-            def.setStateInjection(state);
-
-            if (state == INJECTED_CONSTRUCTOR) {
-                def.setType(type);
-                constructorDeps(type, def);
-            } else if (state == INJECTED_FIELDS) {
-                final Object o = type.newInstance();
-                def.setType(o);
-                fieldsDeps(o, def);
-            } else if (state == INJECTED_METHODS) {
-                final Object o = type.newInstance();
-                def.setType(o);
-                methodsDeps(o, def);
-            } else if (state == INJECTED_NOTHING) {
-                final Object o = type.newInstance();
-                def.setType(o);
-                initializeDefInMap(def);
-            }
-
-            definitions.add(def);
-        } else {
-            throw new IoCInstantiateException(type, result.getThrowableMessage());
-        }
-    }
-
-    /**
-     * The function of analyzing the information class for the presence of dependency components in the functions.
-     *
-     * @param o   - instantiated object of component
-     * @param def - information class of component
-     */
-    private void methodsDeps(Object o, ClassDefinitions def) {
-        final Method[] methods = o.getClass().getDeclaredMethods();
-        if (methods.length > 1) {
-            for (Method method : methods) {
-                final Class<?> methodParameterType = method.getParameterTypes()[0];
-                if (checkClass(methodParameterType) && checkTypes(methodParameterType)) {
-                    def.getDependencies().add(methodParameterType);
-                }
-            }
-        }
-    }
-
-    /**
-     * The function of analyzing the information class for the presence of component dependencies in the fields.
-     *
-     * @param o   - instantiated object of component
-     * @param def - information class of component
-     */
-    private void fieldsDeps(Object o, ClassDefinitions def) {
-        final Field[] fields = o.getClass().getDeclaredFields();
-        for (Field field : fields) {
-            if (field.isAnnotationPresent(IoCDependency.class)) {
-                final Class<?> fieldType = field.getType();
-                if (checkClass(fieldType) && checkTypes(fieldType)) {
-                    def.getDependencies().add(fieldType);
-                }
-            }
-        }
-    }
-
-    /**
-     * The function of analyzing the information class for the presence of dependency components in the constructor.
-     *
-     * @param type - class of component
-     * @param def  - information class of component
-     */
-    private void constructorDeps(Class<?> type, ClassDefinitions def) {
-        final Constructor<?> constructor = type.getConstructors()[0];
-        if (constructor.isAnnotationPresent(IoCDependency.class)) {
-            final Class<?>[] parameterTypes = constructor.getParameterTypes();
-            if (parameterTypes.length > 0) {
-                for (Class<?> parameter : parameterTypes) {
-                    if (checkClass(parameter) && checkTypes(parameter)) {
-                        def.getDependencies().add(parameter);
-                    }
-                }
-            }
-        }
+    //todo:11.09.18:GenCloud implement me!
+    public void instantiatePropertyMethods(Object o) {
+        // initialize methods annotated with PropertyFunction
     }
 }
