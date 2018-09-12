@@ -16,22 +16,19 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.di.listeners.impl;
-
-import org.di.listeners.Event;
+package org.di.context.resolvers;
 
 /**
+ * Provides access to resolvers that were used run {@link org.di.context.AppContext}.
+ *
  * @author GenCloud
- * @date 05.09.2018
+ * @date 12.09.2018
  */
-public class OnContextStartedEvent extends Event {
+public interface CommandLineArgumentResolver {
     /**
-     * Constructs a prototypical Event.
+     * Head function of resolve resolvers in line.
      *
-     * @param source The object on which the Event initially occurred.
-     * @throws IllegalArgumentException if source is null.
+     * @param args block of resolvers
      */
-    public OnContextStartedEvent(Object source) {
-        super(source);
-    }
+    void resolve(String... args);
 }

@@ -14,6 +14,6 @@ import static org.di.annotations.LoadOpt.Opt.PROTOTYPE;
 public class ComponentA {
     @Override
     public String toString() {
-        return "ComponentA{" + Integer.toHexString(hashCode()) + "}";
+        return "ComponentA{hash:" + Integer.toHexString(hashCode()) + "}";
     }
 }

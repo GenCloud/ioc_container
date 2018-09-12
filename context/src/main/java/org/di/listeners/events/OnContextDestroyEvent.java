@@ -16,26 +16,22 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.di.excepton;
+package org.di.listeners.events;
+
+import org.di.listeners.Event;
 
 /**
  * @author GenCloud
- * @date 04.09.2018
+ * @date 05.09.2018
  */
-public class IoCException extends RuntimeException {
-    public IoCException() {
-        super();
-    }
-
-    public IoCException(String message) {
-        super(message);
-    }
-
-    protected IoCException(String message, Throwable cause) {
-        super(message, cause);
-    }
-
-    protected IoCException(Throwable cause) {
-        super(cause);
+public class OnContextDestroyEvent extends Event {
+    /**
+     * Constructs a prototypical Event.
+     *
+     * @param source The object on which the Event initially occurred.
+     * @throws IllegalArgumentException if source is null.
+     */
+    public OnContextDestroyEvent(Object source) {
+        super(source);
     }
 }

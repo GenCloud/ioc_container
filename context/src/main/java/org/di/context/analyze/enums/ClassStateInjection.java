@@ -24,6 +24,10 @@ package org.di.context.analyze.enums;
  */
 public enum ClassStateInjection {
     /**
+     * injection on demand
+     */
+    LAZY_INITIALIZATION,
+    /**
      * component has no dependencies
      */
     INJECTED_NOTHING,

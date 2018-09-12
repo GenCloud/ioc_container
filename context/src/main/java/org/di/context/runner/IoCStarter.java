@@ -20,10 +20,11 @@ package org.di.context.runner;
 
 import org.apache.commons.lang3.time.StopWatch;
 import org.di.annotations.IoCComponent;
-import org.di.annotations.ScanPackage;
 import org.di.annotations.property.Property;
 import org.di.context.AppContext;
-import org.di.context.analyze.Analyzer;
+import org.di.context.resolvers.CommandLineArgumentResolver;
+import org.di.factories.config.Analyzer;
+import org.di.factories.config.ComponentProcessor;
 import org.reflections.Reflections;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +32,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import static org.di.utils.factory.ReflectionUtils.configureReflection;
+import static org.di.utils.factory.ReflectionUtils.configureScanner;
 
 /**
  * Classes that can be used to bootstrap and launch a application from a main method.
@@ -42,7 +43,7 @@ import static org.di.utils.factory.ReflectionUtils.configureReflection;
  * <pre class="code">
  * public class App {
  *     public static void main(String... args) throws Exception {
- *         DIStarter.run(App.class, args);
+ *         IoCStarter.run(App.class, args);
  *     }
  * }
  * </pre>
@@ -59,8 +60,8 @@ public class IoCStarter {
      * Static helper that can be used to run a {@link IoCStarter} from the
      * specified source using default settings.
      *
-     * @param mainClass - the class to load
-     * @param args      - application arguments
+     * @param mainClass the class to load
+     * @param args      application resolvers
      * @return running {@link AppContext}
      */
     public static AppContext start(Class<?> mainClass, String... args) {
@@ -70,8 +71,8 @@ public class IoCStarter {
     /**
      * Run the application, creating {@link AppContext}.
      *
-     * @param mainClasses - the class to load
-     * @param args        - application arguments
+     * @param mainClasses the class to load
+     * @param args        application resolvers
      * @return running {@link AppContext}
      */
     private AppContext start(Class<?>[] mainClasses, String... args) {
@@ -80,7 +81,7 @@ public class IoCStarter {
         AppContext context = null;
         try {
             log.info("Start initialization of context app");
-            context = initializeContext(mainClasses);
+            context = initializeContext(mainClasses, args);
         } catch (Exception e) {
             final String msg = e.getMessage();
             log.error("Incorrect start: {}", msg, e);
@@ -98,43 +99,29 @@ public class IoCStarter {
     /**
      * Load components into context.
      *
-     * @param mainClasses- the classes to analyze
+     * @param mainClasses the classes to analyze
+     * @param args        block startup resolvers
      * @return running {@link AppContext}
-     * @throws Exception
      */
-    private AppContext initializeContext(Class<?>... mainClasses) throws Exception {
+    private AppContext initializeContext(Class<?>[] mainClasses, String... args) throws Exception {
         final AppContext context = new AppContext();
         for (Class<?> mainSource : mainClasses) {
-            final ScanPackage scanPackage = mainSource.getAnnotation(ScanPackage.class);
-            if (scanPackage != null) {
-                final String[] packages = scanPackage.packages();
-                final Class<?>[] classes = scanPackage.classes();
-                if (packages.length > 0) {
-                    final Reflections reflections = configureReflection(packages);
-                    final Set<Class<?>> components = reflections.getTypesAnnotatedWith(IoCComponent.class);
-                    final Set<Class<? extends Analyzer>> analyzers = reflections.getSubTypesOf(Analyzer.class);
-                    final Set<Class<?>> properties = reflections.getTypesAnnotatedWith(Property.class);
-                    context.initEnvironment(properties);
-                    context.initAnalyzers(analyzers);
-                    context.initializeComponents(components);
-                } else if (classes.length > 0) {
-                    final Reflections reflections = configureReflection(classes);
-                    final Set<Class<?>> components = reflections.getTypesAnnotatedWith(IoCComponent.class);
-                    final Set<Class<? extends Analyzer>> analyzers = reflections.getSubTypesOf(Analyzer.class);
-                    final Set<Class<?>> properties = reflections.getTypesAnnotatedWith(Property.class);
-                    context.initEnvironment(properties);
-                    context.initAnalyzers(analyzers);
-                    context.initializeComponents(components);
-                } else {
-                    final Reflections reflections = configureReflection(new Class[]{mainSource});
-                    final Set<Class<?>> components = reflections.getTypesAnnotatedWith(IoCComponent.class);
-                    final Set<Class<? extends Analyzer>> analyzers = reflections.getSubTypesOf(Analyzer.class);
-                    final Set<Class<?>> configurations = reflections.getTypesAnnotatedWith(Property.class);
-                    context.initEnvironment(configurations);
-                    context.initAnalyzers(analyzers);
-                    context.initializeComponents(components);
-                }
+            final Reflections reflections = configureScanner(mainSource);
+            final Set<Class<?>> components = reflections.getTypesAnnotatedWith(IoCComponent.class);
+            final Set<Class<? extends Analyzer>> analyzers = reflections.getSubTypesOf(Analyzer.class);
+            final Set<Class<?>> properties = reflections.getTypesAnnotatedWith(Property.class);
+            final Set<Class<? extends ComponentProcessor>> processors = reflections.getSubTypesOf(ComponentProcessor.class);
+            final Set<Class<? extends CommandLineArgumentResolver>> resolvers = reflections.getSubTypesOf(CommandLineArgumentResolver.class);
+            if (!resolvers.isEmpty()) {
+                context.initCommandLineResolvers(resolvers, args);
             }
+
+            context.initAnalyzers(analyzers);
+            context.initProcessors(processors);
+            context.initEnvironment(properties);
+            context.initializeComponents(components);
+
+            context.initializePostConstructs();
         }
 
         return context;

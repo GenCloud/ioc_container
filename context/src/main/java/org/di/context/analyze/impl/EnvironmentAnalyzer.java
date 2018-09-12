@@ -19,16 +19,41 @@
 package org.di.context.analyze.impl;
 
 import org.di.annotations.property.Property;
-import org.di.context.analyze.Analyzer;
+import org.di.annotations.property.PropertyFunction;
+import org.di.factories.config.Analyzer;
+
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
+ * Analyzer for detecting the methods of used annotation {@link PropertyFunction}
+ * and check this methods for return type.
+ *
  * @author GenCloud
  * @date 11.09.2018
  */
-public class EnvironmentAnalyzer implements Analyzer<Void, Object> {
+public class EnvironmentAnalyzer implements Analyzer<Boolean, Object> {
     @Override
-    public Void analyze(Object tested) throws Exception {
-        return null;
+    public Boolean analyze(Object tested) throws Exception {
+        final Class<?> type = tested.getClass();
+        final Method[] methods = type.getDeclaredMethods();
+        if (methods.length > 0) {
+            final List<Method> annotated = Arrays
+                    .stream(methods)
+                    .filter(m -> m.isAnnotationPresent(PropertyFunction.class))
+                    .collect(Collectors.toList());
+            if (!annotated.isEmpty()) {
+                for (Method m : annotated) {
+                    final Class<?> returnType = m.getReturnType();
+                    if (returnType != Void.class && !returnType.isPrimitive()) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     @Override

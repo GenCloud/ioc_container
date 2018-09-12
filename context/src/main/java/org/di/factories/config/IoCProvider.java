@@ -1,4 +1,4 @@
-package org.di.annotations;
+package org.di.factories.config;
 
 /**
  * @author GenCloud

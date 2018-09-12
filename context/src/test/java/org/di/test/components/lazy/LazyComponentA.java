@@ -16,26 +16,27 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.di.excepton;
+package org.di.test.components.lazy;
+
+import org.di.annotations.IoCComponent;
+import org.di.annotations.IoCDependency;
+import org.di.annotations.Lazy;
+import org.di.test.environments.ExampleEnvironment;
 
 /**
  * @author GenCloud
- * @date 04.09.2018
+ * @date 12.09.2018
  */
-public class IoCException extends RuntimeException {
-    public IoCException() {
-        super();
-    }
+@Lazy
+@IoCComponent
+public class LazyComponentA {
+    @IoCDependency
+    private ExampleEnvironment exampleEnvironment;
 
-    public IoCException(String message) {
-        super(message);
-    }
-
-    protected IoCException(String message, Throwable cause) {
-        super(message, cause);
-    }
-
-    protected IoCException(Throwable cause) {
-        super(cause);
+    @Override
+    public String toString() {
+        return "LazyComponentA{hash: " + Integer.toHexString(hashCode()) +
+                ", exampleEnvironment=" + exampleEnvironment +
+                '}';
     }
 }

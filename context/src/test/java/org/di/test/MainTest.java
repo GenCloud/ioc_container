@@ -1,6 +1,7 @@
 package org.di.test;
 
 import org.apache.log4j.BasicConfigurator;
+import org.di.annotations.Lazy;
 import org.di.annotations.ScanPackage;
 import org.di.context.AppContext;
 import org.di.context.runner.IoCStarter;
@@ -13,12 +14,19 @@ import org.di.test.components.abstrac.AbstractComponent;
 import org.di.test.components.abstrac.TestAbstractComponent;
 import org.di.test.components.inter.InterfaceComponent;
 import org.di.test.components.inter.MyInterface;
+import org.di.test.components.lazy.ComponentForLazyDep;
+import org.di.test.components.lazy.LazyComponentA;
+import org.di.test.components.lazy.LazyComponentB;
 import org.di.test.environments.ExampleEnvironment;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * @author GenCloud
@@ -28,10 +36,10 @@ import org.slf4j.LoggerFactory;
 public class MainTest extends Assert {
     private static final Logger log = LoggerFactory.getLogger(MainTest.class);
 
-    private AppContext appContext;
+    private static AppContext appContext;
 
-    @Before
-    public void initializeContext() {
+    @BeforeClass
+    public static void initializeContext() {
         BasicConfigurator.configure();
         appContext = IoCStarter.start(MainTest.class, (String) null);
     }
@@ -96,5 +104,39 @@ public class MainTest extends Assert {
         log.info("Getting TestAbstractComponent from context");
         final AbstractComponent testAbstractComponent = appContext.getType(TestAbstractComponent.class);
         log.info(testAbstractComponent.toString());
+    }
+
+    @Test
+    public void testLazys() {
+        log.info("Getting Lazy object from context");
+        final List<Object> lazys = appContext.getDependencyFactory().getSingletons()
+                .values()
+                .stream()
+                .filter(o -> o.getClass().isAnnotationPresent(Lazy.class))
+                .collect(Collectors.toList());
+
+        log.info("Found {} lazily initialized types that are in dependencies", lazys.size());
+        if (!lazys.isEmpty()) {
+            log.info("For Each lazy types");
+            lazys.forEach(o -> log.info(o.toString()));
+        }
+
+        final Optional<Object> o = lazys
+                .stream()
+                .filter(o1 -> o1.getClass().getSimpleName().equals(LazyComponentA.class.getSimpleName()))
+                .findFirst();
+        assertTrue("Independent lazy component is not initialized in the factory", !o.isPresent());
+
+        log.info("Getting LazyComponentA from context");
+        final LazyComponentA lazyComponentA = appContext.getType(LazyComponentA.class);
+        log.info(lazyComponentA.toString());
+
+        log.info("Getting LazyComponentB from context");
+        final LazyComponentB lazyComponentB = appContext.getType(LazyComponentB.class);
+        log.info(lazyComponentB.toString());
+
+        log.info("Getting ComponentForLazyDep from context");
+        final ComponentForLazyDep componentForLazyDep = appContext.getType(ComponentForLazyDep.class);
+        log.info(componentForLazyDep.toString());
     }
 }

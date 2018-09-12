@@ -16,22 +16,20 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.di.listeners.impl;
+package org.di.test.components.lazy;
 
-import org.di.listeners.Event;
+import org.di.annotations.IoCComponent;
+import org.di.annotations.Lazy;
 
 /**
  * @author GenCloud
- * @date 05.09.2018
+ * @date 12.09.2018
  */
-public class OnContextDestroyEvent extends Event {
-    /**
-     * Constructs a prototypical Event.
-     *
-     * @param source The object on which the Event initially occurred.
-     * @throws IllegalArgumentException if source is null.
-     */
-    public OnContextDestroyEvent(Object source) {
-        super(source);
+@Lazy
+@IoCComponent
+public class LazyComponentB {
+    @Override
+    public String toString() {
+        return "LazyComponentB{hash: " + Integer.toHexString(hashCode()) + "}";
     }
 }

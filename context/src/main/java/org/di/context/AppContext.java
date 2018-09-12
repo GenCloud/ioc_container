@@ -19,12 +19,14 @@
 package org.di.context;
 
 import org.di.annotations.property.Property;
-import org.di.context.analyze.Analyzer;
 import org.di.context.analyze.impl.ClassAnalyzer;
 import org.di.context.analyze.results.ClassAnalyzeResult;
+import org.di.context.resolvers.CommandLineArgumentResolver;
 import org.di.enviroment.loader.PropertiesLoader;
 import org.di.excepton.instantiate.IoCInstantiateException;
 import org.di.factories.DependencyFactory;
+import org.di.factories.config.Analyzer;
+import org.di.factories.config.ComponentProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,18 +69,38 @@ public class AppContext {
             try {
                 final Object o = type.newInstance();
                 PropertiesLoader.parse(o, path.toFile());
-                dependencyFactory.addInstalledConfiguration(o);
                 dependencyFactory.instantiatePropertyMethods(o);
+                dependencyFactory.addInstalledConfiguration(o);
             } catch (Exception e) {
-                throw new Error("Failed to Load " + path + " Properties File", e);
+                throw new Error("Failed to Load " + path + " Config File", e);
             }
         }
     }
 
     /**
+     * Initializing command line resolvers, binded of user.
+     *
+     * @param resolvers found analyzers in the classpath
+     * @param args      block resolvers
+     */
+    public void initCommandLineResolvers(Set<Class<? extends CommandLineArgumentResolver>> resolvers, String... args) {
+        final List<CommandLineArgumentResolver> list = resolvers.stream().map(this::mapResolver).collect(Collectors.toList());
+        list.forEach(r -> r.resolve(args));
+    }
+
+    private CommandLineArgumentResolver mapResolver(Class<? extends CommandLineArgumentResolver> cls) {
+        try {
+            return instantiate(cls);
+        } catch (IoCInstantiateException e) {
+            log.error("", e);
+        }
+        return null;
+    }
+
+    /**
      * Initializing analyzers in context
      *
-     * @param analyzers - found analyzers in the classpath
+     * @param analyzers found analyzers in the classpath
      */
     public void initAnalyzers(Set<Class<? extends Analyzer>> analyzers) {
         final List<Analyzer<?, ?>> list = analyzers.stream().map(this::mapAnalyzer).collect(Collectors.toList());
@@ -86,6 +108,25 @@ public class AppContext {
     }
 
     private Analyzer<?, ?> mapAnalyzer(Class<? extends Analyzer> cls) {
+        try {
+            return instantiate(cls);
+        } catch (IoCInstantiateException e) {
+            log.error("", e);
+        }
+        return null;
+    }
+
+    /**
+     * Initializing processors in context
+     *
+     * @param analyzers found processors in the classpath
+     */
+    public void initProcessors(Set<Class<? extends ComponentProcessor>> analyzers) {
+        final List<ComponentProcessor> list = analyzers.stream().map(this::mapProcessor).collect(Collectors.toList());
+        dependencyFactory.addProcessors(list);
+    }
+
+    private ComponentProcessor mapProcessor(Class<? extends ComponentProcessor> cls) {
         try {
             return instantiate(cls);
         } catch (IoCInstantiateException e) {
@@ -121,6 +162,15 @@ public class AppContext {
 
         final ClassAnalyzeResult result = classAnalyzer.analyze(component);
         dependencyFactory.instantiate(component, result);
+    }
+
+    /**
+     * Function of invoke class method annotated {@link javax.annotation.PostConstruct}.
+     *
+     * @throws Exception if class methods not invoked
+     */
+    public void initializePostConstructs() throws Exception {
+        dependencyFactory.initializePostConstruct(null);
     }
 
     /**

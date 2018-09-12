@@ -7,7 +7,7 @@ import java.lang.annotation.*;
  * @date 11.09.2018
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.FIELD})
+@Target(ElementType.METHOD)
 @Documented
 public @interface PropertyFunction {
 }

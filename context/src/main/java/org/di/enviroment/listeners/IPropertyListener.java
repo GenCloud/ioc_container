@@ -45,7 +45,7 @@ public interface IPropertyListener {
      *
      * @param path File path.
      */
-    void postPArseEnvironment(String path);
+    void postParseEnvironment(String path);
 
     /**
      * When property value casting is invalid.

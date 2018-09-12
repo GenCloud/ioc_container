@@ -18,15 +18,21 @@
  */
 package org.di.factories;
 
-import org.di.annotations.IoCProvider;
 import org.di.annotations.LoadOpt;
-import org.di.context.analyze.Analyzer;
+import org.di.annotations.property.PropertyFunction;
 import org.di.context.analyze.enums.ClassStateInjection;
 import org.di.context.analyze.impl.ClassAnalyzer;
+import org.di.context.analyze.impl.EnvironmentAnalyzer;
+import org.di.context.analyze.impl.PostConstructAnalyzer;
 import org.di.context.analyze.results.ClassAnalyzeResult;
 import org.di.excepton.instantiate.IoCInstantiateException;
+import org.di.factories.config.Analyzer;
+import org.di.factories.config.ComponentProcessor;
+import org.di.factories.config.IoCProvider;
 import org.di.utils.factory.ReflectionUtils;
 
+import javax.annotation.PostConstruct;
+import javax.inject.Named;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -37,6 +43,13 @@ import static org.di.context.analyze.enums.ClassStateInjection.*;
 import static org.di.utils.factory.ReflectionUtils.*;
 
 /**
+ * Simple template class for implementations that creates a singleton or
+ * a prototype object {@link LoadOpt.Opt}, depending on a flag.
+ *
+ * <p>If the "singleton" flag is true (the default), this class will create
+ * the object that it creates exactly once on initialization and subsequently
+ * return said singleton instance on all calls to the method.</p>
+ *
  * @author GenCloud
  * @date 10.09.2018
  */
@@ -45,35 +58,87 @@ public class DependencyFactory {
      * Context Analyzers
      */
     private final List<Analyzer<?, ?>> analyzers = new ArrayList<>();
-    private Set<Class<?>> classRequests = new HashSet<>();
+
+    /**
+     * Factory registered component processor
+     */
+    private final List<ComponentProcessor> componentProcessors = new ArrayList<>();
+
+    private final Set<Class<?>> classRequests = new HashSet<>();
     /**
      * Factory instantiatable classes
      */
-    private Set<Class<?>> classesInstantiatable = new HashSet<>();
+    private final Set<Class<?>> classesInstantiatable = new HashSet<>();
     /**
      * Factory instantiatable classes (singletons)
      */
-    private Set<Class<?>> classSingletons = new HashSet<>();
+    private final Set<Class<?>> classSingletons = new HashSet<>();
     /**
      * Factory instantiatable classes (proto)
      */
-    private Set<Class<?>> classPrototypes = new HashSet<>();
+    private final Set<Class<?>> classPrototypes = new HashSet<>();
+    /**
+     * Factory instantiatable classes (lazy)
+     */
+    private final Set<Class<?>> lazys = new HashSet<>();
+    /**
+     * Factory of classes who have annotated method with PostConstruct
+     */
+    private final Set<Class<?>> postConstruction = new HashSet<>();
     /**
      * Factory providers
      */
-    private Map<String, IoCProvider> providers = new HashMap<>();
+    private final Map<String, IoCProvider> providers = new HashMap<>();
     /**
      * Factory singletons
      */
-    private Map<String, Object> singletons = new HashMap<>();
+    private final Map<String, Object> singletons = new HashMap<>();
     /**
      * Factory prototypes
      */
-    private Map<String, Object> prototypes = new HashMap<>();
+    private final Map<String, Object> prototypes = new HashMap<>();
     /**
      * Factory interfaces
      */
-    private Map<String, Class> interfaces = new HashMap<>();
+    private final Map<String, Class> interfaces = new HashMap<>();
+
+    /**
+     * Return an instance, which may be shared or independent, of the specified component.
+     *
+     * @param type             type of the component to retrieve
+     * @param postConstruction not initialize prototype type if param is true
+     * @return instance of object from factory
+     */
+    private Object getType(Class<?> type, boolean postConstruction) {
+        final ClassAnalyzeResult result = classAnalyze(type);
+
+        Object o = null;
+        final String typeName = getComponentName(type);
+        if (prototypes.containsKey(typeName)) {
+            if (postConstruction) {
+                return prototypes.get(typeName);
+            }
+            o = instantiateType(prototypes.get(typeName).getClass(), null, result);
+        }
+
+        if (singletons.containsKey(typeName)) {
+            o = singletons.get(typeName);
+        }
+
+        if (o == null) {
+            if (lazys.contains(type)) {
+                o = instantiateType(type, null, result);
+                assert o != null;
+                try {
+                    initializePostConstruct(o);
+                } catch (Exception e) {
+                    throw new IoCInstantiateException("IoCError - Unavailable invoke method annotated with PostConstruct of type [" + type + "]. ");
+                }
+            }
+        }
+
+        return o;
+    }
 
     /**
      * Return an instance, which may be shared or independent, of the specified component.
@@ -82,31 +147,60 @@ public class DependencyFactory {
      * @return instance of object from factory
      */
     public Object getType(Class<?> type) {
-        final ClassAnalyzeResult result = classAnalyze(type);
+        return getType(type, false);
+    }
 
-        final String typeName = getComponentName(type);
-        if (prototypes.containsKey(typeName)) {
-            return instantiateType(prototypes.get(typeName).getClass(), result);
+    /**
+     * Function of invoke post initialization method of class annotated with {@link PostConstruct}.
+     *
+     * @param type maybe null
+     * @throws Exception if method can't invoked
+     */
+    public void initializePostConstruct(Object type) throws Exception {
+        if (type != null) {
+            final Optional<Class<?>> opt = postConstruction
+                    .stream()
+                    .filter(c -> c.getSimpleName().equals(type.getClass().getSimpleName()))
+                    .findFirst();
+            if (opt.isPresent()) {
+                invokePostConstruction(type);
+            }
+        } else {
+            for (Class<?> c : postConstruction) {
+                final Object o = getType(c, true);
+                if (o != null) {
+                    invokePostConstruction(o);
+                }
+            }
         }
+    }
 
-        if (singletons.containsKey(typeName)) {
-            return singletons.get(typeName);
+    /**
+     * Function of invoking method annotated with {@link PostConstruct}.
+     *
+     * @param type type for get method annotated with {@link PostConstruct}
+     * @throws Exception if method can't invoked
+     */
+    private void invokePostConstruction(Object type) throws Exception {
+        for (Method method : type.getClass().getDeclaredMethods()) {
+            if (method.isAnnotationPresent(PostConstruct.class)) {
+                method.invoke(type);
+            }
         }
-        return null;
     }
 
     /**
      * Function object instantiation in the factory.
      *
-     * @param requestedType type to init instance
-     * @param result        result of class analyzer
-     * @param <O>           the generic type of the interface.
+     * @param request type to init instance
+     * @param result  result of class analyzer
+     * @param <O>     the generic type of the interface.
      * @return instantiated object in factory
      */
     @SuppressWarnings("unchecked")
-    public <O> O instantiate(Class<O> requestedType, ClassAnalyzeResult result) {
-        final O instance = instantiate(requestedType, null, result);
-        final Class subclass = requestedType.getSuperclass();
+    public <O> O instantiate(Class<O> request, ClassAnalyzeResult result) {
+        final O instance = instantiate(request, null, result);
+        final Class subclass = request.getSuperclass();
         if (subclass != Object.class) {
             if (isAbstract(subclass)) {
                 installIoCInstance(subclass, instance);
@@ -120,7 +214,7 @@ public class DependencyFactory {
      * Function object instantiation in the factory.
      *
      * @param request type to init instance
-     * @param parent  type-owner of {@param requestedType}
+     * @param parent  type-owner of {@param request}
      * @param result  result of class analyzer
      * @param <O>     the generic type of the interface.
      * @return instantiated object in factory
@@ -128,12 +222,12 @@ public class DependencyFactory {
     @SuppressWarnings("unchecked")
     private <O> O instantiate(Class<O> request, Class<?> parent, ClassAnalyzeResult result) {
         try {
-            final O instance = findInstalledObject(request, result);
+            final O instance = findInstalledObject(request, parent, result);
             if (instance != null) {
                 return instance;
             }
 
-            return instantiateType(request, result);
+            return instantiateType(request, parent, result);
         } catch (Exception e) {
             String msg = "IoCError - Unavailable create your class collection. ";
 
@@ -155,8 +249,15 @@ public class DependencyFactory {
      * @return {@code null} object if type not found
      */
     @SuppressWarnings("unchecked")
-    private <O> O findInstalledObject(Class<O> requestedType, ClassAnalyzeResult result) {
+    private <O> O findInstalledObject(Class<O> requestedType, Class<?> parent, ClassAnalyzeResult result) {
         Class<O> type = requestedType;
+        final String typeName = getComponentName(type);
+        if (Number.class.isAssignableFrom(requestedType) || Boolean.class.isAssignableFrom(requestedType)) {
+            if (singletons.containsKey(typeName)) {
+                return (O) singletons.get(typeName);
+            }
+        }
+
         if (requestedType.isInterface()) {
             if (interfaces.containsKey(requestedType.getSimpleName())) {
                 type = interfaces.get(requestedType.getSimpleName());
@@ -188,9 +289,8 @@ public class DependencyFactory {
             classRequests.add(type);
         }
 
-        final String typeName = getComponentName(type);
         if (prototypes.containsKey(typeName)) {
-            return (O) instantiateType(prototypes.get(typeName).getClass(), result);
+            return (O) instantiateType(prototypes.get(typeName).getClass(), parent, result);
         }
 
         if (singletons.containsKey(typeName)) {
@@ -214,17 +314,69 @@ public class DependencyFactory {
     }
 
     /**
+     * Scanner-function for detecting configuration methods in an instantiated configuration object.
+     *
+     * @param o instantiated environment object
+     * @throws IoCInstantiateException if method have grammar error
+     */
+    public void instantiatePropertyMethods(Object o) throws Exception {
+        final EnvironmentAnalyzer analyzer = getAnalyzer(EnvironmentAnalyzer.class);
+        final boolean result = analyzer.analyze(o);
+        if (result) {
+            final Method[] methods = o.getClass().getDeclaredMethods();
+            for (Method m : methods) {
+                if (m.isAnnotationPresent(PropertyFunction.class)) {
+                    final Class<?> returnType = m.getReturnType();
+                    if (returnType != Void.class && !returnType.isPrimitive()) {
+                        final Object returned = m.invoke(o);
+                        if (m.isAnnotationPresent(Named.class)) {
+                            final Named named = m.getAnnotation(Named.class);
+                            final String value = named.value();
+                            if (!value.isEmpty()) {
+                                addToFactory(value, returned);
+                                continue;
+                            }
+                        }
+                        addToFactory(returned.getClass(), returned);
+                    } else {
+                        throw new IoCInstantiateException("IoCError - Unavailable create instance of type [" + returnType + "] in [" + o.getClass().getSimpleName() + "] Configuration instance." +
+                                "Grammar error - returned type don't contains Void or Primitive types");
+                    }
+                }
+            }
+        }
+    }
+
+    /**
      * Create a instance of the given type.
      *
      * @param type   type for instantiate
+     * @param parent type-owner of {@param type}
      * @param result result of {@link org.di.context.analyze.impl.ClassAnalyzer#analyze(Class)}
      * @param <O>    the generic type of the interface.
      * @return new instance of type
      * @throws IoCInstantiateException when type is not instantiatable
      */
-    private <O> O instantiateType(Class<O> type, ClassAnalyzeResult result) throws IoCInstantiateException {
+    private <O> O instantiateType(Class<O> type, Class<?> parent, ClassAnalyzeResult result) throws IoCInstantiateException {
         final ClassStateInjection state = result.getClassStateInjection();
-        if (state == INJECTED_CONSTRUCTOR) {
+        final PostConstructAnalyzer analyzer = getAnalyzer(PostConstructAnalyzer.class);
+        final boolean postConstructCheck = analyzer.analyze(type);
+        if (postConstructCheck && state != LAZY_INITIALIZATION) {
+            postConstruction.add(type);
+        }
+
+        if (state == LAZY_INITIALIZATION) {
+            if (isSingleton(type)) {
+                if (parent != null) {
+                    result = classAnalyze(type);
+                    return instantiateType(type, parent, result);
+                }
+                markTypeIsLazyInit(type);
+            } else {
+                throw new IoCInstantiateException("IoCError - Unavailable create instance of type [" + type + "]." +
+                        "It is not possible to lazily initialize a prototype object");
+            }
+        } else if (state == INJECTED_CONSTRUCTOR) {
             return instantiateConstructorType(type);
         } else if (state == INJECTED_FIELDS) {
             return instantiateFieldsType(type);
@@ -241,29 +393,39 @@ public class DependencyFactory {
     }
 
     /**
+     * Marking type if it have lazy initialization.
+     *
+     * @param type input type
+     */
+    private void markTypeIsLazyInit(Class<?> type) {
+        addInstantiable(type);
+        lazys.add(type);
+    }
+
+    /**
      * Initializing components by just instantiate type.
      *
      * @param type type for instantiation
      */
+    @SuppressWarnings("unchecked")
     private <O> O instantiateNothingType(Class<O> type) {
-        final O instance = ReflectionUtils.instantiate(type);
+        O instance = ReflectionUtils.instantiate(type);
+        final String typeName = getComponentName(instance.getClass());
+        instance = (O) processBeforeInitialization(typeName, instance);
+
         addInstantiable(type);
+        addToFactory(type, instance);
 
-        final String typeName = getComponentName(type);
-        if (isSingleton(type)) {
-            singletons.put(typeName, instance);
-        } else if (isPrototype(type)) {
-            prototypes.put(typeName, instance);
-        }
-
+        instance = (O) processAfterInitialization(typeName, instance);
         return instance;
     }
 
     /**
      * Functional method for initializing component dependencies.
      *
-     * @param type  type for instantiation
+     * @param type type for instantiation
      */
+    @SuppressWarnings("unchecked")
     private <O> O instantiateMethodsType(Class<O> type) {
         final List<Method> methodList = findMethodsFromType(type);
         final List<Object> argumentList = methodList.stream()
@@ -271,7 +433,11 @@ public class DependencyFactory {
                 .collect(Collectors.toList());
 
         try {
-            final O instance = ReflectionUtils.instantiate(type);
+            O instance = ReflectionUtils.instantiate(type);
+
+            final String typeName = getComponentName(instance.getClass());
+            instance = (O) processBeforeInitialization(typeName, instance);
+
             addInstantiable(type);
 
             for (Method method : methodList) {
@@ -284,12 +450,9 @@ public class DependencyFactory {
                 method.invoke(instance, toInstantiate);
             }
 
-            final String typeName = getComponentName(type);
-            if (isSingleton(type)) {
-                singletons.put(typeName, instance);
-            } else if (isPrototype(type)) {
-                prototypes.put(typeName, instance);
-            }
+            addToFactory(type, instance);
+
+            instance = (O) processAfterInitialization(typeName, instance);
 
             return instance;
         } catch (Exception e) {
@@ -309,8 +472,9 @@ public class DependencyFactory {
     /**
      * Initializing components by analyzing member fields.
      *
-     * @param type  type for instantiation
+     * @param type type for instantiation
      */
+    @SuppressWarnings("unchecked")
     private <O> O instantiateFieldsType(Class<O> type) {
         final List<Field> fieldList = findFieldsFromType(type);
         final List<Object> argumentList = fieldList.stream()
@@ -318,7 +482,10 @@ public class DependencyFactory {
                 .collect(Collectors.toList());
 
         try {
-            final O instance = ReflectionUtils.instantiate(type);
+            O instance = ReflectionUtils.instantiate(type);
+            final String typeName = getComponentName(instance.getClass());
+            instance = (O) processBeforeInitialization(typeName, instance);
+
             addInstantiable(type);
 
             for (Field field : fieldList) {
@@ -334,12 +501,9 @@ public class DependencyFactory {
                 field.setAccessible(access);
             }
 
-            final String typeName = getComponentName(type);
-            if (isSingleton(type)) {
-                singletons.put(typeName, instance);
-            } else if (isPrototype(type)) {
-                prototypes.put(typeName, instance);
-            }
+            addToFactory(type, instance);
+
+            instance = (O) processAfterInitialization(typeName, instance);
 
             return instance;
         } catch (Exception e) {
@@ -361,6 +525,7 @@ public class DependencyFactory {
      *
      * @param type type for instantiation
      */
+    @SuppressWarnings("unchecked")
     private <O> O instantiateConstructorType(Class<O> type) {
         final Constructor<O> oConstructor = findConstructor(type);
 
@@ -371,17 +536,14 @@ public class DependencyFactory {
                     .collect(Collectors.toList());
 
             try {
-                final O instance = oConstructor.newInstance(argumentList.toArray());
+                O instance = oConstructor.newInstance(argumentList.toArray());
+                final String typeName = getComponentName(instance.getClass());
+                instance = (O) processBeforeInitialization(typeName, instance);
 
                 addInstantiable(type);
+                addToFactory(type, instance);
 
-                final String typeName = getComponentName(type);
-                if (isSingleton(type)) {
-                    singletons.put(typeName, instance);
-                } else if (isPrototype(type)) {
-                    prototypes.put(typeName, instance);
-                }
-
+                instance = (O) processAfterInitialization(typeName, instance);
                 return instance;
             } catch (Exception e) {
                 throw new IoCInstantiateException("IoCError - Unavailable create instance of type [" + type + "].", e);
@@ -444,7 +606,7 @@ public class DependencyFactory {
      * @param provider  the provider that will be called to get an instance of the given type.
      * @param <O>       the generic type of the class/interface.
      */
-    public <O> void installIoCProvider(Class<O> classType, IoCProvider<O> provider) {
+    private <O> void installIoCProvider(Class<O> classType, IoCProvider<O> provider) {
         final String typeName = getComponentName(classType);
         providers.put(typeName, provider);
     }
@@ -461,8 +623,33 @@ public class DependencyFactory {
      * @param instance  the instance that will be bound.
      * @param <O>       the generic type of the class.
      */
-    public <O> void installIoCInstance(Class<O> classType, O instance) {
+    private <O> void installIoCInstance(Class<O> classType, O instance) {
         installIoCProvider(classType, () -> instance);
+    }
+
+    /**
+     * Analyzes the resulting type and adds it to the collection according to the conditions of the sample.
+     *
+     * @param type     input type for analyze
+     * @param instance instance of {@param type}
+     */
+    private void addToFactory(Class<?> type, Object instance) {
+        final String typeName = getComponentName(type);
+        addToFactory(typeName, instance);
+    }
+
+    /**
+     * Analyzes the resulting type and adds it to the collection according to the conditions of the sample.
+     *
+     * @param name     input name type
+     * @param instance instance of {@param type}
+     */
+    private void addToFactory(String name, Object instance) {
+        if (isSingleton(instance.getClass())) {
+            singletons.put(name, instance);
+        } else if (isPrototype(instance.getClass())) {
+            prototypes.put(name, instance);
+        }
     }
 
     /**
@@ -575,6 +762,44 @@ public class DependencyFactory {
     }
 
     /**
+     * Function of calling the user settings of the type before it is directly initialized.
+     *
+     * @param typeName type name
+     * @param o        instantiated type
+     * @return modified type
+     */
+    private Object processBeforeInitialization(String typeName, Object o) {
+        Object result = o;
+        for (ComponentProcessor processor : componentProcessors) {
+            result = processor.beforeComponentInitialization(typeName, o);
+            if (result != null) {
+                return result;
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Function of calling the user settings of the type after it is directly initialized.
+     *
+     * @param typeName type name
+     * @param o        instantiated type
+     * @return modified type
+     */
+    private Object processAfterInitialization(String typeName, Object o) {
+        Object result = o;
+        for (ComponentProcessor processor : componentProcessors) {
+            result = processor.afterComponentInitialization(typeName, o);
+            if (result != null) {
+                return result;
+            }
+        }
+
+        return result;
+    }
+
+    /**
      * Add type to instantiable collection.
      *
      * @param type type for adding in to collection
@@ -590,6 +815,15 @@ public class DependencyFactory {
      */
     public void addAnalyzers(Collection<Analyzer<?, ?>> collection) {
         analyzers.addAll(collection);
+    }
+
+    /**
+     * Add collection of component processors to main collection.
+     *
+     * @param collection processors
+     */
+    public void addProcessors(Collection<ComponentProcessor> collection) {
+        componentProcessors.addAll(collection);
     }
 
     /**
@@ -621,7 +855,7 @@ public class DependencyFactory {
     /**
      * Check if type is prototype.
      *
-     * @param type  type for check
+     * @param type type for check
      * @return {@code true} if type have state injection of {@link LoadOpt.Opt#PROTOTYPE}
      */
     private boolean isPrototype(Class<?> type) {
@@ -646,7 +880,7 @@ public class DependencyFactory {
      * @param type type for instantiate provider.
      * @param <O>  the generic type of the class.
      * @return instance provider of type
-     * @throws IoCInstantiateException
+     * @throws IoCInstantiateException if provider don't instantiable
      */
     @SuppressWarnings("unchecked")
     private <O> O getInstanceFromProvider(Class<O> type) throws IoCInstantiateException {
@@ -665,22 +899,17 @@ public class DependencyFactory {
             throw new IoCInstantiateException("It is impossible to test, check the class for type match!");
         }
 
-        return analyzer.analyze(type);
+        return analyzer.analyze(type, true);
     }
 
     /**
      * The analyzer search function by its class name.
      *
-     * @param cls   class analyzer
+     * @param cls class analyzer
      * @return found analyzer
      */
     @SuppressWarnings("unchecked")
     public <O extends Analyzer<?, ?>> O getAnalyzer(Class<O> cls) {
         return (O) analyzers.stream().filter(a -> a.getClass().getSimpleName().equals(cls.getSimpleName())).findFirst().orElse(null);
-    }
-
-    //todo:11.09.18:GenCloud implement me!
-    public void instantiatePropertyMethods(Object o) {
-        // initialize methods annotated with PropertyFunction
     }
 }

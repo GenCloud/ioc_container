@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.di.context.analyze;
+package org.di.factories.config;
 
 /**
  * The main interface for subsequent implementations of analyzers.

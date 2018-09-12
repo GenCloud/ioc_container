@@ -268,7 +268,7 @@ public class PropertiesLoader {
         }
 
         if (callEvents) {
-            ((IPropertyListener) object).postPArseEnvironment(path);
+            ((IPropertyListener) object).postParseEnvironment(path);
         }
 
         return props;

@@ -16,34 +16,36 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.di.context.analyze.results;
+package org.di.test.environments;
 
-import org.di.context.analyze.enums.CyclicDependencyState;
-
-import static org.di.context.analyze.enums.CyclicDependencyState.TRUE;
+import org.di.enviroment.listeners.IPropertyListener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author GenCloud
- * @date 06.09.2018
+ * @date 12.09.2018
  */
-public class CyclicDependencyResult {
-    private CyclicDependencyState cyclicDependencyState;
-    private String throwMessage;
+public class SamplePropertyListener implements IPropertyListener {
+    private static final Logger log = LoggerFactory.getLogger(SamplePropertyListener.class);
 
-    public CyclicDependencyResult(CyclicDependencyState cyclicDependencyState) {
-        this.cyclicDependencyState = cyclicDependencyState;
+    @Override
+    public void preParseEnvironment(String path) {
+        log.info("Loading: [{}] - [{}] environment class", path, getClass().getSimpleName());
     }
 
-    public CyclicDependencyResult(String throwMessage) {
-        cyclicDependencyState = TRUE;
-        this.throwMessage = throwMessage;
+    @Override
+    public void missPropertyEvent(String name) {
+        log.warn("Missing property key - [{}]", name);
     }
 
-    public CyclicDependencyState getCyclicDependencyState() {
-        return cyclicDependencyState;
+    @Override
+    public void postParseEnvironment(String path) {
+        log.info("Successfully loaded: [{}] property file", path);
     }
 
-    public String getThrowMessage() {
-        return throwMessage;
+    @Override
+    public void typeCastException(String name, String value) {
+        log.warn("Invalid property - [{}]. Fail store value [{}]", name, value);
     }
 }

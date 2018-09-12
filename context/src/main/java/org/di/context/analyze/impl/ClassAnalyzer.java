@@ -19,8 +19,9 @@
 package org.di.context.analyze.impl;
 
 import org.di.annotations.IoCDependency;
-import org.di.context.analyze.Analyzer;
+import org.di.annotations.Lazy;
 import org.di.context.analyze.results.ClassAnalyzeResult;
+import org.di.factories.config.Analyzer;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -39,6 +40,16 @@ import static org.di.utils.factory.ReflectionUtils.findConstructor;
 public class ClassAnalyzer implements Analyzer<ClassAnalyzeResult, Class<?>> {
     @Override
     public ClassAnalyzeResult analyze(Class<?> tested) {
+        return analyze(tested, false);
+    }
+
+    public ClassAnalyzeResult analyze(Class<?> tested, boolean ignoreLazy) {
+        if (!ignoreLazy) {
+            if (tested.isAnnotationPresent(Lazy.class)) {
+                return new ClassAnalyzeResult(LAZY_INITIALIZATION);
+            }
+        }
+
         final Constructor<?> constructor = findConstructor(tested);
         if (constructor != null) {
             return new ClassAnalyzeResult(INJECTED_CONSTRUCTOR);

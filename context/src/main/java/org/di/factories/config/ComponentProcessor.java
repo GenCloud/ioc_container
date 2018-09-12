@@ -16,26 +16,28 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.di.excepton;
+package org.di.factories.config;
 
 /**
  * @author GenCloud
- * @date 04.09.2018
+ * @date 12.09.2018
  */
-public class IoCException extends RuntimeException {
-    public IoCException() {
-        super();
-    }
+public interface ComponentProcessor {
+    /**
+     * Processing not installed bean before initialization in factory.
+     *
+     * @param componentName type name
+     * @param component     instantiated type
+     * @return modified type
+     */
+    Object afterComponentInitialization(String componentName, Object component);
 
-    public IoCException(String message) {
-        super(message);
-    }
-
-    protected IoCException(String message, Throwable cause) {
-        super(message, cause);
-    }
-
-    protected IoCException(Throwable cause) {
-        super(cause);
-    }
+    /**
+     * Processing installed bean after initialization in factory.
+     *
+     * @param componentName type name
+     * @param component     instantiated type
+     * @return modified type
+     */
+    Object beforeComponentInitialization(String componentName, Object component);
 }

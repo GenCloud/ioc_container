@@ -20,12 +20,15 @@ package org.di.utils.factory;
 
 import org.di.annotations.IoCComponent;
 import org.di.annotations.IoCDependency;
+import org.di.annotations.ScanPackage;
 import org.di.excepton.instantiate.IoCInstantiateException;
+import org.di.excepton.starter.IoCStartException;
 import org.reflections.Reflections;
 import org.reflections.scanners.SubTypesScanner;
 import org.reflections.scanners.TypeAnnotationsScanner;
 import org.reflections.util.ClasspathHelper;
 import org.reflections.util.ConfigurationBuilder;
+import org.reflections.util.FilterBuilder;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -48,8 +51,9 @@ public class ReflectionUtils {
      * @param classes - source classes for scan him packages
      * @return - new Reflections instance
      */
-    public static Reflections configureReflection(Class<?>[] classes) {
+    private static Reflections configureReflection(Class<?>[] classes) {
         final ConfigurationBuilder builder = new ConfigurationBuilder();
+        builder.filterInputsBy(new FilterBuilder().include(".*\\.class"));
         builder.setScanners(new SubTypesScanner(), new TypeAnnotationsScanner());
         for (Class<?> clazz : classes) {
             builder.setUrls(ClasspathHelper.forClass(clazz));
@@ -63,13 +67,41 @@ public class ReflectionUtils {
      * @param paths - source packages
      * @return - new Reflections instance
      */
-    public static Reflections configureReflection(String[] paths) {
+    private static Reflections configureReflection(String[] paths) {
         final ConfigurationBuilder builder = new ConfigurationBuilder();
+        builder.filterInputsBy(new FilterBuilder().include(".*\\.class"));
         builder.setScanners(new SubTypesScanner(), new TypeAnnotationsScanner());
         for (String path : paths) {
             builder.setUrls(ClasspathHelper.forPackage(path));
         }
         return new Reflections(builder);
+    }
+
+    /**
+     * Configuring a Reflections instance for scan classpath
+     *
+     * @param mainSource - source class for scan him packages
+     * @return - new Reflections instance
+     */
+    public static Reflections configureScanner(Class<?> mainSource) {
+        Reflections reflections;
+
+        final ScanPackage scanPackage = mainSource.getAnnotation(ScanPackage.class);
+        if (scanPackage != null) {
+            final String[] packages = scanPackage.packages();
+            final Class<?>[] classes = scanPackage.classes();
+            if (packages.length > 0) {
+                reflections = configureReflection(packages);
+            } else if (classes.length > 0) {
+                reflections = configureReflection(classes);
+            } else {
+                throw new IoCStartException("IoCError - Unavailable create reflections [no find packages or classes to scan].");
+            }
+        } else {
+            reflections = configureReflection(new Class[]{mainSource});
+        }
+
+        return reflections;
     }
 
     /**
