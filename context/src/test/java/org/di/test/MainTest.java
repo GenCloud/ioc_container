@@ -20,7 +20,9 @@ import org.di.test.components.lazy.LazyComponentB;
 import org.di.test.environments.ExampleEnvironment;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.FixMethodOrder;
 import org.junit.Test;
+import org.junit.runners.MethodSorters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,6 +34,7 @@ import java.util.stream.Collectors;
  * @author GenCloud
  * @date 04.09.2018
  */
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 @ScanPackage(packages = {"org.di.test", "org.di"})
 public class MainTest extends Assert {
     private static final Logger log = LoggerFactory.getLogger(MainTest.class);
@@ -45,7 +48,7 @@ public class MainTest extends Assert {
     }
 
     @Test
-    public void printStatistic() {
+    public void a_printStatistic() {
         DependencyFactory dependencyFactory = appContext.getDependencyFactory();
         log.info("Initializing singleton types - {}", dependencyFactory.getSingletons().size());
         log.info("Initializing proto types - {}", dependencyFactory.getPrototypes().size());
@@ -62,7 +65,7 @@ public class MainTest extends Assert {
     }
 
     @Test
-    public void testInstantiatedComponents() {
+    public void b_testInstantiatedComponents() {
         log.info("Getting ExampleEnvironment from context");
         final ExampleEnvironment exampleEnvironment = appContext.getType(ExampleEnvironment.class);
         assertNotNull(exampleEnvironment);
@@ -85,7 +88,7 @@ public class MainTest extends Assert {
     }
 
     @Test
-    public void testProto() {
+    public void c_testProto() {
         log.info("Getting ComponentA from context (first call)");
         final ComponentA componentAFirst = appContext.getType(ComponentA.class);
         log.info("Getting ComponentA from context (second call)");
@@ -96,7 +99,7 @@ public class MainTest extends Assert {
     }
 
     @Test
-    public void testInterfacesAndAbstracts() {
+    public void d_testInterfacesAndAbstracts() {
         log.info("Getting MyInterface from context");
         final InterfaceComponent myInterface = appContext.getType(MyInterface.class);
         log.info(myInterface.toString());
@@ -107,7 +110,7 @@ public class MainTest extends Assert {
     }
 
     @Test
-    public void testLazys() {
+    public void e_testLazys() {
         log.info("Getting Lazy object from context");
         final List<Object> lazys = appContext.getDependencyFactory().getSingletons()
                 .values()
@@ -138,5 +141,10 @@ public class MainTest extends Assert {
         log.info("Getting ComponentForLazyDep from context");
         final ComponentForLazyDep componentForLazyDep = appContext.getType(ComponentForLazyDep.class);
         log.info(componentForLazyDep.toString());
+    }
+
+    @Test
+    public void f_testCloseContext() {
+        System.exit(1);
     }
 }

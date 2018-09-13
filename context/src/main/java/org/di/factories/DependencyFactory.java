@@ -32,6 +32,8 @@ import org.di.factories.config.ComponentDestroyable;
 import org.di.factories.config.ComponentProcessor;
 import org.di.factories.config.IoCProvider;
 import org.di.utils.factory.ReflectionUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.PostConstruct;
 import javax.inject.Named;
@@ -56,6 +58,7 @@ import static org.di.utils.factory.ReflectionUtils.*;
  * @date 10.09.2018
  */
 public class DependencyFactory {
+    private static final Logger log = LoggerFactory.getLogger(DependencyFactory.class);
     /**
      * Context Analyzers
      */
@@ -912,7 +915,7 @@ public class DependencyFactory {
     /**
      * Calling the function of destroying components, if any.
      */
-    public void clear() throws IoCStopException {
+    public void clear() {
         singletons.values().forEach(this::destroyComponent);
         prototypes.values().forEach(this::destroyComponent);
     }
@@ -923,9 +926,16 @@ public class DependencyFactory {
      * @param o type for check
      * @throws IoCStopException if component not destroyed
      */
-    private void destroyComponent(Object o) throws IoCStopException {
+    private void destroyComponent(Object o) {
         if (ComponentDestroyable.class.isAssignableFrom(o.getClass())) {
-            ((ComponentDestroyable) o).destroy();
+            log.info("Destroy component of [{}]", o.getClass().getSimpleName());
+            try {
+                ((ComponentDestroyable) o).destroy();
+            } catch (IoCStopException e) {
+                log.error("Can't destroy component!", e);
+            }
+
+            log.info("Complete destroy component [{}]", o.getClass().getSimpleName());
         }
     }
 }
