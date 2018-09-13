@@ -28,7 +28,7 @@ Add IoC to your project. for maven projects just add this dependency:
 
 A typical use of IoC would be:
 ```java
-@ScanPackage(packages = {"org.di.test", "org.di"})
+@ScanPackage(packages = {"org.di.test"})
 public class MainTest {
     public static void main(String... args) {
         IoCStarter.start(MainTest.class, args);
@@ -39,7 +39,7 @@ public class MainTest {
 A component usage would be:
 ```java
 @Lazy // annotation of component is marked for lazy-loading (firts call is instantiated)
-@IoCComponent // annotation of component for loading in context
+@IoCComponent
 @LoadOpt(PROTOTYPE) // type for loading - PROTOTYPE | SINGLETON, if !present annotation - component has default type SINGLETON
 public class ComponentA {
     @Override
@@ -65,7 +65,7 @@ public class ExampleEnvironment extends SamplePropertyListener {
 
     private String[] components;
 
-    @PropertyFunction // annotation for invoke method and insert return instance to context
+    @PropertyFunction
     public SampleProperty value() {
         return new SampleProperty(158);
     }

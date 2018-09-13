@@ -11,6 +11,7 @@
 
     <modules>
         <module>context</module>
+        <module>threads-factory</module>
     </modules>
 
     <properties>
