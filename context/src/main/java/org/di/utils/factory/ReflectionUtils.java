@@ -105,8 +105,16 @@ public class ReflectionUtils {
     }
 
     /**
-     * @param type - class to check
-     * @return - {@code} true if class for check is not an primitive, array
+     * @param type class to check
+     * @return @return {@code true} if class for check is not an primitive, assigned Number or Boolean
+     */
+    public static boolean checkPropertyType(Class<?> type) {
+        return !type.isPrimitive() && !Number.class.isAssignableFrom(type) && !Boolean.class.isAssignableFrom(type);
+    }
+
+    /**
+     * @param type class to check
+     * @return {@code true} if class for check is not an primitive, array
      */
     public static boolean checkTypes(Class<?> type) {
         return !type.isPrimitive() && !type.isArray();

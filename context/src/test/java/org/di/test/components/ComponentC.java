@@ -2,6 +2,7 @@ package org.di.test.components;
 
 import org.di.annotations.IoCComponent;
 import org.di.annotations.IoCDependency;
+import org.di.test.environments.SampleProperty;
 
 /**
  * @author GenCloud
@@ -9,13 +10,13 @@ import org.di.annotations.IoCDependency;
  */
 @IoCComponent
 public class ComponentC {
-    private final Integer value;
+    private final SampleProperty sampleProperty;
     private final ComponentB componentB;
     private final ComponentA componentA;
 
     @IoCDependency
-    public ComponentC(Integer value, ComponentB componentB, ComponentA componentA) {
-        this.value = value;
+    public ComponentC(SampleProperty sampleProperty, ComponentB componentB, ComponentA componentA) {
+        this.sampleProperty = sampleProperty;
         this.componentB = componentB;
         this.componentA = componentA;
     }
@@ -23,7 +24,7 @@ public class ComponentC {
     @Override
     public String toString() {
         return "ComponentC{hash: " + Integer.toHexString(hashCode()) +
-                ", value=" + value +
+                ", value=" + sampleProperty.getValue() +
                 ", componentB=" + componentB +
                 ", componentA=" + componentA +
                 '}';

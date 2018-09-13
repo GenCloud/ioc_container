@@ -16,23 +16,20 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.di.annotations;
-
-import java.lang.annotation.Documented;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-
-import static java.lang.annotation.ElementType.*;
+package org.di.test.environments;
 
 /**
- * Adding in constructor, field, setter method or config method as to be autowired by dependency injection facilities.
- *
  * @author GenCloud
- * @date 04.09.2018
+ * @date 13.09.2018
  */
-@Documented
-@Target({TYPE, CONSTRUCTOR, FIELD, METHOD})
-@Retention(RetentionPolicy.RUNTIME)
-public @interface IoCDependency {
+public class SampleProperty {
+    private int value;
+
+    public SampleProperty(int value) {
+        this.value = value;
+    }
+
+    public int getValue() {
+        return value;
+    }
 }

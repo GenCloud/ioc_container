@@ -188,4 +188,12 @@ public class AppContext {
     private <O extends Analyzer<?, ?>> O getAnalyzer(Class<O> cls) {
         return dependencyFactory.getAnalyzer(cls);
     }
+
+    /**
+     * Function of calling shutdown hook
+     */
+    public void closeContext() {
+        dependencyFactory.clear();
+        log.info("Context is closed");
+    }
 }

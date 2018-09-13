@@ -26,7 +26,9 @@ import org.di.context.analyze.impl.EnvironmentAnalyzer;
 import org.di.context.analyze.impl.PostConstructAnalyzer;
 import org.di.context.analyze.results.ClassAnalyzeResult;
 import org.di.excepton.instantiate.IoCInstantiateException;
+import org.di.excepton.starter.IoCStopException;
 import org.di.factories.config.Analyzer;
+import org.di.factories.config.ComponentDestroyable;
 import org.di.factories.config.ComponentProcessor;
 import org.di.factories.config.IoCProvider;
 import org.di.utils.factory.ReflectionUtils;
@@ -252,16 +254,10 @@ public class DependencyFactory {
     private <O> O findInstalledObject(Class<O> requestedType, Class<?> parent, ClassAnalyzeResult result) {
         Class<O> type = requestedType;
         final String typeName = getComponentName(type);
-        if (Number.class.isAssignableFrom(requestedType) || Boolean.class.isAssignableFrom(requestedType)) {
-            if (singletons.containsKey(typeName)) {
-                return (O) singletons.get(typeName);
-            }
-        }
-
         if (requestedType.isInterface()) {
             if (interfaces.containsKey(requestedType.getSimpleName())) {
                 type = interfaces.get(requestedType.getSimpleName());
-            } else if (providers.containsKey(requestedType.getSimpleName())) {
+            } else if (providers.containsKey(typeName)) {
                 return getInstanceFromProvider(requestedType);
             } else {
                 throw new IoCInstantiateException("IoCError - Unavailable create instance of type [" + requestedType + "]. " +
@@ -271,7 +267,7 @@ public class DependencyFactory {
         }
 
         if (isAbstract(requestedType)) {
-            if (providers.containsKey(requestedType.getSimpleName())) {
+            if (providers.containsKey(typeName)) {
                 return getInstanceFromProvider(requestedType);
             } else {
                 throw new IoCInstantiateException("IoCError - Unavailable create instance of type [" + type + "]. " +
@@ -327,7 +323,7 @@ public class DependencyFactory {
             for (Method m : methods) {
                 if (m.isAnnotationPresent(PropertyFunction.class)) {
                     final Class<?> returnType = m.getReturnType();
-                    if (returnType != Void.class && !returnType.isPrimitive()) {
+                    if (checkPropertyType(returnType)) {
                         final Object returned = m.invoke(o);
                         if (m.isAnnotationPresent(Named.class)) {
                             final Named named = m.getAnnotation(Named.class);
@@ -340,7 +336,7 @@ public class DependencyFactory {
                         addToFactory(returned.getClass(), returned);
                     } else {
                         throw new IoCInstantiateException("IoCError - Unavailable create instance of type [" + returnType + "] in [" + o.getClass().getSimpleName() + "] Configuration instance." +
-                                "Grammar error - returned type don't contains Void or Primitive types");
+                                "Grammar error - returned type don't contains Primitive, Number or Boolean types");
                     }
                 }
             }
@@ -911,5 +907,25 @@ public class DependencyFactory {
     @SuppressWarnings("unchecked")
     public <O extends Analyzer<?, ?>> O getAnalyzer(Class<O> cls) {
         return (O) analyzers.stream().filter(a -> a.getClass().getSimpleName().equals(cls.getSimpleName())).findFirst().orElse(null);
+    }
+
+    /**
+     * Calling the function of destroying components, if any.
+     */
+    public void clear() throws IoCStopException {
+        singletons.values().forEach(this::destroyComponent);
+        prototypes.values().forEach(this::destroyComponent);
+    }
+
+    /**
+     * Function of call of destruction of a component.
+     *
+     * @param o type for check
+     * @throws IoCStopException if component not destroyed
+     */
+    private void destroyComponent(Object o) throws IoCStopException {
+        if (ComponentDestroyable.class.isAssignableFrom(o.getClass())) {
+            ((ComponentDestroyable) o).destroy();
+        }
     }
 }

@@ -124,6 +124,21 @@ public class IoCStarter {
             context.initializePostConstructs();
         }
 
+        Runtime.getRuntime().addShutdownHook(new ShutdownHook(context));
         return context;
+    }
+
+    private class ShutdownHook extends Thread {
+        private final AppContext context;
+
+        ShutdownHook(AppContext context) {
+            this.context = context;
+        }
+
+        @Override
+        public void run() {
+            log.info("Start shutdown application");
+            context.closeContext();
+        }
     }
 }

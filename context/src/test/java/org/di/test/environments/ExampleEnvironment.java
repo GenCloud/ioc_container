@@ -17,8 +17,8 @@ public class ExampleEnvironment extends SamplePropertyListener {
     private String[] components;
 
     @PropertyFunction
-    public Integer value() {
-        return new Integer("158");
+    public SampleProperty value() {
+        return new SampleProperty(158);
     }
 
     @Override
