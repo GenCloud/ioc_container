@@ -6,6 +6,17 @@
 ### Intro
 Add threads-factory module to your project. for maven projects just add this dependency:
 ```xml
+    <repositories>
+        <repository>
+            <id>di_container-mvn-repo</id>
+            <url>https://raw.github.com/GenCloud/di_container/threading/</url>
+            <snapshots>
+                <enabled>true</enabled>
+                <updatePolicy>always</updatePolicy>
+            </snapshots>
+        </repository>
+    </repositories>
+
     <dependencies>
         <dependency>
             <groupId>org.genfork</groupId>
