@@ -9,7 +9,7 @@ Add IoC to your project. for maven projects just add this dependency:
     <repositories>
         <repository>
             <id>di_container-mvn-repo</id>
-            <url>https://raw.github.com/GenCloud/di_container/mvn-repo/</url>
+            <url>https://raw.github.com/GenCloud/di_container/context/</url>
             <snapshots>
                 <enabled>true</enabled>
                 <updatePolicy>always</updatePolicy>
