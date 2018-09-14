@@ -19,29 +19,45 @@
 package org.di.test.threading;
 
 import org.di.context.annotations.IoCComponent;
-import org.di.context.annotations.IoCDependency;
-import org.di.threads.factory.ThreadingComponent;
+import org.di.context.contexts.sensibles.ThreadFactorySensible;
+import org.di.context.excepton.IoCException;
+import org.di.threads.annotation.SimpleTask;
+import org.di.threads.factory.DefaultThreadingFactory;
 import org.di.threads.factory.model.AbstractTask;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.PostConstruct;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @author GenCloud
  * @date 14.09.2018
  */
 @IoCComponent
-public class ComponentThreads {
-    @IoCDependency
-    private ThreadingComponent threadingComponent;
+public class ComponentThreads implements ThreadFactorySensible<DefaultThreadingFactory> {
+    private final Logger log = LoggerFactory.getLogger(AbstractTask.class);
+    private final AtomicInteger atomicInteger = new AtomicInteger(0);
+    private DefaultThreadingFactory defaultThreadingFactory;
 
     @PostConstruct
     public void init() {
-        threadingComponent.async(new AbstractTask<Void>() {
+        defaultThreadingFactory.async(new AbstractTask<Void>() {
             @Override
             public Void call() {
-                System.out.println("Start test thread!");
+                log.info("Start test thread!");
                 return null;
             }
         });
+    }
+
+    @Override
+    public void threadFactoryInform(DefaultThreadingFactory defaultThreadingFactory) throws IoCException {
+        this.defaultThreadingFactory = defaultThreadingFactory;
+    }
+
+    @SimpleTask(startingDelay = 1, fixedInterval = 5)
+    public void schedule() {
+        log.info("I'm Big Daddy, scheduling and incrementing param - [{}]", atomicInteger.incrementAndGet());
     }
 }

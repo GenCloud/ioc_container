@@ -18,8 +18,11 @@
  */
 package org.di.threads.factory;
 
-import org.di.context.annotations.IoCComponent;
-import org.di.context.annotations.IoCDependency;
+import org.di.context.contexts.sensibles.EnvironmentSensible;
+import org.di.context.excepton.IoCException;
+import org.di.context.excepton.starter.IoCStopException;
+import org.di.context.factories.config.ComponentDestroyable;
+import org.di.context.factories.config.Factory;
 import org.di.threads.configuration.ThreadingConfiguration;
 import org.di.threads.configuration.ThreadingConfiguration.ThreadPoolPriority;
 import org.di.threads.factory.model.impl.ThreadPoolImpl;
@@ -30,9 +33,9 @@ import org.di.threads.factory.model.interfaces.ThreadPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.PostConstruct;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
@@ -44,11 +47,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @author GenCloud
  * @date 13.09.2018
  */
-@IoCComponent
-public class ThreadingComponent {
-    private static final Logger log = LoggerFactory.getLogger(ThreadingComponent.class);
+public class DefaultThreadingFactory implements Factory, ComponentDestroyable, EnvironmentSensible<ThreadingConfiguration> {
+    private static final Logger log = LoggerFactory.getLogger(DefaultThreadingFactory.class);
 
-    @IoCDependency
     private ThreadingConfiguration threadingConfiguration;
 
     /**
@@ -56,13 +57,19 @@ public class ThreadingComponent {
      */
     private ThreadPool pool;
 
+    private final Map<String, Future<?>> futures = new HashMap<>();
     /**
      * List of active thread pools
      */
     private Map<String, ThreadPool> threadPools = new HashMap<>();
 
-    @PostConstruct
-    public void init() {
+    @Override
+    public void environmentInform(ThreadingConfiguration threadingConfiguration) throws IoCException {
+        this.threadingConfiguration = threadingConfiguration;
+    }
+
+    @Override
+    public void initialize() {
         pool = createThreadPool(threadingConfiguration.getPoolName(),
                 threadingConfiguration.getAvailableProcessors(),
                 threadingConfiguration.getThreadTimeout(),
@@ -70,6 +77,16 @@ public class ThreadingComponent {
                 threadingConfiguration.getThreadPoolPriority());
 
         pool.async(50, TimeUnit.MILLISECONDS, 50, () -> threadPools.values().forEach(ThreadPool::notifyListeners));
+    }
+
+    /**
+     * Instantiate working future in factory.
+     *
+     * @param name   method name
+     * @param future running future
+     */
+    public void initFuture(String name, Future<?> future) {
+        futures.put(name, future);
     }
 
     /**
@@ -175,5 +192,15 @@ public class ThreadingComponent {
 
         pool.getExecutor().shutdown();
         threadPools.remove(pool.getName());
+    }
+
+    @Override
+    public void destroy() throws IoCStopException {
+        futures.values().forEach(f -> f.cancel(true));
+        futures.clear();
+        dispose(pool);
+        pool = null;
+        threadPools.clear();
+        threadPools = null;
     }
 }

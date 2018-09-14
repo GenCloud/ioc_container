@@ -1,4 +1,4 @@
-package org.di.context.contexts.resolvers;
+package org.di.context.contexts.sensibles;
 
 /**
  * A standard superinterface marker for whistleblowers of the heirs (components) that are informed by

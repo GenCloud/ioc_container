@@ -20,7 +20,7 @@ package org.di.test.components;
 
 import org.di.context.annotations.IoCComponent;
 import org.di.context.contexts.AppContext;
-import org.di.context.contexts.resolvers.sensibles.ContextSensible;
+import org.di.context.contexts.sensibles.ContextSensible;
 import org.di.context.excepton.IoCException;
 
 /**

@@ -25,6 +25,7 @@ import org.di.context.annotations.property.Property;
 import org.di.context.contexts.AppContext;
 import org.di.context.contexts.resolvers.CommandLineArgumentResolver;
 import org.di.context.factories.config.ComponentProcessor;
+import org.di.context.factories.config.Factory;
 import org.di.context.factories.config.Inspector;
 import org.di.context.utils.factory.ReflectionUtils;
 import org.reflections.Reflections;
@@ -148,6 +149,7 @@ public class IoCStarter {
         moduleInfo.setProperties(reflections.getTypesAnnotatedWith(Property.class));
         moduleInfo.setProcessors(reflections.getSubTypesOf(ComponentProcessor.class));
         moduleInfo.setResolvers(reflections.getSubTypesOf(CommandLineArgumentResolver.class));
+        moduleInfo.setFactories(reflections.getSubTypesOf(Factory.class));
         return moduleInfo;
     }
 
@@ -165,8 +167,9 @@ public class IoCStarter {
         }
 
         context.initInspectors(info.getInspectors());
-        context.initProcessors(info.getProcessors());
         context.initEnvironment(info.getProperties());
+        context.initFactories(info.getFactories());
+        context.initProcessors(info.getProcessors());
         context.initializeComponents(info.getComponents());
 
         context.initializePostConstructions();
@@ -181,6 +184,7 @@ public class IoCStarter {
         private Set<Class<?>> properties;
         private Set<Class<? extends ComponentProcessor>> processors;
         private Set<Class<? extends CommandLineArgumentResolver>> resolvers;
+        private Set<Class<? extends Factory>> factories;
 
         Set<Class<?>> getComponents() {
             return components;
@@ -202,6 +206,10 @@ public class IoCStarter {
             return properties;
         }
 
+        Set<Class<? extends Factory>> getFactories() {
+            return factories;
+        }
+
         void setProperties(Set<Class<?>> properties) {
             this.properties = properties;
         }
@@ -220,6 +228,10 @@ public class IoCStarter {
 
         void setResolvers(Set<Class<? extends CommandLineArgumentResolver>> resolvers) {
             this.resolvers = resolvers;
+        }
+
+        void setFactories(Set<Class<? extends Factory>> factories) {
+            this.factories = factories;
         }
     }
 

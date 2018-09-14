@@ -20,17 +20,40 @@ package org.di.threads.pocessors;
 
 import org.di.context.annotations.Processor;
 import org.di.context.contexts.AppContext;
-import org.di.context.contexts.resolvers.sensibles.ContextSensible;
+import org.di.context.contexts.sensibles.ContextSensible;
+import org.di.context.contexts.sensibles.ThreadFactorySensible;
 import org.di.context.excepton.IoCException;
+import org.di.context.excepton.instantiate.IoCInstantiateException;
 import org.di.context.factories.config.ComponentProcessor;
+import org.di.threads.annotation.SimpleTask;
+import org.di.threads.factory.DefaultThreadingFactory;
+import org.di.threads.utils.GeneralTask;
+
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
+ * Head task configurer processor in context.
+ *
  * @author GenCloud
  * @date 13.09.2018
  */
 @Processor
-public class ThreadConfigureProcessor implements ComponentProcessor, ContextSensible {
+public class ThreadConfigureProcessor implements ComponentProcessor, ContextSensible, ThreadFactorySensible<DefaultThreadingFactory> {
     private AppContext appContext;
+    private DefaultThreadingFactory factory;
+
+    public AppContext getAppContext() {
+        return appContext;
+    }
+
+    public DefaultThreadingFactory getFactory() {
+        return factory;
+    }
 
     @Override
     public void contextInform(AppContext appContext) throws IoCException {
@@ -38,12 +61,78 @@ public class ThreadConfigureProcessor implements ComponentProcessor, ContextSens
     }
 
     @Override
+    public void threadFactoryInform(DefaultThreadingFactory factory) throws IoCException {
+        this.factory = factory;
+    }
+
+    @Override
     public Object afterComponentInitialization(String componentName, Object component) {
+        final List<Method> methods = findMethodsAnnotatedWithThreading(component.getClass());
+        if (!methods.isEmpty()) {
+            for (Method method : methods) {
+                if (method.getParameterTypes().length > 0) {
+                    throw new IoCInstantiateException("IoCError - Unavailable create instance of task-method [" + method + "]." +
+                            "Can't instantiate task with method parameters length > 0");
+                }
+                instantiateTask(method, component);
+            }
+        }
         return component;
     }
 
     @Override
     public Object beforeComponentInitialization(String componentName, Object component) {
         return component;
+    }
+
+    /**
+     * Initializing task method.
+     *
+     * @param method    method to invoke in task
+     * @param component type for invoke method
+     */
+    private void instantiateTask(Method method, Object component) {
+        final SimpleTask annotation = method.getAnnotation(SimpleTask.class);
+        long startingDelay = annotation.startingDelay();
+        final long fixedInterval = annotation.fixedInterval();
+        final TimeUnit timeUnit = annotation.unit();
+
+        final GeneralTask task = new GeneralTask(component, method);
+
+        if (startingDelay < 0) {
+            startingDelay = 0;
+        }
+
+        if (startingDelay == 0 && fixedInterval != -1) {
+            final Future<?> future = factory.async(0, timeUnit, fixedInterval, task);
+            factory.initFuture(method.getName(), future);
+            return;
+        }
+
+        if (startingDelay > 0 && fixedInterval > 0) {
+            final Future<?> future = factory.async(startingDelay, timeUnit, fixedInterval, task);
+            factory.initFuture(method.getName(), future);
+            return;
+        }
+
+        if (fixedInterval == -1) {
+            final Future<?> future = factory.async(startingDelay, timeUnit, task);
+            factory.initFuture(method.getName(), future);
+        }
+    }
+
+    /**
+     * Function of find methods annotated with SimpleTask and don't have arguments.
+     *
+     * @param type type for scan
+     * @return collection of methods
+     */
+    private List<Method> findMethodsAnnotatedWithThreading(Class<?> type) {
+        final Method[] methods = type.getDeclaredMethods();
+        return Arrays
+                .stream(methods)
+                .filter(f -> f.isAnnotationPresent(SimpleTask.class))
+                .filter(f -> f.getParameterTypes().length == 0)
+                .collect(Collectors.toList());
     }
 }

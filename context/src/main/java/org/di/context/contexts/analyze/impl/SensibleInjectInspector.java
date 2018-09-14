@@ -19,15 +19,16 @@
 package org.di.context.contexts.analyze.impl;
 
 import org.di.context.contexts.analyze.results.SensibleInspectionResult;
-import org.di.context.contexts.resolvers.Sensible;
-import org.di.context.contexts.resolvers.sensibles.ContextSensible;
+import org.di.context.contexts.sensibles.ContextSensible;
+import org.di.context.contexts.sensibles.EnvironmentSensible;
+import org.di.context.contexts.sensibles.Sensible;
+import org.di.context.contexts.sensibles.ThreadFactorySensible;
 import org.di.context.factories.config.Inspector;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.di.context.contexts.analyze.results.SensibleInspectionResult.SENSIBLE_CONTEXT_INJECTION;
-import static org.di.context.contexts.analyze.results.SensibleInspectionResult.SENSIBLE_NOTHING;
+import static org.di.context.contexts.analyze.results.SensibleInspectionResult.*;
 
 /**
  * Inspector for find inheritance of superinterface {@link Sensible} and return type of injection.
@@ -42,6 +43,14 @@ public class SensibleInjectInspector implements Inspector<List<SensibleInspectio
         results.add(SENSIBLE_NOTHING);
         if (ContextSensible.class.isAssignableFrom(tested.getClass())) {
             results.add(SENSIBLE_CONTEXT_INJECTION);
+        }
+
+        if (ThreadFactorySensible.class.isAssignableFrom(tested.getClass())) {
+            results.add(SENSIBLE_THREAD_FACTORY);
+        }
+
+        if (EnvironmentSensible.class.isAssignableFrom(tested.getClass())) {
+            results.add(SENSIBLE_ENVIRONMENT);
         }
         return results;
     }

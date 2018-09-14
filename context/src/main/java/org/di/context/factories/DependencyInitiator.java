@@ -28,14 +28,13 @@ import org.di.context.contexts.analyze.impl.PostConstructInspector;
 import org.di.context.contexts.analyze.impl.SensibleInjectInspector;
 import org.di.context.contexts.analyze.results.ClassInspectionResult;
 import org.di.context.contexts.analyze.results.SensibleInspectionResult;
-import org.di.context.contexts.resolvers.Sensible;
-import org.di.context.contexts.resolvers.sensibles.ContextSensible;
+import org.di.context.contexts.sensibles.ContextSensible;
+import org.di.context.contexts.sensibles.EnvironmentSensible;
+import org.di.context.contexts.sensibles.Sensible;
+import org.di.context.contexts.sensibles.ThreadFactorySensible;
 import org.di.context.excepton.instantiate.IoCInstantiateException;
 import org.di.context.excepton.starter.IoCStopException;
-import org.di.context.factories.config.ComponentDestroyable;
-import org.di.context.factories.config.ComponentProcessor;
-import org.di.context.factories.config.Inspector;
-import org.di.context.factories.config.IoCProvider;
+import org.di.context.factories.config.*;
 import org.di.context.utils.factory.ReflectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,6 +44,8 @@ import javax.inject.Named;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static org.di.context.contexts.analyze.results.SensibleInspectionResult.*;
 
 /**
  * Simple template class for implementations that creates a singleton or
@@ -57,8 +58,8 @@ import java.util.stream.Collectors;
  * @author GenCloud
  * @date 10.09.2018
  */
-public class DependencyFactory {
-    private static final Logger log = LoggerFactory.getLogger(DependencyFactory.class);
+public class DependencyInitiator {
+    private static final Logger log = LoggerFactory.getLogger(DependencyInitiator.class);
     /**
      * Context Analyzers
      */
@@ -117,7 +118,7 @@ public class DependencyFactory {
      *
      * @param appContext application contexts
      */
-    public DependencyFactory(AppContext appContext) {
+    public DependencyInitiator(AppContext appContext) {
         this.appContext = appContext;
     }
 
@@ -430,7 +431,7 @@ public class DependencyFactory {
     }
 
     /**
-     * Inject some information to instance if finded inheritance of {@link Sensible}.
+     * Inject some information to instance if find inheritance of {@link Sensible}.
      *
      * @param instance instance of component
      */
@@ -438,7 +439,7 @@ public class DependencyFactory {
         final SensibleInjectInspector inspector = getInspetor(SensibleInjectInspector.class);
         final List<SensibleInspectionResult> result = inspector.inspect(instance);
         if (result.size() == 1) {
-            if (result.get(0) == SensibleInspectionResult.SENSIBLE_NOTHING) {
+            if (result.get(0) == SENSIBLE_NOTHING) {
                 return;
             }
         }
@@ -446,9 +447,37 @@ public class DependencyFactory {
         result.forEach(r -> setSensibles(r, instance));
     }
 
+    @SuppressWarnings("unchecked")
     private void setSensibles(SensibleInspectionResult result, Object instance) {
-        if (result == SensibleInspectionResult.SENSIBLE_CONTEXT_INJECTION) {
+        if (instance.getClass().isInterface()) {
+            return;
+        }
+
+        if (result == SENSIBLE_CONTEXT_INJECTION) {
             ((ContextSensible) instance).contextInform(getAppContext());
+        }
+
+        if (result == SENSIBLE_THREAD_FACTORY) {
+            Class<Factory> factoryClass;
+            try {
+                factoryClass = (Class<Factory>) Class.forName("org.di.threads.factory.DefaultThreadingFactory");
+                ((ThreadFactorySensible) instance).threadFactoryInform(findFactory(factoryClass));
+            } catch (ClassNotFoundException e) {
+                throw new IoCInstantiateException("IoCError - Unavailable create instance of type [org.di.threads.factory.DefaultThreadingFactory]." +
+                        "Could not find thread factory class in context. Maybe unresolvable module?");
+            }
+        }
+
+        if (result == SENSIBLE_ENVIRONMENT) {
+            for (Method method : instance.getClass().getDeclaredMethods()) {
+                if (method.getName().equals("environmentInform")) {
+                    final Object env = findEnvironment(method.getParameterTypes()[0]);
+                    if (env != null) {
+                        ((EnvironmentSensible) instance).environmentInform(env);
+                        break;
+                    }
+                }
+            }
         }
     }
 
@@ -833,12 +862,13 @@ public class DependencyFactory {
         Object result = o;
         for (ComponentProcessor processor : componentProcessors) {
             result = processor.beforeComponentInitialization(typeName, o);
-            if (result != null) {
-                return result;
-            }
         }
 
-        return result;
+        if (result != null) {
+            return result;
+        }
+
+        return o;
     }
 
     /**
@@ -852,12 +882,13 @@ public class DependencyFactory {
         Object result = o;
         for (ComponentProcessor processor : componentProcessors) {
             result = processor.afterComponentInitialization(typeName, o);
-            if (result != null) {
-                return result;
-            }
         }
 
-        return result;
+        if (result != null) {
+            return result;
+        }
+
+        return o;
     }
 
     /**
@@ -896,6 +927,55 @@ public class DependencyFactory {
     public void addProcessors(Collection<ComponentProcessor> collection) {
         collection.forEach(this::instantiateSensibles);
         componentProcessors.addAll(collection);
+    }
+
+    /**
+     * Instantiate collection factories to application context.
+     *
+     * @param collection of classes inherited {@link Factory}
+     */
+    public void addFactories(Set<Class<? extends Factory>> collection) {
+        for (Class<? extends Factory> f : collection) {
+            if (isSingleton(f)) {
+                final Factory o = instantiate(f, classAnalyze(f));
+                instantiateSensibles(o);
+                o.initialize();
+            }
+        }
+    }
+
+    /**
+     * Find factories in context.
+     *
+     * @param type type of factory for find
+     * @param <O>  the generic type of the class.
+     * @return if factory not null
+     */
+    @SuppressWarnings("unchecked")
+    private <O extends Factory> O findFactory(Class<O> type) {
+        final Factory factory = (Factory) getType(type);
+        if (factory != null) {
+            return (O) factory;
+        }
+
+        return null;
+    }
+
+    /**
+     * Find environment in context.
+     *
+     * @param type type of environment for find
+     * @param <E>  the generic type of the class
+     * @return if environment not null
+     */
+    @SuppressWarnings("unchecked")
+    private <E> E findEnvironment(Class<E> type) {
+        final E env = (E) getType(type);
+        if (env != null) {
+            return env;
+        }
+
+        return null;
     }
 
     /**

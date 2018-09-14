@@ -25,8 +25,9 @@ import org.di.context.contexts.analyze.results.ClassInspectionResult;
 import org.di.context.contexts.resolvers.CommandLineArgumentResolver;
 import org.di.context.enviroment.loader.PropertiesLoader;
 import org.di.context.excepton.instantiate.IoCInstantiateException;
-import org.di.context.factories.DependencyFactory;
+import org.di.context.factories.DependencyInitiator;
 import org.di.context.factories.config.ComponentProcessor;
+import org.di.context.factories.config.Factory;
 import org.di.context.factories.config.Inspector;
 import org.di.context.utils.factory.ReflectionUtils;
 import org.slf4j.Logger;
@@ -50,13 +51,13 @@ public class AppContext {
     /**
      * Factory initialized contexts components
      */
-    private final DependencyFactory dependencyFactory = new DependencyFactory(this);
+    private final DependencyInitiator dependencyInitiator = new DependencyInitiator(this);
 
     /**
      * @return dependencyFactory - factory initialized contexts components
      */
-    public DependencyFactory getDependencyFactory() {
-        return dependencyFactory;
+    public DependencyInitiator getDependencyInitiator() {
+        return dependencyInitiator;
     }
 
     /**
@@ -73,8 +74,8 @@ public class AppContext {
             try {
                 final Object o = type.newInstance();
                 PropertiesLoader.parse(o, path.toFile());
-                dependencyFactory.instantiatePropertyMethods(o);
-                dependencyFactory.addInstalledConfiguration(o);
+                dependencyInitiator.instantiatePropertyMethods(o);
+                dependencyInitiator.addInstalledConfiguration(o);
             } catch (Exception e) {
                 throw new Error("Failed to Load " + path + " Config File", e);
             }
@@ -106,7 +107,7 @@ public class AppContext {
     }
 
     /**
-     * Initializing analyzers in contexts
+     * Initializing inspectors in contexts
      *
      * @param inspectors found analyzers in the classpath
      */
@@ -116,7 +117,7 @@ public class AppContext {
                 .map(this::mapInspector)
                 .collect(Collectors.toList());
 
-        dependencyFactory.addInspectors(list);
+        dependencyInitiator.addInspectors(list);
     }
 
     private Inspector<?, ?> mapInspector(Class<? extends Inspector> cls) {
@@ -126,6 +127,15 @@ public class AppContext {
             log.error("", e);
         }
         return null;
+    }
+
+    /**
+     * Initialize factories {@link Factory} in context.
+     *
+     * @param factories collection of classes inherited {@link Factory}
+     */
+    public void initFactories(Set<Class<? extends Factory>> factories) {
+        dependencyInitiator.addFactories(factories);
     }
 
     /**
@@ -140,7 +150,7 @@ public class AppContext {
                 .map(this::mapProcessor)
                 .collect(Collectors.toList());
 
-        dependencyFactory.addProcessors(list);
+        dependencyInitiator.addProcessors(list);
     }
 
     private ComponentProcessor mapProcessor(Class<? extends ComponentProcessor> cls) {
@@ -178,7 +188,7 @@ public class AppContext {
         }
 
         final ClassInspectionResult result = classAnalyzer.inspect(component);
-        dependencyFactory.instantiate(component, result);
+        dependencyInitiator.instantiate(component, result);
     }
 
     /**
@@ -187,7 +197,7 @@ public class AppContext {
      * @throws Exception if class methods not invoked
      */
     public void initializePostConstructions() throws Exception {
-        dependencyFactory.initializePostConstructions(null);
+        dependencyInitiator.initializePostConstructions(null);
     }
 
     /**
@@ -199,18 +209,18 @@ public class AppContext {
      */
     @SuppressWarnings("unchecked")
     public <O> O getType(Class<O> type) {
-        return (O) dependencyFactory.getType(type);
+        return (O) dependencyInitiator.getType(type);
     }
 
     private <O extends Inspector<?, ?>> O getAnalyzer(Class<O> cls) {
-        return dependencyFactory.getInspetor(cls);
+        return dependencyInitiator.getInspetor(cls);
     }
 
     /**
      * Function of calling shutdown hook
      */
     public void closeContext() {
-        dependencyFactory.clear();
+        dependencyInitiator.clear();
         log.info("Context is closed");
     }
 }

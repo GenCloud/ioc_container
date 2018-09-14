@@ -16,24 +16,39 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.di.context.contexts.resolvers.sensibles;
+package org.di.threads.utils;
 
-import org.di.context.contexts.AppContext;
-import org.di.context.contexts.resolvers.Sensible;
-import org.di.context.excepton.IoCException;
+import org.di.threads.factory.model.AbstractTask;
+
+import java.lang.reflect.Method;
 
 /**
- * Any component can implement this interface to obtain information about the running {@link AppContext}.
- *
  * @author GenCloud
- * @date 13.09.2018
+ * @date 15.09.2018
  */
-public interface ContextSensible extends Sensible {
-    /**
-     * Set the {@link AppContext} to component.
-     *
-     * @param appContext initialized application contexts
-     * @throws IoCException throw if contexts throwing by methods
-     */
-    void contextInform(AppContext appContext) throws IoCException;
+public class GeneralTask extends AbstractTask<Void> implements Runnable {
+    private final Object o;
+    private final Method method;
+
+    public GeneralTask(Object o, Method method) {
+        this.o = o;
+        this.method = method;
+    }
+
+    @Override
+    public Void call() throws Exception {
+        final boolean oldAccess = method.isAccessible();
+        method.setAccessible(true);
+        method.invoke(o);
+        method.setAccessible(oldAccess);
+        return null;
+    }
+
+    @Override
+    public void run() {
+        try {
+            call();
+        } catch (Exception ignored) {
+        }
+    }
 }

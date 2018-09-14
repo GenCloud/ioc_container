@@ -16,30 +16,23 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.di.context.contexts.analyze.results;
+package org.di.context.contexts.sensibles;
+
+import org.di.context.contexts.AppContext;
+import org.di.context.excepton.IoCException;
 
 /**
+ * Any component can implement this interface to obtain information about the running {@link AppContext}.
+ *
  * @author GenCloud
  * @date 13.09.2018
  */
-public enum SensibleInspectionResult {
+public interface ContextSensible extends Sensible {
     /**
+     * Set the {@link AppContext} to component.
      *
+     * @param appContext initialized application contexts
+     * @throws IoCException throw if contexts throwing by methods
      */
-    SENSIBLE_NOTHING,
-
-    /**
-     *
-     */
-    SENSIBLE_CONTEXT_INJECTION,
-
-    /**
-     *
-     */
-    SENSIBLE_THREAD_FACTORY,
-
-    /**
-     *
-     */
-    SENSIBLE_ENVIRONMENT
+    void contextInform(AppContext appContext) throws IoCException;
 }

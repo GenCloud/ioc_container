@@ -6,7 +6,7 @@ import org.di.context.annotations.ScanPackage;
 import org.di.context.annotations.modules.ThreadingModule;
 import org.di.context.contexts.AppContext;
 import org.di.context.contexts.runner.IoCStarter;
-import org.di.context.factories.DependencyFactory;
+import org.di.context.factories.DependencyInitiator;
 import org.di.test.components.*;
 import org.di.test.components.abstrac.AbstractComponent;
 import org.di.test.components.abstrac.TestAbstractComponent;
@@ -50,17 +50,17 @@ public class MainTest extends Assert {
 
     @Test
     public void a_printStatistic() {
-        DependencyFactory dependencyFactory = appContext.getDependencyFactory();
-        log.info("Initializing singleton types - {}", dependencyFactory.getSingletons().size());
-        log.info("Initializing proto types - {}", dependencyFactory.getPrototypes().size());
+        DependencyInitiator dependencyInitiator = appContext.getDependencyInitiator();
+        log.info("Initializing singleton types - {}", dependencyInitiator.getSingletons().size());
+        log.info("Initializing proto types - {}", dependencyInitiator.getPrototypes().size());
 
         log.info("For Each singleton types");
-        for (Object o : dependencyFactory.getSingletons().values()) {
+        for (Object o : dependencyInitiator.getSingletons().values()) {
             log.info("------- {}", o.getClass().getSimpleName());
         }
 
         log.info("For Each proto types");
-        for (Object o : dependencyFactory.getPrototypes().values()) {
+        for (Object o : dependencyInitiator.getPrototypes().values()) {
             log.info("------- {}", o.getClass().getSimpleName());
         }
     }
@@ -113,7 +113,7 @@ public class MainTest extends Assert {
     @Test
     public void e_testLazys() {
         log.info("Getting Lazy object from contexts");
-        final List<Object> lazys = appContext.getDependencyFactory().getSingletons()
+        final List<Object> lazys = appContext.getDependencyInitiator().getSingletons()
                 .values()
                 .stream()
                 .filter(o -> o.getClass().isAnnotationPresent(Lazy.class))

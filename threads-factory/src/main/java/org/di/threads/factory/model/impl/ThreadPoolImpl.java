@@ -18,7 +18,7 @@
  */
 package org.di.threads.factory.model.impl;
 
-import org.di.threads.factory.ThreadingComponent;
+import org.di.threads.factory.DefaultThreadingFactory;
 import org.di.threads.factory.model.interfaces.AsyncFuture;
 import org.di.threads.factory.model.interfaces.ScheduledAsyncFuture;
 import org.di.threads.factory.model.interfaces.Task;
@@ -47,7 +47,7 @@ public class ThreadPoolImpl implements ThreadPool {
      */
     private final ScheduledThreadPoolExecutor executor;
 
-    private final ThreadingComponent threadingComponent;
+    private final DefaultThreadingFactory defaultThreadingFactory;
     /**
      * List of active and pending futures
      */
@@ -57,10 +57,10 @@ public class ThreadPoolImpl implements ThreadPool {
      * @param name     pool name
      * @param executor backing {@link ScheduledThreadPoolExecutor}
      */
-    public ThreadPoolImpl(String name, ScheduledThreadPoolExecutor executor, ThreadingComponent threadingComponent) {
+    public ThreadPoolImpl(String name, ScheduledThreadPoolExecutor executor, DefaultThreadingFactory defaultThreadingFactory) {
         this.name = name;
         this.executor = executor;
-        this.threadingComponent = threadingComponent;
+        this.defaultThreadingFactory = defaultThreadingFactory;
     }
 
     @Override
@@ -99,7 +99,7 @@ public class ThreadPoolImpl implements ThreadPool {
 
     @Override
     public void dispose() {
-        threadingComponent.dispose(this);
+        defaultThreadingFactory.dispose(this);
     }
 
     @Override
@@ -115,6 +115,13 @@ public class ThreadPoolImpl implements ThreadPool {
     @Override
     public boolean isDisposed() {
         return executor.isShutdown();
+    }
+
+    @Override
+    public String toString() {
+        return "ThreadPoolImpl{" +
+                "name='" + name + '\'' +
+                '}';
     }
 }
 
