@@ -7,7 +7,7 @@
     <groupId>org.genfork</groupId>
     <artifactId>di_container</artifactId>
     <packaging>pom</packaging>
-    <version>0.0.2-STABLE</version>
+    <version>1.0.0.RELEASE</version>
 
     <modules>
         <module>context</module>
@@ -43,33 +43,6 @@
                 <version>3.7.1</version>
                 <configuration>
                     <outputEncoding>UTF-8</outputEncoding>
-                    <reportPlugins>
-                        <plugin>
-                            <groupId>org.apache.maven.plugins</groupId>
-                            <artifactId>maven-javadoc-plugin</artifactId>
-                            <version>2.8</version>
-                            <configuration>
-                                <encoding>UTF-8</encoding>
-                            </configuration>
-                        </plugin>
-                        <plugin>
-                            <groupId>org.apache.maven.plugins</groupId>
-                            <artifactId>maven-changelog-plugin</artifactId>
-                            <version>2.2</version>
-                            <configuration>
-                                <outputEncoding>UTF-8</outputEncoding>
-                            </configuration>
-                        </plugin>
-                        <plugin>
-                            <groupId>org.apache.maven.plugins</groupId>
-                            <artifactId>maven-jxr-plugin</artifactId>
-                            <version>2.3</version>
-                            <configuration>
-                                <inputEncoding>UTF-8</inputEncoding>
-                                <outputEncoding>UTF-8</outputEncoding>
-                            </configuration>
-                        </plugin>
-                    </reportPlugins>
                 </configuration>
                 <dependencies>
                     <dependency>
