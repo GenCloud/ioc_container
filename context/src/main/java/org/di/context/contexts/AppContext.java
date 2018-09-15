@@ -26,9 +26,12 @@ import org.di.context.contexts.resolvers.CommandLineArgumentResolver;
 import org.di.context.enviroment.loader.PropertiesLoader;
 import org.di.context.excepton.instantiate.IoCInstantiateException;
 import org.di.context.factories.DependencyInitiator;
+import org.di.context.factories.EventDispatcherFactory;
 import org.di.context.factories.config.ComponentProcessor;
 import org.di.context.factories.config.Factory;
 import org.di.context.factories.config.Inspector;
+import org.di.context.listeners.Listener;
+import org.di.context.listeners.events.OnContextDestroyEvent;
 import org.di.context.utils.factory.ReflectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,9 +52,28 @@ public class AppContext {
     private final static Logger log = LoggerFactory.getLogger(AppContext.class);
 
     /**
-     * Factory initialized contexts components
+     * Factory initialized contexts components.
      */
     private final DependencyInitiator dependencyInitiator = new DependencyInitiator(this);
+
+    /**
+     * Factory for dispatching events to listeners.
+     */
+    private EventDispatcherFactory dispatcherFactory;
+
+    public EventDispatcherFactory getDispatcherFactory() {
+        if (dispatcherFactory == null) {
+            final EventDispatcherFactory dispatcher = dependencyInitiator.findFactory(EventDispatcherFactory.class);
+            setDispatcherFactory(dispatcher);
+        }
+        return dispatcherFactory;
+    }
+
+    private void setDispatcherFactory(EventDispatcherFactory dispatcherFactory) {
+        if (this.dispatcherFactory == null) {
+            this.dispatcherFactory = dispatcherFactory;
+        }
+    }
 
     /**
      * @return dependencyFactory - factory initialized contexts components
@@ -169,7 +191,7 @@ public class AppContext {
      *
      * @param components - collection of components found in the classpatch
      */
-    public void initializeComponents(Set<Class<?>> components) {
+    public void initComponents(Set<Class<?>> components) {
         for (Class<?> component : components) {
             scanClass(component);
         }
@@ -196,12 +218,24 @@ public class AppContext {
      *
      * @throws Exception if class methods not invoked
      */
-    public void initializePostConstructions() throws Exception {
+    public void initPostConstructions() throws Exception {
         dependencyInitiator.initializePostConstructions(null);
     }
 
-    public void invokePostInitialization() {
-
+    /**
+     * Function of register class annotated {@link org.di.context.annotations.listeners.Listener}.
+     *
+     * @param o listeners
+     */
+    public void initListener(Object o) {
+        if (Listener.class.isAssignableFrom(o.getClass())) {
+            if (getDispatcherFactory() == null) {
+                final EventDispatcherFactory dispatcher = dependencyInitiator.findFactory(EventDispatcherFactory.class);
+                setDispatcherFactory(dispatcher);
+            }
+            dependencyInitiator.instantiateSensibles(o);
+            getDispatcherFactory().addListener((Listener) o);
+        }
     }
 
     /**
@@ -224,6 +258,7 @@ public class AppContext {
      * Function of calling shutdown hook
      */
     public void closeContext() {
+        getDispatcherFactory().fireEvent(new OnContextDestroyEvent(this));
         dependencyInitiator.clear();
         log.info("Context is closed");
     }

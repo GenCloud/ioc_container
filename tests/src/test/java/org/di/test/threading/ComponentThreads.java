@@ -35,7 +35,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @date 14.09.2018
  */
 @IoCComponent
-public class ComponentThreads implements ThreadFactorySensible<DefaultThreadingFactory> {
+public class ComponentThreads implements ThreadFactorySensible {
     private final Logger log = LoggerFactory.getLogger(AbstractTask.class);
     private final AtomicInteger atomicInteger = new AtomicInteger(0);
     private DefaultThreadingFactory defaultThreadingFactory;
@@ -52,8 +52,8 @@ public class ComponentThreads implements ThreadFactorySensible<DefaultThreadingF
     }
 
     @Override
-    public void threadFactoryInform(DefaultThreadingFactory defaultThreadingFactory) throws IoCException {
-        this.defaultThreadingFactory = defaultThreadingFactory;
+    public void threadFactoryInform(Object defaultThreadingFactory) throws IoCException {
+        this.defaultThreadingFactory = (DefaultThreadingFactory) defaultThreadingFactory;
     }
 
     @SimpleTask(startingDelay = 1, fixedInterval = 5)
