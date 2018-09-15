@@ -6,6 +6,6 @@ import org.di.context.excepton.IoCException;
  * @author GenCloud
  * @date 14.09.2018
  */
-public interface ThreadFactorySensible<F> extends Sensible {
-    void threadFactoryInform(F factory) throws IoCException;
+public interface ThreadFactorySensible extends Sensible {
+    void threadFactoryInform(Object factory) throws IoCException;
 }

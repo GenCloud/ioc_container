@@ -18,51 +18,44 @@
  */
 package org.di.threads.utils;
 
-import org.di.threads.factory.model.AbstractTask;
-
-import java.lang.reflect.Method;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author GenCloud
  * @date 15.09.2018
  */
-public class GeneralTask extends AbstractTask<Void> implements Runnable {
-    private final Object o;
-    private final Method method;
-    private final TaskProperties taskProperties;
+public class TaskProperties {
+    private long startingDelay;
+    private long fixedInterval;
+    private TimeUnit timeUnit;
 
-    public GeneralTask(Object o, Method method, TaskProperties taskProperties) {
-        this.o = o;
-        this.method = method;
-        this.taskProperties = taskProperties;
+    public TaskProperties(long startingDelay, long fixedInterval, TimeUnit timeUnit) {
+        this.startingDelay = startingDelay;
+        this.fixedInterval = fixedInterval;
+        this.timeUnit = timeUnit;
     }
 
-    public TaskProperties getTaskProperties() {
-        return taskProperties;
+    public long getStartingDelay() {
+        return startingDelay;
     }
 
-    public Object getObject() {
-        return o;
+    public void setStartingDelay(long startingDelay) {
+        this.startingDelay = startingDelay;
     }
 
-    public Method getMethod() {
-        return method;
+    public long getFixedInterval() {
+        return fixedInterval;
     }
 
-    @Override
-    public Void call() throws Exception {
-        final boolean oldAccess = method.isAccessible();
-        method.setAccessible(true);
-        method.invoke(o);
-        method.setAccessible(oldAccess);
-        return null;
+    public void setFixedInterval(long fixedInterval) {
+        this.fixedInterval = fixedInterval;
     }
 
-    @Override
-    public void run() {
-        try {
-            call();
-        } catch (Exception ignored) {
-        }
+    public TimeUnit getTimeUnit() {
+        return timeUnit;
+    }
+
+    public void setTimeUnit(TimeUnit timeUnit) {
+        this.timeUnit = timeUnit;
     }
 }

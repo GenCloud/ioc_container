@@ -200,6 +200,10 @@ public class AppContext {
         dependencyInitiator.initializePostConstructions(null);
     }
 
+    public void invokePostInitialization() {
+
+    }
+
     /**
      * Returns the component from the factory.
      * Depending on its type, the initialized component or an existing one.

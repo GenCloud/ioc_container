@@ -16,17 +16,36 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.di.context.listeners;
-
-import java.util.EventListener;
+package org.di.context.listeners.filter;
 
 /**
- * Interface to be implemented by application event listeners.
+ * OR filter that accepts all values in which at least one of filters return true.
  *
+ * @param <O> generic type
  * @author GenCloud
- * @date 04.09.2018
+ * @date 15.09.2018
  */
-@FunctionalInterface
-public interface Listener extends EventListener {
-    boolean dispatch(Event event);
+public class OrFilter<O> implements Filter<O> {
+    /**
+     * Filters.
+     */
+    private Filter<O>[] filters;
+
+    /**
+     * @param filters filters to be used with OR operator
+     */
+    @SafeVarargs
+    public OrFilter(Filter<O>... filters) {
+        this.filters = filters;
+    }
+
+    @Override
+    public boolean accept(O object) {
+        for (Filter<O> filter : filters) {
+            if (filter.accept(object)) {
+                return true;
+            }
+        }
+        return false;
+    }
 }

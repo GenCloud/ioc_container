@@ -28,11 +28,11 @@ import org.di.context.factories.config.ComponentProcessor;
 import org.di.threads.annotation.SimpleTask;
 import org.di.threads.factory.DefaultThreadingFactory;
 import org.di.threads.utils.GeneralTask;
+import org.di.threads.utils.TaskProperties;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -43,7 +43,7 @@ import java.util.stream.Collectors;
  * @date 13.09.2018
  */
 @Processor
-public class ThreadConfigureProcessor implements ComponentProcessor, ContextSensible, ThreadFactorySensible<DefaultThreadingFactory> {
+public class ThreadConfigureProcessor implements ComponentProcessor, ContextSensible, ThreadFactorySensible {
     private AppContext appContext;
     private DefaultThreadingFactory factory;
 
@@ -61,8 +61,8 @@ public class ThreadConfigureProcessor implements ComponentProcessor, ContextSens
     }
 
     @Override
-    public void threadFactoryInform(DefaultThreadingFactory factory) throws IoCException {
-        this.factory = factory;
+    public void threadFactoryInform(Object factory) throws IoCException {
+        this.factory = (DefaultThreadingFactory) factory;
     }
 
     @Override
@@ -96,29 +96,10 @@ public class ThreadConfigureProcessor implements ComponentProcessor, ContextSens
         long startingDelay = annotation.startingDelay();
         final long fixedInterval = annotation.fixedInterval();
         final TimeUnit timeUnit = annotation.unit();
+        final TaskProperties properties = new TaskProperties(startingDelay, fixedInterval, timeUnit);
+        final GeneralTask task = new GeneralTask(component, method, properties);
 
-        final GeneralTask task = new GeneralTask(component, method);
-
-        if (startingDelay < 0) {
-            startingDelay = 0;
-        }
-
-        if (startingDelay == 0 && fixedInterval != -1) {
-            final Future<?> future = factory.async(0, timeUnit, fixedInterval, task);
-            factory.initFuture(method.getName(), future);
-            return;
-        }
-
-        if (startingDelay > 0 && fixedInterval > 0) {
-            final Future<?> future = factory.async(startingDelay, timeUnit, fixedInterval, task);
-            factory.initFuture(method.getName(), future);
-            return;
-        }
-
-        if (fixedInterval == -1) {
-            final Future<?> future = factory.async(startingDelay, timeUnit, task);
-            factory.initFuture(method.getName(), future);
-        }
+        factory.addTask(task);
     }
 
     /**

@@ -28,7 +28,7 @@ import static java.lang.Thread.*;
  * @author GenCloud
  * @date 13.09.2018
  */
-@Property(prefix = "threads.")
+@Property(prefix = "ioc.threads.")
 public class ThreadingConfiguration {
     private String poolName;
 

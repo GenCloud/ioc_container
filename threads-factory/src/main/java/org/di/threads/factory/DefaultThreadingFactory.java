@@ -30,10 +30,14 @@ import org.di.threads.factory.model.interfaces.AsyncFuture;
 import org.di.threads.factory.model.interfaces.ScheduledAsyncFuture;
 import org.di.threads.factory.model.interfaces.Task;
 import org.di.threads.factory.model.interfaces.ThreadPool;
+import org.di.threads.utils.GeneralTask;
+import org.di.threads.utils.TaskProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -58,6 +62,8 @@ public class DefaultThreadingFactory implements Factory, ComponentDestroyable, E
     private ThreadPool pool;
 
     private final Map<String, Future<?>> futures = new HashMap<>();
+
+    private final List<GeneralTask> tasks = new ArrayList<>();
     /**
      * List of active thread pools
      */
@@ -80,13 +86,42 @@ public class DefaultThreadingFactory implements Factory, ComponentDestroyable, E
     }
 
     /**
-     * Instantiate working future in factory.
+     * Add found task to factory.
      *
-     * @param name   method name
-     * @param future running future
+     * @param task model of task
      */
-    public void initFuture(String name, Future<?> future) {
-        futures.put(name, future);
+    public void addTask(GeneralTask task) {
+        tasks.add(task);
+    }
+
+    /**
+     * Instantiate tasks in factory and start it.
+     */
+    public void initTasks() {
+        tasks.forEach(t -> {
+            final TaskProperties properties = t.getTaskProperties();
+            final TimeUnit timeUnit = properties.getTimeUnit();
+            if (properties.getStartingDelay() < 0) {
+                properties.setStartingDelay(0);
+            }
+
+            if (properties.getStartingDelay() == 0 && properties.getFixedInterval() != -1) {
+                final Future<?> future = async(0, timeUnit, properties.getFixedInterval(), t);
+                futures.put(t.getMethod().getName(), future);
+                return;
+            }
+
+            if (properties.getStartingDelay() > 0 && properties.getFixedInterval() > 0) {
+                final Future<?> future = async(properties.getStartingDelay(), timeUnit, properties.getFixedInterval(), t);
+                futures.put(t.getMethod().getName(), future);
+                return;
+            }
+
+            if (properties.getFixedInterval() == -1) {
+                final Future<?> future = async(properties.getStartingDelay(), timeUnit, t);
+                futures.put(t.getMethod().getName(), future);
+            }
+        });
     }
 
     /**

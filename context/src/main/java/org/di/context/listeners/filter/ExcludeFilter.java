@@ -16,17 +16,42 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.di.context.listeners;
+package org.di.context.listeners.filter;
 
-import java.util.EventListener;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
- * Interface to be implemented by application event listeners.
+ * And filter that accepts all values that are not in objects.
  *
+ * @param <O> object type
  * @author GenCloud
- * @date 04.09.2018
+ * @date 15.09.2018
  */
-@FunctionalInterface
-public interface Listener extends EventListener {
-    boolean dispatch(Event event);
+public class ExcludeFilter<O> implements Filter<O> {
+    /**
+     * The objects to be excluded.
+     */
+    private Set<Object> objects = new HashSet<>();
+
+    /**
+     * @param objects excluded objects
+     */
+    public ExcludeFilter(Object... objects) {
+        Collections.addAll(this.objects, objects);
+    }
+
+    /**
+     * @param objects excluded objects
+     */
+    public ExcludeFilter(Collection<Object> objects) {
+        this.objects.addAll(objects);
+    }
+
+    @Override
+    public boolean accept(O object) {
+        return !objects.contains(object);
+    }
 }

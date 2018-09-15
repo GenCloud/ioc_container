@@ -18,15 +18,21 @@
  */
 package org.di.context.listeners;
 
-import java.util.EventListener;
+import org.di.context.annotations.property.Property;
 
 /**
- * Interface to be implemented by application event listeners.
- *
  * @author GenCloud
- * @date 04.09.2018
+ * @date 15.09.2018
  */
-@FunctionalInterface
-public interface Listener extends EventListener {
-    boolean dispatch(Event event);
+@Property(prefix = "ioc.dispatcher.")
+public class EventDispatcherConfiguration {
+    private int availableDescriptors;
+
+    public int getAvailableDescriptors() {
+        return availableDescriptors;
+    }
+
+    public void setAvailableDescriptors(int availableDescriptors) {
+        this.availableDescriptors = availableDescriptors;
+    }
 }

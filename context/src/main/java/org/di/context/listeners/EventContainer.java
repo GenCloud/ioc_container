@@ -18,15 +18,38 @@
  */
 package org.di.context.listeners;
 
-import java.util.EventListener;
-
 /**
- * Interface to be implemented by application event listeners.
+ * Simple container that contains an event and a future.
  *
  * @author GenCloud
- * @date 04.09.2018
+ * @date 15.09.2018
  */
-@FunctionalInterface
-public interface Listener extends EventListener {
-    boolean dispatch(Event event);
+public class EventContainer {
+    /**
+     * Event.
+     */
+    private final Event event;
+    /**
+     * Future.
+     */
+    private final EventFutureImpl<? extends Event> future;
+
+    /**
+     * Create new instance.
+     *
+     * @param event  event
+     * @param future future
+     */
+    public EventContainer(Event event, EventFutureImpl<? extends Event> future) {
+        this.event = event;
+        this.future = future;
+    }
+
+    public Event getEvent() {
+        return event;
+    }
+
+    public EventFutureImpl<? extends Event> getFuture() {
+        return future;
+    }
 }

@@ -16,17 +16,44 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.di.context.listeners;
+package org.di.context.listeners.impl;
 
-import java.util.EventListener;
+import org.di.context.listeners.Event;
+import org.di.context.listeners.Listener;
 
 /**
- * Interface to be implemented by application event listeners.
+ * This listener will filter to only dispatch an certain type events.
  *
+ * @param <T> type filtered by this {@link Listener}
  * @author GenCloud
- * @date 04.09.2018
+ * @date 15.09.2018
  */
-@FunctionalInterface
-public interface Listener extends EventListener {
-    boolean dispatch(Event event);
+public abstract class TypedListener<T> implements Listener {
+    /**
+     * Type this listener will accept.
+     */
+    private final Class<T> type;
+
+    /**
+     * @param type type of accepted events
+     */
+    public TypedListener(Class<T> type) {
+        this.type = type;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public boolean dispatch(Event e) {
+        if (!type.isInstance(e)) {
+            return false;
+        }
+        return dispatch((T) e);
+    }
+
+    /**
+     * @param e event
+     * @return true to keep listener alive
+     * @see Listener#dispatch(Event)
+     */
+    protected abstract boolean dispatch(T e);
 }
