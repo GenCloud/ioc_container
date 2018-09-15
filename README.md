@@ -1,8 +1,18 @@
 ---
 
-## DI (IoC) Container realization
+# DI (IoC) Container realization
 
 [![Build Status](https://api.travis-ci.org/GenCloud/di_container.svg?branch=master)](https://api.travis-ci.org/GenCloud/di_container)
+### Functional
+- Introduction of dependencies through annotations;
+- lazy initialization of components (on demand);
+- built-in loader configuration files (formats: ini, xml, property);
+- The command line argument handler;
+- processing modules by creating factories;
+- built-in events and listeners;
+- embedded informants (Sensibles) to "inform" a component, factory, listener, processor (ComponentProcessor) about the fact that certain information must be loaded into the object depending on the informer;
+- a module for managing / creating a thread pool, declaring functions as executable tasks for some time and initializing them in the pool factory, as well as starting from the SimpleTask parameters.
+
 ### Intro
 Add IoC to your project. for maven projects just add this dependency:
 ```xml
@@ -117,7 +127,7 @@ Have to standards of type listeners:
  - TypedListener<T> - dispatching event by filter of T (event) or some objects
  
 # Modules
-## 1. Module 'threads-factory'
+### 1. Module 'threads-factory'
     
 ### Intro
 Add threads-factory module to your project. for maven projects just add this dependency:
@@ -156,7 +166,7 @@ A typical use of threads-factory module would be:
 2) Mark sample component of inheritance ThreadFactorySensible<F>
 ```java
     @IoCComponent
-    public class ComponentThreads implements ThreadFactorySensible<DefaultThreadingFactory> {
+    public class ComponentThreads implements ThreadFactorySensible {
         private final Logger log = LoggerFactory.getLogger(AbstractTask.class);
     
         private DefaultThreadingFactory defaultThreadingFactory; //Thread factory to instantiate by Sensibles
@@ -176,8 +186,8 @@ A typical use of threads-factory module would be:
         }
     
         @Override
-        public void threadFactoryInform(DefaultThreadingFactory defaultThreadingFactory) throws IoCException {
-            this.defaultThreadingFactory = defaultThreadingFactory;
+        public void threadFactoryInform(Object defaultThreadingFactory) throws IoCException {
+            this.defaultThreadingFactory = (DefaultThreadingFactory) defaultThreadingFactory;
         }
     
         // register method in runnable task and start running it
