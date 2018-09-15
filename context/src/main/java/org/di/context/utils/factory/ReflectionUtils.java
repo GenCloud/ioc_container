@@ -211,6 +211,42 @@ public class ReflectionUtils {
     }
 
     /**
+     * Find out the constructor that will be used for instantiation.
+     * <p>
+     * In all other cases an {@link IoCInstantiateException} is thrown.
+     *
+     * @param type the class of which the constructor is searched for.
+     * @param <O>  the generic type of the class.
+     * @return the constructor to use
+     * @throws IoCInstantiateException
+     */
+    @SuppressWarnings("unchecked")
+    public static <O> Constructor<O> findSampleConstructor(Class<O> type) throws IoCInstantiateException {
+        final Constructor<?>[] constructors = type.getConstructors();
+
+        if (constructors.length > 0) {
+            final List<Constructor<?>> collect = Arrays
+                    .stream(constructors)
+                    .collect(Collectors.toList());
+
+            if (collect.size() == 0) {
+                return null;
+            }
+
+            if (collect.size() > 1) {
+                throw new IoCInstantiateException("IoC can't create an instance of the class [" + type + "]. " +
+                        "There are more than one public constructors so I don't know which to use. " +
+                        "Impossibility of injection into the standard class constructor. " +
+                        "Use the IoCDependency annotation to introduce dependencies!");
+            } else {
+                return (Constructor<O>) collect.get(0);
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Find out the specific fields annotated by {@link IoCDependency} that will be used for instantiation.
      *
      * @param type type for find declared fields

@@ -18,7 +18,6 @@
  */
 package org.di.test.listeners;
 
-import org.di.context.annotations.IoCComponent;
 import org.di.context.listeners.Event;
 import org.di.context.listeners.Listener;
 import org.di.context.listeners.events.OnComponentInitEvent;
@@ -32,7 +31,6 @@ import org.slf4j.LoggerFactory;
  * @date 15.09.2018
  */
 @org.di.context.annotations.listeners.Listener
-@IoCComponent
 public class TestListener implements Listener {
     private final Logger log = LoggerFactory.getLogger(TestListener.class);
 

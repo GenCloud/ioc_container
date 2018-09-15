@@ -9,6 +9,9 @@ import org.di.context.excepton.IoCException;
  * @date 14.09.2018
  */
 public interface Factory {
+    String DEFAULT_DATABASE_FACTORY = "org.di.database.factory.DefaultDataBaseFactory";
+
+    String DEFAULT_THREAD_FACTORY = "org.di.threads.factory.DefaultThreadingFactory";
     /**
      * Default function for initialize installed object factory.
      *

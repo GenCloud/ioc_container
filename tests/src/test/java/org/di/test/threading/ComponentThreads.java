@@ -21,6 +21,7 @@ package org.di.test.threading;
 import org.di.context.annotations.IoCComponent;
 import org.di.context.contexts.sensibles.ThreadFactorySensible;
 import org.di.context.excepton.IoCException;
+import org.di.context.factories.config.Factory;
 import org.di.threads.annotation.SimpleTask;
 import org.di.threads.factory.DefaultThreadingFactory;
 import org.di.threads.factory.model.AbstractTask;
@@ -52,7 +53,7 @@ public class ComponentThreads implements ThreadFactorySensible {
     }
 
     @Override
-    public void threadFactoryInform(Object defaultThreadingFactory) throws IoCException {
+    public void factoryInform(Factory defaultThreadingFactory) throws IoCException {
         this.defaultThreadingFactory = (DefaultThreadingFactory) defaultThreadingFactory;
     }
 

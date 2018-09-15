@@ -21,6 +21,7 @@ package org.di.threads.listeners;
 import org.di.context.annotations.listeners.Listener;
 import org.di.context.contexts.sensibles.ThreadFactorySensible;
 import org.di.context.excepton.IoCException;
+import org.di.context.factories.config.Factory;
 import org.di.context.listeners.events.OnContextIsInitializedEvent;
 import org.di.context.listeners.impl.TypedListener;
 import org.di.threads.factory.DefaultThreadingFactory;
@@ -33,11 +34,8 @@ import org.di.threads.factory.DefaultThreadingFactory;
 public class ContextInitListener extends TypedListener<OnContextIsInitializedEvent> implements ThreadFactorySensible {
     private DefaultThreadingFactory defaultThreadingFactory;
 
-    /**
-     * @param type type of accepted events
-     */
-    public ContextInitListener(Class<OnContextIsInitializedEvent> type) {
-        super(type);
+    public ContextInitListener() {
+        super(OnContextIsInitializedEvent.class);
     }
 
     @Override
@@ -47,7 +45,7 @@ public class ContextInitListener extends TypedListener<OnContextIsInitializedEve
     }
 
     @Override
-    public void threadFactoryInform(Object defaultThreadingFactory) throws IoCException {
+    public void factoryInform(Factory defaultThreadingFactory) throws IoCException {
         this.defaultThreadingFactory = (DefaultThreadingFactory) defaultThreadingFactory;
     }
 }

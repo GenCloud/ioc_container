@@ -36,6 +36,7 @@ public abstract class TypedListener<T> implements Listener {
 
     /**
      * @param type type of accepted events
+     * @notice recommend insert full class type of {@param <T>}
      */
     public TypedListener(Class<T> type) {
         this.type = type;
@@ -45,7 +46,7 @@ public abstract class TypedListener<T> implements Listener {
     @SuppressWarnings("unchecked")
     public boolean dispatch(Event e) {
         if (!type.isInstance(e)) {
-            return false;
+            return true;
         }
         return dispatch((T) e);
     }

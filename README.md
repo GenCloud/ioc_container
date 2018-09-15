@@ -31,7 +31,7 @@ Add IoC to your project. for maven projects just add this dependency:
         <dependency>
             <groupId>org.genfork</groupId>
             <artifactId>context</artifactId>
-            <version>1.0.0.RELEASE</version>
+            <version>1.0.1.STABLE</version>
         </dependency>
     </dependencies>
 ```
@@ -147,7 +147,7 @@ Add threads-factory module to your project. for maven projects just add this dep
        <dependency>
            <groupId>org.genfork</groupId>
            <artifactId>threads-factory</artifactId>
-           <version>1.0.0.RELEASE</version>
+           <version>1.0.1.STABLE</version>
        </dependency>
    </dependencies>
 ```

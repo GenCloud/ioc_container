@@ -7,11 +7,12 @@
     <groupId>org.genfork</groupId>
     <artifactId>di_container</artifactId>
     <packaging>pom</packaging>
-    <version>1.0.0.RELEASE</version>
+    <version>1.0.1.STABLE</version>
 
     <modules>
         <module>context</module>
         <module>threads-factory</module>
+        <module>database-factory</module>
     </modules>
 
     <properties>

@@ -25,6 +25,7 @@ import org.di.context.contexts.sensibles.ThreadFactorySensible;
 import org.di.context.excepton.IoCException;
 import org.di.context.excepton.instantiate.IoCInstantiateException;
 import org.di.context.factories.config.ComponentProcessor;
+import org.di.context.factories.config.Factory;
 import org.di.threads.annotation.SimpleTask;
 import org.di.threads.factory.DefaultThreadingFactory;
 import org.di.threads.utils.GeneralTask;
@@ -61,7 +62,7 @@ public class ThreadConfigureProcessor implements ComponentProcessor, ContextSens
     }
 
     @Override
-    public void threadFactoryInform(Object factory) throws IoCException {
+    public void factoryInform(Factory factory) throws IoCException {
         this.factory = (DefaultThreadingFactory) factory;
     }
 

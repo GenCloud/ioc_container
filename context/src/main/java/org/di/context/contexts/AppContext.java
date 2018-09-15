@@ -32,12 +32,17 @@ import org.di.context.factories.config.Factory;
 import org.di.context.factories.config.Inspector;
 import org.di.context.listeners.Listener;
 import org.di.context.listeners.events.OnContextDestroyEvent;
+import org.di.context.listeners.impl.FilteredListener;
+import org.di.context.listeners.impl.TypedListener;
 import org.di.context.utils.factory.ReflectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Parameter;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -185,6 +190,49 @@ public class AppContext {
     }
 
     /**
+     * Function of register class annotated {@link org.di.context.annotations.listeners.Listener}.
+     *
+     * @param listeners collection listeners
+     */
+    @SuppressWarnings("unchecked")
+    public void initListener(Set<Class<?>> listeners) throws Exception {
+        if (getDispatcherFactory() == null) {
+            final EventDispatcherFactory dispatcher = dependencyInitiator.findFactory(EventDispatcherFactory.class);
+            setDispatcherFactory(dispatcher);
+        }
+
+        if (!listeners.isEmpty()) {
+            for (Class<?> type : listeners) {
+                if (Listener.class.isAssignableFrom(type)) {
+                    Listener instance;
+                    if (TypedListener.class.isAssignableFrom(type)
+                            || FilteredListener.class.isAssignableFrom(type)) {
+                        final Constructor<? extends Listener> constructor =
+                                (Constructor<? extends Listener>) ReflectionUtils.findSampleConstructor(type);
+                        assert constructor != null;
+                        instance = constructor.newInstance(Arrays
+                                .stream(constructor.getParameters())
+                                .map(this::mapConstType).toArray());
+                    } else {
+                        instance = (Listener) ReflectionUtils.instantiate(type);
+                    }
+                    dependencyInitiator.instantiateSensibles(instance);
+                    getDispatcherFactory().addListener(instance);
+                }
+            }
+        }
+    }
+
+    private Object mapConstType(Parameter p) {
+        final Class<?> type = p.getType();
+        if (type == Class.class || type.isPrimitive()) {
+            return type;
+        } else {
+            return ReflectionUtils.instantiate(type);
+        }
+    }
+
+    /**
      * The main function for initializing component dependencies.
      * <p>
      * Starts the analyzers and, if properly executed, starts the initialization of components.
@@ -222,21 +270,6 @@ public class AppContext {
         dependencyInitiator.initializePostConstructions(null);
     }
 
-    /**
-     * Function of register class annotated {@link org.di.context.annotations.listeners.Listener}.
-     *
-     * @param o listeners
-     */
-    public void initListener(Object o) {
-        if (Listener.class.isAssignableFrom(o.getClass())) {
-            if (getDispatcherFactory() == null) {
-                final EventDispatcherFactory dispatcher = dependencyInitiator.findFactory(EventDispatcherFactory.class);
-                setDispatcherFactory(dispatcher);
-            }
-            dependencyInitiator.instantiateSensibles(o);
-            getDispatcherFactory().addListener((Listener) o);
-        }
-    }
 
     /**
      * Returns the component from the factory.

@@ -47,6 +47,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.di.context.contexts.analyze.results.SensibleInspectionResult.*;
+import static org.di.context.factories.config.Factory.DEFAULT_THREAD_FACTORY;
 
 /**
  * Simple template class for implementations that creates a singleton or
@@ -461,8 +462,8 @@ public class DependencyInitiator {
         if (result == SENSIBLE_THREAD_FACTORY) {
             Class<Factory> factoryClass;
             try {
-                factoryClass = (Class<Factory>) Class.forName("org.di.threads.factory.DefaultThreadingFactory");
-                ((ThreadFactorySensible) instance).threadFactoryInform(findFactory(factoryClass));
+                factoryClass = (Class<Factory>) Class.forName(DEFAULT_THREAD_FACTORY);
+                ((ThreadFactorySensible) instance).factoryInform(findFactory(factoryClass));
             } catch (ClassNotFoundException e) {
                 throw new IoCInstantiateException("IoCError - Unavailable create instance of type [org.di.threads.factory.DefaultThreadingFactory]." +
                         "Could not find thread factory class in context. Maybe unresolvable module?");
@@ -614,7 +615,7 @@ public class DependencyInitiator {
      * @param type type for instantiation
      */
     @SuppressWarnings("unchecked")
-    private <O> O instantiateConstructorType(Class<O> type) {
+    public <O> O instantiateConstructorType(Class<O> type) {
         final Constructor<O> oConstructor = ReflectionUtils.findConstructor(type);
 
         if (oConstructor != null) {

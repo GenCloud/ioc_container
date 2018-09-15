@@ -20,6 +20,7 @@ package org.di.context.contexts.runner;
 
 import org.apache.commons.lang3.time.StopWatch;
 import org.di.context.annotations.IoCComponent;
+import org.di.context.annotations.listeners.Listener;
 import org.di.context.annotations.modules.ThreadingModule;
 import org.di.context.annotations.property.Property;
 import org.di.context.contexts.AppContext;
@@ -154,6 +155,7 @@ public class IoCStarter {
         moduleInfo.setProcessors(reflections.getSubTypesOf(ComponentProcessor.class));
         moduleInfo.setResolvers(reflections.getSubTypesOf(CommandLineArgumentResolver.class));
         moduleInfo.setFactories(reflections.getSubTypesOf(Factory.class));
+        moduleInfo.setListeners(reflections.getTypesAnnotatedWith(Listener.class));
         return moduleInfo;
     }
 
@@ -174,6 +176,7 @@ public class IoCStarter {
         context.initEnvironment(info.getProperties());
         context.initFactories(info.getFactories());
         context.initProcessors(info.getProcessors());
+        context.initListener(info.getListeners());
         context.initComponents(info.getComponents());
 
         context.initPostConstructions();
@@ -189,6 +192,7 @@ public class IoCStarter {
         private Set<Class<? extends ComponentProcessor>> processors;
         private Set<Class<? extends CommandLineArgumentResolver>> resolvers;
         private Set<Class<? extends Factory>> factories;
+        private Set<Class<?>> listeners;
 
         Set<Class<?>> getComponents() {
             return components;
@@ -236,6 +240,14 @@ public class IoCStarter {
 
         void setFactories(Set<Class<? extends Factory>> factories) {
             this.factories = factories;
+        }
+
+        Set<Class<?>> getListeners() {
+            return listeners;
+        }
+
+        void setListeners(Set<Class<?>> listeners) {
+            this.listeners = listeners;
         }
     }
 
