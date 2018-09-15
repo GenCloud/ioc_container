@@ -27,6 +27,8 @@ import org.di.context.contexts.resolvers.CommandLineArgumentResolver;
 import org.di.context.factories.config.ComponentProcessor;
 import org.di.context.factories.config.Factory;
 import org.di.context.factories.config.Inspector;
+import org.di.context.listeners.events.OnContextIsInitializedEvent;
+import org.di.context.listeners.events.OnContextStartedEvent;
 import org.di.context.utils.factory.ReflectionUtils;
 import org.reflections.Reflections;
 import org.slf4j.Logger;
@@ -86,6 +88,7 @@ public class IoCStarter {
         try {
             log.info("Start initialization of contexts app");
             appContext = initializeContext(mainClasses, args);
+            appContext.getDispatcherFactory().fireEvent(new OnContextStartedEvent(appContext));
         } catch (Exception e) {
             final String msg = e.getMessage();
             log.error("Incorrect start: {}", msg, e);
@@ -117,6 +120,7 @@ public class IoCStarter {
         }
 
         Runtime.getRuntime().addShutdownHook(new ShutdownHook(context));
+        context.getDispatcherFactory().fireEvent(new OnContextIsInitializedEvent(context));
         return context;
     }
 
@@ -170,9 +174,9 @@ public class IoCStarter {
         context.initEnvironment(info.getProperties());
         context.initFactories(info.getFactories());
         context.initProcessors(info.getProcessors());
-        context.initializeComponents(info.getComponents());
+        context.initComponents(info.getComponents());
 
-        context.initializePostConstructions();
+        context.initPostConstructions();
     }
 
     /**

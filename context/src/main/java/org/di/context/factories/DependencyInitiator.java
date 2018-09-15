@@ -35,6 +35,7 @@ import org.di.context.contexts.sensibles.ThreadFactorySensible;
 import org.di.context.excepton.instantiate.IoCInstantiateException;
 import org.di.context.excepton.starter.IoCStopException;
 import org.di.context.factories.config.*;
+import org.di.context.listeners.events.OnComponentInitEvent;
 import org.di.context.utils.factory.ReflectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -125,7 +126,7 @@ public class DependencyInitiator {
     /**
      * @return initialized application contexts
      */
-    public AppContext getAppContext() {
+    private AppContext getAppContext() {
         return appContext;
     }
 
@@ -435,7 +436,7 @@ public class DependencyInitiator {
      *
      * @param instance instance of component
      */
-    private void instantiateSensibles(Object instance) {
+    public void instantiateSensibles(Object instance) {
         final SensibleInjectInspector inspector = getInspetor(SensibleInjectInspector.class);
         final List<SensibleInspectionResult> result = inspector.inspect(instance);
         if (result.size() == 1) {
@@ -740,6 +741,12 @@ public class DependencyInitiator {
         } else if (isPrototype(instance.getClass())) {
             prototypes.put(name, instance);
         }
+
+        if (findFactory(EventDispatcherFactory.class) == null) {
+            return;
+        }
+
+        appContext.getDispatcherFactory().fireEvent(new OnComponentInitEvent(name, instance));
     }
 
     /**
@@ -952,7 +959,7 @@ public class DependencyInitiator {
      * @return if factory not null
      */
     @SuppressWarnings("unchecked")
-    private <O extends Factory> O findFactory(Class<O> type) {
+    public <O extends Factory> O findFactory(Class<O> type) {
         final Factory factory = (Factory) getType(type);
         if (factory != null) {
             return (O) factory;

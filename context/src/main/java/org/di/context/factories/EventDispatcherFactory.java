@@ -18,10 +18,10 @@
  */
 package org.di.context.factories;
 
-import org.di.context.contexts.AppContext;
-import org.di.context.contexts.sensibles.ContextSensible;
 import org.di.context.contexts.sensibles.EnvironmentSensible;
 import org.di.context.excepton.IoCException;
+import org.di.context.excepton.starter.IoCStopException;
+import org.di.context.factories.config.ComponentDestroyable;
 import org.di.context.factories.config.Factory;
 import org.di.context.listeners.*;
 import org.slf4j.Logger;
@@ -32,6 +32,7 @@ import java.util.Iterator;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
@@ -41,18 +42,22 @@ import java.util.concurrent.TimeUnit;
  * @author GenCloud
  * @date 15.09.2018
  */
-public class EventDispatcherFactory implements Factory, ContextSensible, EnvironmentSensible<EventDispatcherConfiguration> {
+public class EventDispatcherFactory implements Factory, ComponentDestroyable,
+        EnvironmentSensible<EventDispatcherConfiguration> {
     private static final Logger log = LoggerFactory.getLogger(EventDispatcherFactory.class);
-    private final Set<Listener> globalListeners = new HashSet<>();
-    private AppContext appContext;
+
+    private Set<Listener> globalListeners = new HashSet<>();
+
     private Queue<EventContainer> events = new ConcurrentLinkedQueue<>();
 
     private EventDispatcherConfiguration eventDispatcherConfiguration;
 
+    private ScheduledFuture<?> future;
+
     @Override
     public void initialize() throws IoCException {
         final ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(eventDispatcherConfiguration.getAvailableDescriptors());
-        executor.scheduleAtFixedRate(new QueueScheduling(), 0, 10, TimeUnit.MILLISECONDS);
+        future = executor.scheduleAtFixedRate(new QueueScheduling(), 0, 10, TimeUnit.MILLISECONDS);
     }
 
     /**
@@ -114,13 +119,18 @@ public class EventDispatcherFactory implements Factory, ContextSensible, Environ
     }
 
     @Override
-    public void contextInform(AppContext appContext) throws IoCException {
-        this.appContext = appContext;
+    public void environmentInform(EventDispatcherConfiguration eventDispatcherConfiguration) throws IoCException {
+        this.eventDispatcherConfiguration = eventDispatcherConfiguration;
     }
 
     @Override
-    public void environmentInform(EventDispatcherConfiguration eventDispatcherConfiguration) throws IoCException {
-        this.eventDispatcherConfiguration = eventDispatcherConfiguration;
+    public void destroy() throws IoCStopException {
+        future.cancel(true);
+        future = null;
+        events.clear();
+        events = null;
+        globalListeners.clear();
+        globalListeners = null;
     }
 
     private class QueueScheduling implements Runnable {
@@ -130,8 +140,9 @@ public class EventDispatcherFactory implements Factory, ContextSensible, Environ
             while ((event = events.poll()) != null) {
                 synchronized (event) {
                     try {
-                        if (event.getFuture().isCancelled())
+                        if (event.getFuture().isCancelled()) {
                             continue;
+                        }
 
                         if (log.isDebugEnabled()) {
                             log.debug("Dispatching event {}", event.getEvent());

@@ -80,6 +80,6 @@ public class ClassInspector implements Inspector<ClassInspectionResult, Class<?>
 
     @Override
     public boolean supportFor(Class<?> tested) {
-        return !tested.isAnnotation() & !tested.isArray() && !tested.isEnum();
+        return !tested.isArray() && !tested.isEnum();
     }
 }
