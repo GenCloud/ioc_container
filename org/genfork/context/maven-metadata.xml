@@ -3,10 +3,10 @@
   <groupId>org.genfork</groupId>
   <artifactId>context</artifactId>
   <versioning>
-    <release>1.0.0.RELEASE</release>
+    <release>1.0.1.STABLE</release>
     <versions>
-      <version>1.0.0.RELEASE</version>
+      <version>1.0.1.STABLE</version>
     </versions>
-    <lastUpdated>20180915125945</lastUpdated>
+    <lastUpdated>20180916161124</lastUpdated>
   </versioning>
 </metadata>
