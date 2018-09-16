@@ -28,10 +28,8 @@ import org.di.context.contexts.analyze.impl.PostConstructInspector;
 import org.di.context.contexts.analyze.impl.SensibleInjectInspector;
 import org.di.context.contexts.analyze.results.ClassInspectionResult;
 import org.di.context.contexts.analyze.results.SensibleInspectionResult;
-import org.di.context.contexts.sensibles.ContextSensible;
-import org.di.context.contexts.sensibles.EnvironmentSensible;
-import org.di.context.contexts.sensibles.Sensible;
-import org.di.context.contexts.sensibles.ThreadFactorySensible;
+import org.di.context.contexts.sensibles.*;
+import org.di.context.enviroment.configurations.CacheConfigurations;
 import org.di.context.excepton.instantiate.IoCInstantiateException;
 import org.di.context.excepton.starter.IoCStopException;
 import org.di.context.factories.config.*;
@@ -47,7 +45,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.di.context.contexts.analyze.results.SensibleInspectionResult.*;
-import static org.di.context.factories.config.Factory.DEFAULT_THREAD_FACTORY;
+import static org.di.context.factories.config.Factory.defaultThreadFactory;
 
 /**
  * Simple template class for implementations that creates a singleton or
@@ -116,7 +114,7 @@ public class DependencyInitiator {
     private AppContext appContext;
 
     /**
-     * Intantiate dependency factory with contexts.
+     * Intantiate dependency factories with contexts.
      *
      * @param appContext application contexts
      */
@@ -136,7 +134,7 @@ public class DependencyInitiator {
      *
      * @param type             type of the component to retrieve
      * @param postConstruction not initialize prototype type if param is true
-     * @return instance of object from factory
+     * @return instance of object from factories
      */
     private Object getType(Class<?> type, boolean postConstruction) {
         final ClassInspectionResult result = classAnalyze(type);
@@ -173,7 +171,7 @@ public class DependencyInitiator {
      * Return an instance, which may be shared or independent, of the specified component.
      *
      * @param type type of the component to retrieve
-     * @return instance of object from factory
+     * @return instance of object from factories
      */
     public Object getType(Class<?> type) {
         return getType(type, false);
@@ -219,12 +217,12 @@ public class DependencyInitiator {
     }
 
     /**
-     * Function object instantiation in the factory.
+     * Function object instantiation in the factories.
      *
      * @param request type to init instance
      * @param result  result of class analyzer
      * @param <O>     the generic type of the interface.
-     * @return instantiated object in factory
+     * @return instantiated object in factories
      */
     @SuppressWarnings("unchecked")
     public <O> O instantiate(Class<O> request, ClassInspectionResult result) {
@@ -240,13 +238,13 @@ public class DependencyInitiator {
     }
 
     /**
-     * Function object instantiation in the factory.
+     * Function object instantiation in the factories.
      *
      * @param request type to init instance
      * @param parent  type-owner of {@param request}
      * @param result  result of class analyzer
      * @param <O>     the generic type of the interface.
-     * @return instantiated object in factory
+     * @return instantiated object in factories
      */
     @SuppressWarnings("unchecked")
     private <O> O instantiate(Class<O> request, Class<?> parent, ClassInspectionResult result) {
@@ -270,7 +268,7 @@ public class DependencyInitiator {
     }
 
     /**
-     * Search function for an instantiated object in the factory.
+     * Search function for an instantiated object in the factories.
      *
      * @param requestedType type to get its initialized instance already
      * @param result        result of class analyzer
@@ -460,13 +458,16 @@ public class DependencyInitiator {
         }
 
         if (result == SENSIBLE_THREAD_FACTORY) {
-            Class<Factory> factoryClass;
-            try {
-                factoryClass = (Class<Factory>) Class.forName(DEFAULT_THREAD_FACTORY);
-                ((ThreadFactorySensible) instance).factoryInform(findFactory(factoryClass));
-            } catch (ClassNotFoundException e) {
-                throw new IoCInstantiateException("IoCError - Unavailable create instance of type [org.di.threads.factory.DefaultThreadingFactory]." +
-                        "Could not find thread factory class in context. Maybe unresolvable module?");
+            Class<Factory> factoryClass = defaultThreadFactory();
+            ((ThreadFactorySensible) instance).factoryInform(findFactory(factoryClass));
+        }
+
+        if (result == SENSIBLE_CACHE) {
+            final CacheConfigurations configurations = findEnvironment(CacheConfigurations.class);
+            assert configurations != null;
+            final Factory factory = findFactory(configurations.getFactoryClass());
+            if (factory != null) {
+                ((CacheFactorySensible) instance).factoryInform(factory);
             }
         }
 
@@ -942,7 +943,7 @@ public class DependencyInitiator {
      *
      * @param collection of classes inherited {@link Factory}
      */
-    public void addFactories(Set<Class<? extends Factory>> collection) {
+    public void addFactories(List<Class<? extends Factory>> collection) {
         for (Class<? extends Factory> f : collection) {
             if (isSingleton(f)) {
                 final Factory o = instantiate(f, classAnalyze(f));
@@ -955,9 +956,9 @@ public class DependencyInitiator {
     /**
      * Find factories in context.
      *
-     * @param type type of factory for find
+     * @param type type of factories for find
      * @param <O>  the generic type of the class.
-     * @return if factory not null
+     * @return if factories not null
      */
     @SuppressWarnings("unchecked")
     public <O extends Factory> O findFactory(Class<O> type) {

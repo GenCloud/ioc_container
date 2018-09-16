@@ -28,8 +28,6 @@ gradle.properties
 # Maven target directory
 target/
 
-cache/
-
 logs/
 
 *.jar

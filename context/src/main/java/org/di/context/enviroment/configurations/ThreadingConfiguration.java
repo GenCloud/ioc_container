@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.di.threads.configuration;
+package org.di.context.enviroment.configurations;
 
 import org.di.context.annotations.property.Property;
 

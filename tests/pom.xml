@@ -22,5 +22,10 @@
             <artifactId>threads-factory</artifactId>
             <version>1.0.1.STABLE</version>
         </dependency>
+        <dependency>
+            <groupId>org.genfork</groupId>
+            <artifactId>cache-factory</artifactId>
+            <version>1.0.1.STABLE</version>
+        </dependency>
     </dependencies>
 </project>

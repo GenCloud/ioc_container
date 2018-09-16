@@ -33,7 +33,7 @@ import java.lang.annotation.*;
 public @interface IoCComponent {
     /**
      * If the value is redefined, then the component (class) will be placed in
-     * the injection factory by its value, otherwise the original class name will be used.
+     * the injection factories by its value, otherwise the original class name will be used.
      *
      * @return the name of the component (class), or the null value
      */

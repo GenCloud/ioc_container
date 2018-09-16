@@ -19,8 +19,10 @@
 package org.di.context.contexts.runner;
 
 import org.apache.commons.lang3.time.StopWatch;
+import org.di.context.annotations.Factories;
 import org.di.context.annotations.IoCComponent;
 import org.di.context.annotations.listeners.Listener;
+import org.di.context.annotations.modules.CacheModule;
 import org.di.context.annotations.modules.ThreadingModule;
 import org.di.context.annotations.property.Property;
 import org.di.context.contexts.AppContext;
@@ -35,9 +37,7 @@ import org.reflections.Reflections;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -113,32 +113,32 @@ public class IoCStarter {
     private AppContext initializeContext(Class<?>[] mainClasses, String... args) throws Exception {
         final AppContext context = new AppContext();
         for (Class<?> mainSource : mainClasses) {
-            final List<String> modulePackages = getModulePaths(mainSource);
-            final String[] packages = modulePackages.toArray(new String[0]);
+
+            final List<String> list = new ArrayList<>();
+            if (mainSource.isAnnotationPresent(ThreadingModule.class)) {
+                list.add("org.di.threads");
+            }
+
+            if (mainSource.isAnnotationPresent(CacheModule.class)) {
+                list.add("org.di.cache");
+            }
+
+            List<Class<? extends Factory>> factories = Collections.emptyList();
+            if (mainSource.isAnnotationPresent(Factories.class)) {
+                final Factories annotation = mainSource.getAnnotation(Factories.class);
+                factories = new ArrayList<>(Arrays.asList(annotation.enabled()));
+            }
+
+            final String[] packages = list.toArray(new String[0]);
             final Reflections reflections = ReflectionUtils.configureScanner(packages, mainSource);
             final ModuleInfo info = getModuleInfo(reflections);
+            info.setFactories(factories);
             initializeModule(context, info, args);
         }
 
         Runtime.getRuntime().addShutdownHook(new ShutdownHook(context));
         context.getDispatcherFactory().fireEvent(new OnContextIsInitializedEvent(context));
         return context;
-    }
-
-    /**
-     * Get installed module packages.
-     * <p>
-     * todo:13.09.18:rework me - come up with an idea for implementing auto-detection
-     *
-     * @param mainSource the classes to inspect
-     * @return collection of packages
-     */
-    private List<String> getModulePaths(Class<?> mainSource) {
-        final List<String> list = new ArrayList<>();
-        if (mainSource.isAnnotationPresent(ThreadingModule.class)) {
-            list.add("org.di.threads");
-        }
-        return list;
     }
 
     /**
@@ -154,7 +154,6 @@ public class IoCStarter {
         moduleInfo.setProperties(reflections.getTypesAnnotatedWith(Property.class));
         moduleInfo.setProcessors(reflections.getSubTypesOf(ComponentProcessor.class));
         moduleInfo.setResolvers(reflections.getSubTypesOf(CommandLineArgumentResolver.class));
-        moduleInfo.setFactories(reflections.getSubTypesOf(Factory.class));
         moduleInfo.setListeners(reflections.getTypesAnnotatedWith(Listener.class));
         return moduleInfo;
     }
@@ -191,7 +190,7 @@ public class IoCStarter {
         private Set<Class<?>> properties;
         private Set<Class<? extends ComponentProcessor>> processors;
         private Set<Class<? extends CommandLineArgumentResolver>> resolvers;
-        private Set<Class<? extends Factory>> factories;
+        private List<Class<? extends Factory>> factories;
         private Set<Class<?>> listeners;
 
         Set<Class<?>> getComponents() {
@@ -214,7 +213,7 @@ public class IoCStarter {
             return properties;
         }
 
-        Set<Class<? extends Factory>> getFactories() {
+        List<Class<? extends Factory>> getFactories() {
             return factories;
         }
 
@@ -238,7 +237,7 @@ public class IoCStarter {
             this.resolvers = resolvers;
         }
 
-        void setFactories(Set<Class<? extends Factory>> factories) {
+        void setFactories(List<Class<? extends Factory>> factories) {
             this.factories = factories;
         }
 

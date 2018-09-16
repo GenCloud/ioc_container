@@ -24,7 +24,7 @@ package org.di.context.factories.config;
  */
 public interface ComponentProcessor {
     /**
-     * Processing not installed bean before initialization in factory.
+     * Processing not installed bean before initialization in factories.
      *
      * @param componentName type name
      * @param component     instantiated type
@@ -33,7 +33,7 @@ public interface ComponentProcessor {
     Object afterComponentInitialization(String componentName, Object component);
 
     /**
-     * Processing installed bean after initialization in factory.
+     * Processing installed bean after initialization in factories.
      *
      * @param componentName type name
      * @param component     instantiated type

@@ -30,6 +30,7 @@ A typical use of threads-factory module would be:
 1) Add in Main class of application marker-annotation of enabled this module
 ```java
     @ThreadingModule
+    @Factories(enabled = {DefaultThreadingFactory.class})
     @ScanPackage(packages = {"org.di.test"})
     public class MainTest {
         public static void main(String... args){
@@ -43,7 +44,7 @@ A typical use of threads-factory module would be:
     public class ComponentThreads implements ThreadFactorySensible {
         private final Logger log = LoggerFactory.getLogger(AbstractTask.class);
     
-        private DefaultThreadingFactory defaultThreadingFactory; //Thread factory to instantiate by Sensibles
+        private DefaultThreadingFactory defaultThreadingFactory; factories
     
         private final AtomicInteger atomicInteger = new AtomicInteger(0);
     

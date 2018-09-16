@@ -102,6 +102,12 @@ public class ExampleEnvironment extends SamplePropertyListener {
 ```
 A listeners usage would be:
 ```java
+@Factories(enabled = {EventDispatcherFactory.class})
+// add EventDispatcherFactory to the annotation of main class
+```
+
+Create custom listener.
+```java
 @org.di.context.annotations.listeners.Listener//compulsory abstract
 @IoCComponent //mandatory abstract otherwise the implementations of informers (Sensibles) will not be integrated.
 public class TestListener implements Listener {
@@ -156,6 +162,7 @@ A typical use of threads-factory module would be:
 1) Add in Main class of application marker-annotation of enabled this module
 ```java
     @ThreadingModule
+    @Factories(enabled = {DefaultThreadingFactory.class}) // marker-annotation indicated factories to load in context
     @ScanPackage(packages = {"org.di.test"})
     public class MainTest {
         public static void main(String... args){
@@ -169,7 +176,7 @@ A typical use of threads-factory module would be:
     public class ComponentThreads implements ThreadFactorySensible {
         private final Logger log = LoggerFactory.getLogger(AbstractTask.class);
     
-        private DefaultThreadingFactory defaultThreadingFactory; //Thread factory to instantiate by Sensibles
+        private DefaultThreadingFactory defaultThreadingFactory; factories
     
         private final AtomicInteger atomicInteger = new AtomicInteger(0);
     
@@ -210,7 +217,122 @@ A typical use of threads-factory module would be:
         ScheduledAsyncFuture async(long, TimeUnit, long, Runnable)
 ```
     
-4) Use it!
+### 2. Module 'cache-factory'
+
+### Intro
+Add cache-factory module to your project. for maven projects just add this dependency:
+```xml
+   <repositories>
+       <repository>
+           <id>di_container-mvn-repo</id>
+           <url>https://raw.github.com/GenCloud/di_container/cache/</url>
+           <snapshots>
+               <enabled>true</enabled>
+               <updatePolicy>always</updatePolicy>
+           </snapshots>
+       </repository>
+   </repositories>
+    
+   <dependencies>
+       <dependency>
+           <groupId>org.genfork</groupId>
+           <artifactId>cache-factory</artifactId>
+           <version>1.0.1.STABLE</version>
+       </dependency>
+   </dependencies>
+```
+    
+A typical use of threads-factory module would be:
+1) Add in Main class of application marker-annotation of enabled this module
+```java
+    @CacheModule
+    @Factories(enabled = {EhFactory.class}) // default factory of system
+    @ScanPackage(packages = {"org.di.test"})
+    public class MainTest {
+        public static void main(String... args){
+          IoCStarter.start(MainTest.class, args);
+        }
+    }
+```
+* sample factories: GuavaFactory, SoftReferenceFactory, WeakReferenceFactory
+
+2) Mark sample component of inheritance CacheFactorySensible
+```java
+    @IoCComponent
+    public class CacheComponentTest implements CacheFactorySensible {
+        private static final Logger log = LoggerFactory.getLogger(CacheComponentTest.class);
+    
+        private EhFactory factory;
+    
+        private ICache<String, String> sampleCache;
+    
+        @PostConstruct
+        public void initializeCache() {
+            sampleCache = factory.installEternal("sample-test-cache", 200);
+    
+            log.info("Creating sample cache - [{}]", sampleCache);
+    
+            sampleCache.put("1", "First");
+            sampleCache.put("2", "Second");
+            sampleCache.put("3", "Third");
+            sampleCache.put("4", "Fourth");
+    
+            log.info("Loaded size - [{}]", sampleCache.size());
+        }
+    
+        public String getElement(String key) {
+            final String value = sampleCache.get(key);
+            log.info("Getting value from cache - [{}]", value);
+            return value;
+        }
+    
+        public void removeElement(String key) {
+            log.info("Remove object from cache");
+            sampleCache.remove(key);
+        }
+    
+        public void invalidate() {
+            sampleCache.clear();
+            log.info("Clear all cache, size - [{}]", sampleCache.size());
+        }
+    
+        @Override
+        public void factoryInform(Factory factory) throws IoCException {
+            this.factory = (EhFactory) factory;
+        }
+    
+        @Override
+        public String toString() {
+            return "CacheComponentTest{" +
+                    "factory=" + factory +
+                    ", sampleCache=" + sampleCache +
+                    '}';
+        }
+    }
+```
+3) Default methods of factory
+- cache management
+```java
+            //Add pair <K, V> to cache. Notice: if there is already a value with given id in map,
+            // {@link IllegalArgumentException} will be thrown.
+           void put(K, V);
+       
+           //Returns cached value correlated to given key.
+           V get(K);
+       
+           //Checks whether this map contains a value related to given key.
+           boolean contains(K key);
+       
+           //Removes an entry from map, that has given key.
+           void remove(K key);
+       
+           //Clears cache.
+           void clear();
+       
+           //size of cache map
+           int size();
+```
+    
 ### Contribute
 Pull requests are welcomed!!
 

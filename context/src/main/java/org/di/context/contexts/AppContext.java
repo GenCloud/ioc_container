@@ -81,7 +81,7 @@ public class AppContext {
     }
 
     /**
-     * @return dependencyFactory - factory initialized contexts components
+     * @return dependencyFactory - factories initialized contexts components
      */
     public DependencyInitiator getDependencyInitiator() {
         return dependencyInitiator;
@@ -161,7 +161,7 @@ public class AppContext {
      *
      * @param factories collection of classes inherited {@link Factory}
      */
-    public void initFactories(Set<Class<? extends Factory>> factories) {
+    public void initFactories(List<Class<? extends Factory>> factories) {
         dependencyInitiator.addFactories(factories);
     }
 
@@ -272,11 +272,11 @@ public class AppContext {
 
 
     /**
-     * Returns the component from the factory.
+     * Returns the component from the factories.
      * Depending on its type, the initialized component or an existing one.
      *
      * @param type - type for get
-     * @return instantiated object from contexts factory
+     * @return instantiated object from contexts factories
      */
     @SuppressWarnings("unchecked")
     public <O> O getType(Class<O> type) {

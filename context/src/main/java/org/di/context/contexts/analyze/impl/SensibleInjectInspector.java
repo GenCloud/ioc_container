@@ -19,10 +19,7 @@
 package org.di.context.contexts.analyze.impl;
 
 import org.di.context.contexts.analyze.results.SensibleInspectionResult;
-import org.di.context.contexts.sensibles.ContextSensible;
-import org.di.context.contexts.sensibles.EnvironmentSensible;
-import org.di.context.contexts.sensibles.Sensible;
-import org.di.context.contexts.sensibles.ThreadFactorySensible;
+import org.di.context.contexts.sensibles.*;
 import org.di.context.factories.config.Inspector;
 
 import java.util.ArrayList;
@@ -39,18 +36,23 @@ import static org.di.context.contexts.analyze.results.SensibleInspectionResult.*
 public class SensibleInjectInspector implements Inspector<List<SensibleInspectionResult>, Object> {
     @Override
     public List<SensibleInspectionResult> inspect(Object tested) {
+        final Class<?> type = tested.getClass();
         final List<SensibleInspectionResult> results = new ArrayList<>();
         results.add(SENSIBLE_NOTHING);
-        if (ContextSensible.class.isAssignableFrom(tested.getClass())) {
+        if (ContextSensible.class.isAssignableFrom(type)) {
             results.add(SENSIBLE_CONTEXT_INJECTION);
         }
 
-        if (ThreadFactorySensible.class.isAssignableFrom(tested.getClass())) {
+        if (ThreadFactorySensible.class.isAssignableFrom(type)) {
             results.add(SENSIBLE_THREAD_FACTORY);
         }
 
-        if (EnvironmentSensible.class.isAssignableFrom(tested.getClass())) {
+        if (EnvironmentSensible.class.isAssignableFrom(type)) {
             results.add(SENSIBLE_ENVIRONMENT);
+        }
+
+        if (CacheFactorySensible.class.isAssignableFrom(type)) {
+            results.add(SENSIBLE_CACHE);
         }
         return results;
     }

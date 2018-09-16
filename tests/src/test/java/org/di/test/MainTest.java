@@ -1,12 +1,18 @@
 package org.di.test;
 
 import org.apache.log4j.BasicConfigurator;
+import org.di.cache.impl.EhFactory;
+import org.di.context.annotations.Factories;
 import org.di.context.annotations.Lazy;
 import org.di.context.annotations.ScanPackage;
+import org.di.context.annotations.modules.CacheModule;
 import org.di.context.annotations.modules.ThreadingModule;
 import org.di.context.contexts.AppContext;
 import org.di.context.contexts.runner.IoCStarter;
+import org.di.context.enviroment.configurations.ThreadingConfiguration;
 import org.di.context.factories.DependencyInitiator;
+import org.di.context.factories.EventDispatcherFactory;
+import org.di.test.cache.CacheComponentTest;
 import org.di.test.components.*;
 import org.di.test.components.abstrac.AbstractComponent;
 import org.di.test.components.abstrac.TestAbstractComponent;
@@ -17,7 +23,7 @@ import org.di.test.components.lazy.LazyComponentA;
 import org.di.test.components.lazy.LazyComponentB;
 import org.di.test.environments.ExampleEnvironment;
 import org.di.test.threading.ComponentThreads;
-import org.di.threads.configuration.ThreadingConfiguration;
+import org.di.threads.factory.DefaultThreadingFactory;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.FixMethodOrder;
@@ -35,7 +41,9 @@ import java.util.stream.Collectors;
  * @date 04.09.2018
  */
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
+@CacheModule
 @ThreadingModule
+@Factories(enabled = {EventDispatcherFactory.class, DefaultThreadingFactory.class, EhFactory.class})
 @ScanPackage(packages = {"org.di.test"})
 public class MainTest extends Assert {
     private static final Logger log = LoggerFactory.getLogger(MainTest.class);
@@ -129,7 +137,7 @@ public class MainTest extends Assert {
                 .stream()
                 .filter(o1 -> o1.getClass().getSimpleName().equals(LazyComponentA.class.getSimpleName()))
                 .findFirst();
-        assertTrue("Independent lazy component is not initialized in the factory", !o.isPresent());
+        assertTrue("Independent lazy component is not initialized in the factories", !o.isPresent());
 
         log.info("Getting LazyComponentA from contexts");
         final LazyComponentA lazyComponentA = appContext.getType(LazyComponentA.class);
@@ -160,6 +168,23 @@ public class MainTest extends Assert {
 
         log.info("Getting ComponentThreads from contexts");
         appContext.getType(ComponentThreads.class);
+    }
+
+    @Test
+    public void h_testCaching() {
+        log.info("Getting CacheComponentTest from contexts");
+        final CacheComponentTest cacheComponentTest = appContext.getType(CacheComponentTest.class);
+        log.info(cacheComponentTest.toString());
+
+        cacheComponentTest.getElement("1");
+        cacheComponentTest.getElement("2");
+        cacheComponentTest.getElement("3");
+        cacheComponentTest.getElement("4");
+
+        cacheComponentTest.removeElement("1");
+        cacheComponentTest.removeElement("2");
+
+        cacheComponentTest.invalidate();
     }
 
     @Test

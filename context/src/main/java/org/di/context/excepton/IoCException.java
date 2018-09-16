@@ -31,7 +31,7 @@ public class IoCException extends RuntimeException {
         super(message);
     }
 
-    protected IoCException(String message, Throwable cause) {
+    public IoCException(String message, Throwable cause) {
         super(message, cause);
     }
 

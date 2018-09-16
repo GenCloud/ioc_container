@@ -16,35 +16,40 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.di.context.contexts.analyze.results;
+package org.di.context.utils;
+
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.Objects;
 
 /**
+ * Simple class used to store method invocations for the proxied cache.
+ *
  * @author GenCloud
- * @date 13.09.2018
+ * @date 16.09.2018
  */
-public enum SensibleInspectionResult {
-    /**
-     *
-     */
-    SENSIBLE_NOTHING,
+public class MethodInvocation {
+    private final Method method;
+    private final Object[] args;
 
-    /**
-     *
-     */
-    SENSIBLE_CONTEXT_INJECTION,
+    public MethodInvocation(Method method, Object[] args) {
+        this.method = method;
+        this.args = args;
+    }
 
-    /**
-     *
-     */
-    SENSIBLE_THREAD_FACTORY,
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof MethodInvocation)) return false;
+        MethodInvocation that = (MethodInvocation) o;
+        return Objects.equals(method, that.method) &&
+                Arrays.equals(args, that.args);
+    }
 
-    /**
-     *
-     */
-    SENSIBLE_ENVIRONMENT,
-
-    /**
-     *
-     */
-    SENSIBLE_CACHE
+    @Override
+    public int hashCode() {
+        int result = Objects.hash(method);
+        result = 31 * result + Arrays.hashCode(args);
+        return result;
+    }
 }

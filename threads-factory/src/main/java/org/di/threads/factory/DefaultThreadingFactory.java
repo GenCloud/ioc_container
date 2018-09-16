@@ -19,12 +19,12 @@
 package org.di.threads.factory;
 
 import org.di.context.contexts.sensibles.EnvironmentSensible;
+import org.di.context.enviroment.configurations.ThreadingConfiguration;
+import org.di.context.enviroment.configurations.ThreadingConfiguration.ThreadPoolPriority;
 import org.di.context.excepton.IoCException;
 import org.di.context.excepton.starter.IoCStopException;
 import org.di.context.factories.config.ComponentDestroyable;
 import org.di.context.factories.config.Factory;
-import org.di.threads.configuration.ThreadingConfiguration;
-import org.di.threads.configuration.ThreadingConfiguration.ThreadPoolPriority;
 import org.di.threads.factory.model.impl.ThreadPoolImpl;
 import org.di.threads.factory.model.interfaces.AsyncFuture;
 import org.di.threads.factory.model.interfaces.ScheduledAsyncFuture;
@@ -86,7 +86,7 @@ public class DefaultThreadingFactory implements Factory, ComponentDestroyable, E
     }
 
     /**
-     * Add found task to factory.
+     * Add found task to factories.
      *
      * @param task model of task
      */
@@ -95,7 +95,7 @@ public class DefaultThreadingFactory implements Factory, ComponentDestroyable, E
     }
 
     /**
-     * Instantiate tasks in factory and start it.
+     * Instantiate tasks in factories and start it.
      */
     public void initTasks() {
         tasks.forEach(t -> {

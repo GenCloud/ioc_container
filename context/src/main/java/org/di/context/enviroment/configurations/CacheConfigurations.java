@@ -16,35 +16,26 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.di.context.contexts.analyze.results;
+package org.di.context.enviroment.configurations;
+
+import org.di.context.annotations.property.Property;
+import org.di.context.factories.config.Factory;
+
+import static org.di.context.factories.config.Factory.defaultCacheFactory;
 
 /**
  * @author GenCloud
- * @date 13.09.2018
+ * @date 16.09.2018
  */
-public enum SensibleInspectionResult {
-    /**
-     *
-     */
-    SENSIBLE_NOTHING,
+@Property(prefix = "cache.")
+public class CacheConfigurations {
+    private Class<? extends Factory> factoryClass = defaultCacheFactory();
 
-    /**
-     *
-     */
-    SENSIBLE_CONTEXT_INJECTION,
+    public Class<? extends Factory> getFactoryClass() {
+        return factoryClass;
+    }
 
-    /**
-     *
-     */
-    SENSIBLE_THREAD_FACTORY,
-
-    /**
-     *
-     */
-    SENSIBLE_ENVIRONMENT,
-
-    /**
-     *
-     */
-    SENSIBLE_CACHE
+    public void setFactoryClass(Class<? extends Factory> factoryClass) {
+        this.factoryClass = factoryClass;
+    }
 }

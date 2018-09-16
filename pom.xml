@@ -12,7 +12,7 @@
     <modules>
         <module>context</module>
         <module>threads-factory</module>
-        <module>database-factory</module>
+        <module>cache-factory</module>
     </modules>
 
     <properties>
