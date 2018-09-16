@@ -79,18 +79,8 @@
     <distributionManagement>
         <repository>
             <id>cache.repo</id>
-            <name>Cache Repository</name>
+            <name>Context Repository</name>
             <url>file://${project.build.directory}/cache</url>
         </repository>
     </distributionManagement>
-
-    <reporting>
-        <plugins>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>findbugs-maven-plugin</artifactId>
-                <version>3.0.5</version>
-            </plugin>
-        </plugins>
-    </reporting>
 </project>

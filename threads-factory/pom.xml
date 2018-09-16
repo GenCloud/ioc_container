@@ -41,7 +41,7 @@
                     <includes>
                         <include>**/*</include>
                     </includes>
-                    <repositoryName>di_container</repositoryName>
+                    <repositoryName>ioc_container</repositoryName>
                     <repositoryOwner>GenCloud</repositoryOwner>
                 </configuration>
                 <executions>
