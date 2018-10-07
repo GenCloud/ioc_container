@@ -58,7 +58,7 @@ public class ChildEntity implements Serializable {
 	@Column(name = "name")
 	private String name;
 
-    //Specifies column for joining an entity relations or element collection
+        //Specifies column for joining an entity relations or element collection
 	@JoinColumn(name = "sample_entity_id")
 	//Defines single-valued association to another entity class that has many-to-one multiplicity
 	@ManyToOne(fetch = FetchType.LAZY, cascade = ALL)
@@ -103,7 +103,7 @@ public class OneToOneEntity {
 	@GeneratedValue(strategy = GenerationType.SEQUENCE)
 	private long id;
 
-    //Defines single-valued association to another entity that has one-to-one multiplicity
+        //Defines single-valued association to another entity that has one-to-one multiplicity
 	@OneToOne(fetch = FetchType.LAZY, cascade = ALL)
 	private SampleEntity sampleEntity;
 
@@ -149,7 +149,7 @@ public class SampleEntity implements Serializable {
 	@OneToOne(fetch = FetchType.LAZY, cascade = ALL)
 	private OneToOneEntity oneToOneEntity;
 
-    //Defines many-valued association with one-to-many multiplicity
+        //Defines many-valued association with one-to-many multiplicity
 	@OneToMany(fetch = FetchType.LAZY, cascade = ALL)
 	private List<ChildEntity> childEntities = new ArrayList<>();
 
@@ -255,17 +255,17 @@ public class DatabaseComponent {
 	@IoCDependency
 	private ChildEntityRepository childEntityRepository;
 
-         //CRUD default repository operation: save entity
+        //CRUD default repository operation: save entity
 	public void saveOneToOneEntity(OneToOneEntity oneToOneEntity) {
 		oneToOneEntityRepository.save(oneToOneEntity);
 	}
 
-         //CRUD default repository operation: save entity
+        //CRUD default repository operation: save entity
 	public void saveChildEntity(ChildEntity childEntity) {
 		childEntityRepository.save(childEntity);
 	}
 
-         //CRUD default repository operation: save entity
+        //CRUD default repository operation: save entity
 	public void saveSampleEntity(SampleEntity sampleEntity) {
 		sampleEntityRepository.save(sampleEntity);
 	}
@@ -290,12 +290,12 @@ public class DatabaseComponent {
 		return sampleEntityRepository.findByNameEq(name);
 	}
 
-         //CRUD default repository operation: find all entities in table
+        //CRUD default repository operation: find all entities in table
 	public List<SampleEntity> findAll() {
 		return sampleEntityRepository.fetchAll();
 	}
 
-         //CRUD default repository operation: delete entity in table
+        //CRUD default repository operation: delete entity in table
 	public void deleteSampleEntity(SampleEntity sampleEntity) {
 		sampleEntityRepository.delete(sampleEntity);
 	}
