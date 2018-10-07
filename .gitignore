@@ -30,6 +30,10 @@ target/
 
 logs/
 
+*/test/cache
+*/test/database
+*/test/log
+
 *.jar
 
 # Find bugs configuration file

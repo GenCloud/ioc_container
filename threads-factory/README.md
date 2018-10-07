@@ -1,15 +1,15 @@
 ---
 
-## Module 'threads-factory'
+## Module 'threads-context'
 
 [![Build Status](https://api.travis-ci.org/GenCloud/di_container.svg?branch=master)](https://api.travis-ci.org/GenCloud/di_container)
 ### Intro
-Add threads-factory module to your project. for maven projects just add this dependency:
+Add threads-context module to your project. for maven projects just add this dependency:
 ```xml
    <repositories>
        <repository>
-           <id>di_container-mvn-repo</id>
-           <url>https://raw.github.com/GenCloud/di_container/threading/</url>
+           <id>ioc_threading</id>
+           <url>https://raw.github.com/GenCloud/ioc_container/threading/</url>
            <snapshots>
                <enabled>true</enabled>
                <updatePolicy>always</updatePolicy>
@@ -19,70 +19,66 @@ Add threads-factory module to your project. for maven projects just add this dep
     
    <dependencies>
        <dependency>
-           <groupId>org.genfork</groupId>
+           <groupId>org.ioc</groupId>
            <artifactId>threads-factory</artifactId>
-           <version>1.0.1.STABLE</version>
+           <version>2.0.0.RELEASE</version>
        </dependency>
    </dependencies>
 ```
     
-A typical use of threads-factory module would be:
-1) Add in Main class of application marker-annotation of enabled this module
+A typical use of threads-context module would be:
+1) Add in Main class of application marker-annotated of enabled this module
 ```java
     @ThreadingModule
-    @Factories(enabled = {DefaultThreadingFactory.class})
-    @ScanPackage(packages = {"org.di.test"})
+    @ScanPackage(packages = {"org.ioc.test"})
     public class MainTest {
-        public static void main(String... args){
-          IoCStarter.start(MainTest.class, args);
+        public static void main(String... parameters){
+          IoCStarter.start(MainTest.class, parameters);
         }
     }
 ```
-2) Mark sample component of inheritance ThreadFactorySensible<F>
+2) Mark sample component of inheritance ThreadFactorySensible
 ```java
     @IoCComponent
     public class ComponentThreads implements ThreadFactorySensible {
-        private final Logger log = LoggerFactory.getLogger(AbstractTask.class);
+    	private final Logger log = LoggerFactory.getLogger(AbstractTask.class);
+    	private final AtomicInteger atomicInteger = new AtomicInteger(0);
     
-        private DefaultThreadingFactory defaultThreadingFactory; factories
+    	private DefaultThreadPoolFactory threadPoolFactory;
     
-        private final AtomicInteger atomicInteger = new AtomicInteger(0);
+    	@PostConstruct
+    	public void init() {
+    		// scheduling sample task
+    		threadPoolFactory.async((Task<Void>) () -> {
+            			log.info("Start test thread!");
+            			return null;
+            		});
+    	}
     
-        @PostConstruct
-        public void init() {
-            // scheduling sample task
-            defaultThreadingFactory.async(new AbstractTask<Void>() {
-                @Override
-                public Void call() {
-                    log.info("Start test thread!");
-                    return null;
-                }
-            });
-        }
+    	@Override
+    	public void factoryInform(Factory threadPoolFactory) throws IoCException {
+    		this.threadPoolFactory = (DefaultThreadPoolFactory) threadPoolFactory;
+    	}
     
-        @Override
-        public void threadFactoryInform(Object defaultThreadingFactory) throws IoCException {
-            this.defaultThreadingFactory = (DefaultThreadingFactory) defaultThreadingFactory;
-        }
-    
-        // register method in runnable task and start running it
-        @SimpleTask(startingDelay = 1, fixedInterval = 5)
-        public void schedule() {
-            log.info("I'm Big Daddy, scheduling and incrementing param - [{}]", atomicInteger.incrementAndGet());
-        }
+    	// register method in runnable task and start running it
+    	@SimpleTask(startingDelay = 1, fixedInterval = 5)
+    	public void schedule() {
+    		log.info("I'm Big Daddy, scheduling and incrementing param - [{}]", atomicInteger.incrementAndGet());
+    	}
     }
+
 ```
-3) Default methods of factory
+3) Default methods of context
 - scheduling
 ```java
         // Executes an asynchronous tasks. Tasks scheduled here will go to an default shared thread pool.
-        <T> AsyncFuture<T> async(Task<T>)
+        <T> TaskFuture<T> async(Task<T> callable)
         // Executes an asynchronous tasks at an scheduled time. Please note that resources in scheduled
         // thread pool are limited and tasks should be performed fast.
-        <T> AsyncFuture<T> async(long, TimeUnit, Task<T>)
+        <T> TaskFuture<T> async(long delay, TimeUnit unit, Task<T> callable)
         // Executes an asynchronous tasks at an scheduled time. Please note that resources in scheduled
         // thread pool are limited and tasks should be performed fast.
-        ScheduledAsyncFuture async(long, TimeUnit, long, Runnable)
+        ScheduledTaskFuture async(long delay, TimeUnit unit, long repeat, Runnable task)
 ```
     
 4) Use it!

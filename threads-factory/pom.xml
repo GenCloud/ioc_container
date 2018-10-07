@@ -3,9 +3,9 @@
          xmlns="http://maven.apache.org/POM/4.0.0"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
-        <artifactId>di_container</artifactId>
-        <groupId>org.genfork</groupId>
-        <version>1.0.1.STABLE</version>
+        <artifactId>ioc</artifactId>
+        <groupId>org.ioc</groupId>
+        <version>2.0.0.RELEASE</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -13,9 +13,9 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.genfork</groupId>
-            <artifactId>context</artifactId>
-            <version>1.0.1.STABLE</version>
+            <groupId>org.ioc</groupId>
+            <artifactId>context-factory</artifactId>
+            <version>2.0.0.RELEASE</version>
         </dependency>
     </dependencies>
 
@@ -58,7 +58,7 @@
 
     <distributionManagement>
         <repository>
-            <id>threading.repo</id>
+            <id>Threading Factory</id>
             <name>Threading Repository</name>
             <url>file://${project.build.directory}/threading</url>
         </repository>

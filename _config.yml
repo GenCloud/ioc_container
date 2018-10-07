@@ -1,7 +1,0 @@
-theme: jekyll-theme-cayman
-
-url: "https://gencloud.github.io/di_container/"
-exclude: [LICENSE, CNAME, .gitignore]
-#Build
-permalink: pretty
-markdown: kramdown

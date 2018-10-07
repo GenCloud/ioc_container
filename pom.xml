@@ -4,20 +4,24 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>org.genfork</groupId>
-    <artifactId>di_container</artifactId>
+    <groupId>org.ioc</groupId>
+    <artifactId>ioc</artifactId>
     <packaging>pom</packaging>
-    <version>1.0.1.STABLE</version>
+    <version>2.0.0.RELEASE</version>
 
     <modules>
-        <module>context</module>
-        <module>threads-factory</module>
+        <module>context-factory</module>
         <module>cache-factory</module>
+        <module>threads-factory</module>
+        <module>test</module>
+        <module>orm-factory</module>
     </modules>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <java.version>1.8</java.version>
+        <java.version>8</java.version>
+        <maven.compiler.source>8</maven.compiler.source>
+        <maven.compiler.target>8</maven.compiler.target>
         <github.global.server>github</github.global.server>
         <github.maven-plugin>0.12</github.maven-plugin>
     </properties>
@@ -26,6 +30,23 @@
         <defaultGoal>install</defaultGoal>
         <plugins>
             <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>versions-maven-plugin</artifactId>
+                <version>2.5</version>
+                <configuration>
+                    <generateBackupPoms>false</generateBackupPoms>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.8.0</version>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                </configuration>
+            </plugin>
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-release-plugin</artifactId>
                 <version>2.2.2</version>
@@ -33,10 +54,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.11</version>
-                <configuration>
-                    <skipTests>true</skipTests>
-                </configuration>
+                <version>2.22.0</version>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -84,26 +102,7 @@
                         </dependency>
                     </dependencies>
                 </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-compiler-plugin</artifactId>
-                    <version>2.3.2</version>
-                    <configuration>
-                        <source>${java.version}</source>
-                        <target>${java.version}</target>
-                        <debug>true</debug>
-                        <encoding>${project.build.sourceEncoding}</encoding>
-                    </configuration>
-                </plugin>
             </plugins>
         </pluginManagement>
     </build>
-
-    <distributionManagement>
-        <repository>
-            <id>internal.repo</id>
-            <name>Temporary Staging Repository</name>
-            <url>file://${project.build.directory}/mvn-repo</url>
-        </repository>
-    </distributionManagement>
 </project>

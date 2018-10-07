@@ -1,14 +1,14 @@
 ---
 
-## Module 'cache-factory'
+## Module 'entityCache-factory'
 
 ### Intro
 Add cache-factory module to your project. for maven projects just add this dependency:
 ```xml
    <repositories>
        <repository>
-           <id>di_container-mvn-repo</id>
-           <url>https://raw.github.com/GenCloud/di_container/cache/</url>
+           <id>ioc_cache</id>
+           <url>https://raw.github.com/GenCloud/ioc_container/cache</url>
            <snapshots>
                <enabled>true</enabled>
                <updatePolicy>always</updatePolicy>
@@ -18,9 +18,9 @@ Add cache-factory module to your project. for maven projects just add this depen
     
    <dependencies>
        <dependency>
-           <groupId>org.genfork</groupId>
+           <groupId>org.ioc</groupId>
            <artifactId>cache-factory</artifactId>
-           <version>1.0.1.STABLE</version>
+           <version>2.0.0.RELEASE</version>
        </dependency>
    </dependencies>
 ```
@@ -28,16 +28,15 @@ Add cache-factory module to your project. for maven projects just add this depen
 A typical use of threads-factory module would be:
 1) Add in Main class of application marker-annotation of enabled this module
 ```java
-    @CacheModule
-    @Factories(enabled = {EhFactory.class}) // default factory of system
-    @ScanPackage(packages = {"org.di.test"})
+    @CacheModule //default cache using EhCache library
+    @ScanPackage(packages = {"org.ioc.test"})
     public class MainTest {
         public static void main(String... args){
           IoCStarter.start(MainTest.class, args);
         }
     }
 ```
-* sample factories: GuavaFactory, SoftReferenceFactory, WeakReferenceFactory
+* sample factories: EhFactory, GuavaFactory
 
 2) Mark sample component of inheritance CacheFactorySensible
 ```java
