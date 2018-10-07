@@ -16,12 +16,12 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.ioc.orm.metadata.visitors.id.type;
+package org.ioc.orm.metadata.visitors.column.type;
 
 import org.ioc.orm.exceptions.OrmException;
 import org.ioc.orm.metadata.type.ColumnMetadata;
 import org.ioc.orm.metadata.visitors.column.FieldColumnVisitor;
-import org.ioc.orm.metadata.visitors.id.IdVisitor;
+import org.ioc.orm.metadata.visitors.column.IdVisitor;
 import org.ioc.utils.Assertion;
 
 import java.lang.reflect.Field;
@@ -65,14 +65,6 @@ public class BaseIdVisitor extends FieldColumnVisitor implements IdVisitor {
 		final Map<ColumnMetadata, Object> map = new HashMap<>(1);
 		map.put(columnMetadata, key);
 		return Collections.unmodifiableMap(map);
-	}
-
-	@Override
-	public Object fromMap(Map<ColumnMetadata, Object> data) {
-		if (data == null || data.isEmpty()) {
-			return null;
-		}
-		return data.get(columnMetadata);
 	}
 
 	@Override

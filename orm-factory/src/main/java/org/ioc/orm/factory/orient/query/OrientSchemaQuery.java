@@ -22,7 +22,7 @@ import com.orientechnologies.orient.core.record.impl.ODocument;
 import org.ioc.orm.exceptions.OrmException;
 import org.ioc.orm.factory.SchemaQuery;
 import org.ioc.orm.factory.orient.session.OrientDatabaseSession;
-import org.ioc.orm.metadata.type.EntityMetadata;
+import org.ioc.orm.metadata.type.FacilityMetadata;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -35,14 +35,14 @@ import java.util.List;
  */
 public class OrientSchemaQuery<T> implements SchemaQuery<T> {
 	private final OrientDatabaseSession databaseSession;
-	private final EntityMetadata entityMetadata;
-	private final OrientClosingQuery closingQuery;
+	private final FacilityMetadata facilityMetadata;
+	private final AutoClosingQuery closingQuery;
 
 	private T first = null;
 
-	public OrientSchemaQuery(OrientDatabaseSession databaseSession, EntityMetadata entityMetadata, OrientClosingQuery closingQuery) {
+	public OrientSchemaQuery(OrientDatabaseSession databaseSession, FacilityMetadata facilityMetadata, AutoClosingQuery closingQuery) {
 		this.databaseSession = databaseSession;
-		this.entityMetadata = entityMetadata;
+		this.facilityMetadata = facilityMetadata;
 		this.closingQuery = closingQuery;
 	}
 
@@ -95,9 +95,9 @@ public class OrientSchemaQuery<T> implements SchemaQuery<T> {
 				}
 
 				try {
-					return databaseSession.install(entityMetadata, next);
+					return databaseSession.install(facilityMetadata, next);
 				} catch (Exception e) {
-					throw new OrmException("Unable to fetch next entity [" + entityMetadata + "] from document [" + next.getIdentity() + "].", e);
+					throw new OrmException("Unable to fetch next entity [" + facilityMetadata + "] from document [" + next.getIdentity() + "].", e);
 				}
 			}
 		};

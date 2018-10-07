@@ -16,38 +16,44 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.ioc.orm.metadata.transaction;
+package org.ioc.orm.metadata.visitors.provider.type;
 
-import org.ioc.orm.exceptions.OrmException;
+import org.ioc.orm.metadata.visitors.provider.FacilityProvider;
+
+import java.util.Objects;
 
 /**
  * @author GenCloud
  * @date 10/2018
  */
-public abstract class AbstractTransactional implements ITransactional {
-	@Override
-	public void withTx(TxRunnable txRunnable) throws OrmException {
-		try (Tx tx = openTx()) {
-			tx.exec(txRunnable);
-		} catch (Exception e) {
-			throw new OrmException("Unable to exec transaction.", e);
-		}
+public class BaseFacilityProvider<T> implements FacilityProvider<T> {
+	private final T instance;
+
+	public BaseFacilityProvider(T instance) {
+		this.instance = instance;
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
-	public <T> T withTx(TxCallable<T> tTxCallable) throws OrmException {
-		final Object[] tmp = new Object[1];
-		try (Tx tx = openTx()) {
-			tmp[0] = tx.exec(tTxCallable);
-		} catch (Exception e) {
-			throw new OrmException("Unable to exec transaction.", e);
-		}
-		return (T) tmp[0];
+	public T of() {
+		return instance;
 	}
 
 	@Override
-	public Tx openTx() throws OrmException {
-		return new Tx(this);
+	public boolean equals(Object o) {
+		if (this == o) {
+			return true;
+		}
+		if (o == null || getClass() != o.getClass()) {
+			return false;
+		}
+
+		BaseFacilityProvider that = (BaseFacilityProvider) o;
+
+		return Objects.equals(instance, that.instance);
+	}
+
+	@Override
+	public int hashCode() {
+		return instance != null ? instance.hashCode() : 0;
 	}
 }

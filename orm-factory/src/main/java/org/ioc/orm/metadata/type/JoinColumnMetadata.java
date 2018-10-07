@@ -25,17 +25,17 @@ import org.ioc.utils.Assertion;
  * @date 10/2018
  */
 public class JoinColumnMetadata extends ColumnMetadata {
-	private final EntityMetadata entityMetadata;
+	private final FacilityMetadata facilityMetadata;
 
 	public JoinColumnMetadata(String name, String property, Class<?> clazz,
-							  final EntityMetadata entityMetadata, boolean primaryKey) {
+							  final FacilityMetadata facilityMetadata, boolean primaryKey) {
 		super(name, property, clazz, primaryKey, false, false);
-		Assertion.checkNotNull(entityMetadata, "entity metadata");
+		Assertion.checkNotNull(facilityMetadata, "entity metadata");
 
-		this.entityMetadata = entityMetadata;
+		this.facilityMetadata = facilityMetadata;
 	}
 
-	public EntityMetadata getEntityMetadata() {
-		return entityMetadata;
+	public FacilityMetadata getFacilityMetadata() {
+		return facilityMetadata;
 	}
 }

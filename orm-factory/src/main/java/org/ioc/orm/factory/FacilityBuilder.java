@@ -31,18 +31,18 @@ import java.util.Map;
  * @author GenCloud
  * @date 10/2018
  */
-public class EntityBuilder {
+public class FacilityBuilder {
 	private final SessionFactory sessionFactory;
 
 	private final DataContainerFactory dataContainerFactory;
 
-	public EntityBuilder(SessionFactory sessionFactory, DataContainerFactory dataContainerFactory) {
+	public FacilityBuilder(SessionFactory sessionFactory, DataContainerFactory dataContainerFactory) {
 		this.sessionFactory = sessionFactory;
 		this.dataContainerFactory = dataContainerFactory;
 	}
 
-	public Object build(EntityMetadata entityMetadata, Map<ColumnMetadata, Object> objectMap) throws OrmException {
-		Assertion.checkNotNull(entityMetadata, "entity metadata");
+	public Object build(FacilityMetadata facilityMetadata, Map<ColumnMetadata, Object> objectMap) throws OrmException {
+		Assertion.checkNotNull(facilityMetadata, "entity metadata");
 
 		if (objectMap == null || objectMap.isEmpty()) {
 			return null;
@@ -50,32 +50,32 @@ public class EntityBuilder {
 
 		final Object instance;
 		try {
-			instance = entityMetadata.build(objectMap);
+			instance = facilityMetadata.build(objectMap);
 			if (instance == null) {
 				return null;
 			}
 
-			if (!update(entityMetadata, instance, objectMap)) {
+			if (!update(facilityMetadata, instance, objectMap)) {
 				return null;
 			}
 		} catch (Exception e) {
-			throw new OrmException("Unable to construct instance for entityMetadata [" + entityMetadata + "].", e);
+			throw new OrmException("Unable to construct instance for facilityMetadata [" + facilityMetadata + "].", e);
 		}
 
-		final Object o = entityMetadata.getIdVisitor().fromObject(instance);
-		for (ColumnMetadata metadata : entityMetadata) {
+		final Object o = facilityMetadata.getIdVisitor().fromObject(instance);
+		for (ColumnMetadata metadata : facilityMetadata) {
 			if (!objectMap.containsKey(metadata)) {
-				final ColumnVisitor visitor = entityMetadata.getVisitor(metadata);
+				final ColumnVisitor visitor = facilityMetadata.getVisitor(metadata);
 				if (visitor != null && !visitor.initialized(instance)) {
 					DataContainer lazy = null;
 					if (metadata instanceof JoinColumnMetadata) {
-						lazy = dataContainerFactory.ofJoinColumn(entityMetadata, (JoinColumnMetadata) metadata, o);
+						lazy = dataContainerFactory.ofJoinColumn(facilityMetadata, (JoinColumnMetadata) metadata, o);
 					} else if (metadata instanceof JoinBagMetadata) {
-						lazy = dataContainerFactory.ofJoinBag(entityMetadata, (JoinBagMetadata) metadata, o);
+						lazy = dataContainerFactory.ofJoinBag(facilityMetadata, (JoinBagMetadata) metadata, o);
 					} else if (metadata instanceof MappedColumnMetadata) {
-						lazy = dataContainerFactory.ofMappedColumn(entityMetadata, (MappedColumnMetadata) metadata, o);
+						lazy = dataContainerFactory.ofMappedColumn(facilityMetadata, (MappedColumnMetadata) metadata, o);
 					} else if (!metadata.isEmbedded() && !objectMap.containsKey(metadata)) {
-						lazy = dataContainerFactory.ofLazy(entityMetadata, metadata, o);
+						lazy = dataContainerFactory.ofLazy(facilityMetadata, metadata, o);
 					}
 
 					if (lazy != null) {
@@ -87,7 +87,7 @@ public class EntityBuilder {
 		return instance;
 	}
 
-	public boolean update(EntityMetadata entityMetadata, Object instance,
+	public boolean update(FacilityMetadata facilityMetadata, Object instance,
 						  final Map<ColumnMetadata, Object> objectMap) throws OrmException {
 		if (objectMap == null || objectMap.isEmpty()) {
 			return false;
@@ -97,7 +97,7 @@ public class EntityBuilder {
 		for (Map.Entry<ColumnMetadata, Object> entry : objectMap.entrySet()) {
 			final ColumnMetadata column = entry.getKey();
 			final Object value = entry.getValue();
-			final ColumnVisitor visitor = entityMetadata.getVisitor(column);
+			final ColumnVisitor visitor = facilityMetadata.getVisitor(column);
 			if (value != null && visitor != null) {
 				final DataContainer placeholder = dataContainerFactory.createStatic(value);
 				if (placeholder != null) {

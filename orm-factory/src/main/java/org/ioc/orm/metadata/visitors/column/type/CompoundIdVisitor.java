@@ -16,15 +16,15 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.ioc.orm.metadata.visitors.id.type;
+package org.ioc.orm.metadata.visitors.column.type;
 
 import org.ioc.orm.exceptions.OrmException;
 import org.ioc.orm.metadata.type.ColumnMetadata;
 import org.ioc.orm.metadata.visitors.column.ColumnVisitor;
 import org.ioc.orm.metadata.visitors.column.FieldColumnVisitor;
+import org.ioc.orm.metadata.visitors.column.IdVisitor;
 import org.ioc.orm.metadata.visitors.container.DataContainer;
 import org.ioc.orm.metadata.visitors.container.type.BaseDataContainer;
-import org.ioc.orm.metadata.visitors.id.IdVisitor;
 import org.ioc.utils.Assertion;
 
 import java.lang.reflect.Field;
@@ -84,14 +84,6 @@ public class CompoundIdVisitor extends FieldColumnVisitor implements IdVisitor {
 			}
 		});
 		return Collections.unmodifiableMap(metadataObjectMap);
-	}
-
-	@Override
-	public Object fromMap(Map<ColumnMetadata, Object> data) {
-		if (data == null || data.isEmpty()) {
-			return null;
-		}
-		return extractData(data);
 	}
 
 	@Override

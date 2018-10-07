@@ -18,7 +18,7 @@
  */
 package org.ioc.orm.metadata.util;
 
-import org.ioc.orm.metadata.inspectors.EntityMetadataInspector;
+import org.ioc.orm.metadata.inspectors.FacilityMetadataInspector;
 import org.ioc.orm.metadata.type.SchemaMetadata;
 import org.ioc.orm.metadata.visitors.column.ColumnVisitorFactory;
 import org.ioc.orm.metadata.visitors.column.factory.BaseColumnVisitorFactory;
@@ -38,7 +38,7 @@ public class SchemaMetadataInitiator {
 	private ColumnVisitorFactory columnVisitorFactory = new BaseColumnVisitorFactory();
 
 	public SchemaMetadata install() {
-		final EntityMetadataInspector analyzer = new EntityMetadataInspector(columnVisitorFactory, classes);
+		final FacilityMetadataInspector analyzer = new FacilityMetadataInspector(columnVisitorFactory, classes);
 		return new SchemaMetadata(analyzer.analyze());
 	}
 
@@ -47,7 +47,7 @@ public class SchemaMetadataInitiator {
 		return this;
 	}
 
-	public SchemaMetadataInitiator withClass(Class clazz) {
+	private SchemaMetadataInitiator withClass(Class clazz) {
 		Assertion.checkNotNull(clazz, "class");
 
 		classes.add(clazz);

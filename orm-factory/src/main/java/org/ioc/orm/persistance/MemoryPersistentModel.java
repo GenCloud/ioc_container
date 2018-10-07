@@ -19,8 +19,8 @@
 package org.ioc.orm.persistance;
 
 import org.ioc.orm.metadata.type.ColumnMetadata;
-import org.ioc.orm.metadata.type.EntityMetadata;
-import org.ioc.orm.metadata.visitors.handler.EntityAdder;
+import org.ioc.orm.metadata.type.FacilityMetadata;
+import org.ioc.orm.metadata.visitors.handler.FacilityAdder;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -30,7 +30,7 @@ import java.util.Map;
  * @author GenCloud
  * @date 10/2018
  */
-public class MemoryPersistentModel implements PersistentModel, EntityAdder {
+public class MemoryPersistentModel implements PersistentModel, FacilityAdder {
 	private final Map<ColumnMetadata, Object> objectMap = new LinkedHashMap<>();
 
 	public MemoryPersistentModel() {
@@ -56,7 +56,7 @@ public class MemoryPersistentModel implements PersistentModel, EntityAdder {
 	}
 
 	@Override
-	public boolean add(EntityMetadata entityMetadata, Map<ColumnMetadata, Object> objectMap) {
+	public boolean add(FacilityMetadata facilityMetadata, Map<ColumnMetadata, Object> objectMap) {
 		this.objectMap.putAll(objectMap);
 		return true;
 	}

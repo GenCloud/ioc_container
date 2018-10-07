@@ -19,14 +19,14 @@
 package org.ioc.orm.factory;
 
 import org.ioc.orm.exceptions.OrmException;
-import org.ioc.orm.generator.IdGenerator;
+import org.ioc.orm.generator.IdProducer;
 import org.ioc.orm.metadata.type.ColumnMetadata;
-import org.ioc.orm.metadata.type.EntityMetadata;
+import org.ioc.orm.metadata.type.FacilityMetadata;
 import org.ioc.orm.metadata.type.MappedColumnMetadata;
 import org.ioc.orm.metadata.visitors.column.ColumnVisitor;
 import org.ioc.orm.metadata.visitors.container.DataContainer;
 import org.ioc.orm.metadata.visitors.container.type.BaseDataContainer;
-import org.ioc.orm.metadata.visitors.handler.EntityAdder;
+import org.ioc.orm.metadata.visitors.handler.FacilityAdder;
 import org.ioc.utils.Assertion;
 
 import java.util.LinkedHashMap;
@@ -36,38 +36,47 @@ import java.util.Map;
  * @author GenCloud
  * @date 10/2018
  */
-public class EntityPersistence {
+public class FacilityMapper {
 	private final SessionFactory sessionFactory;
 
-	public EntityPersistence(SessionFactory sessionFactory) {
-		Assertion.checkNotNull(sessionFactory, "session");
+	public FacilityMapper(SessionFactory sessionFactory) {
+		Assertion.checkNotNull(sessionFactory);
 
 		this.sessionFactory = sessionFactory;
 	}
 
-	public void save(EntityMetadata entityMetadata, Object instance, EntityAdder entityAdder) throws OrmException {
-		entityMetadata.getColumnMetadataCollection().forEach(column -> {
-			final ColumnVisitor visitor = entityMetadata.getVisitor(column);
-			final IdGenerator generator = entityMetadata.getGenerator(column);
+	/**
+	 * Identify and generate primary key, save entity with new PK to database.
+	 *
+	 * @param facilityMetadata meta data of entity
+	 * @param instance         entity initialized instance
+	 * @param facilityAdder    utility class for save entity instance
+	 * @throws OrmException if entity not iserted to database
+	 */
+	public void save(FacilityMetadata facilityMetadata, Object instance, FacilityAdder facilityAdder) throws OrmException {
+		facilityMetadata.getColumnMetadataCollection().forEach(column -> {
+			final ColumnVisitor visitor = facilityMetadata.getVisitor(column);
+			final IdProducer generator = facilityMetadata.getProducer(column);
 			if (generator != null && visitor != null && visitor.empty(instance)) {
-				final Object generated = generator.create(sessionFactory, entityMetadata);
+				final Object generated = generator.create(sessionFactory, facilityMetadata);
 				final DataContainer container = new BaseDataContainer(generated);
 				visitor.setValue(instance, container, sessionFactory);
 			}
 		});
 
-		final Map<ColumnMetadata, Object> data = mapData(entityMetadata, instance);
-		final Map<ColumnMetadata, Object> filtered = entityMetadata.filter(data, instance);
-		if (!entityAdder.add(entityMetadata, filtered)) {
+		final Map<ColumnMetadata, Object> data = mapData(facilityMetadata, instance);
+		final Map<ColumnMetadata, Object> filtered = facilityMetadata.filter(data, instance);
+		if (!facilityAdder.add(facilityMetadata, filtered)) {
 			throw new OrmException("Unable to add instance, unknown error.");
 		}
 	}
 
-	private Map<ColumnMetadata, Object> mapData(EntityMetadata entityMetadata, Object instance) throws OrmException {
+
+	private Map<ColumnMetadata, Object> mapData(FacilityMetadata facilityMetadata, Object instance) throws OrmException {
 		final Map<ColumnMetadata, Object> objectMap = new LinkedHashMap<>();
-		for (ColumnMetadata column : entityMetadata) {
+		for (ColumnMetadata column : facilityMetadata) {
 			if (!(column instanceof MappedColumnMetadata)) {
-				final ColumnVisitor visitor = entityMetadata.getVisitor(column);
+				final ColumnVisitor visitor = facilityMetadata.getVisitor(column);
 				if (visitor != null && visitor.initialized(instance)) {
 					final Object value = visitor.getValue(instance, sessionFactory);
 					if (value != null) {

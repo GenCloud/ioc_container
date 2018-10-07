@@ -31,19 +31,19 @@ import com.orientechnologies.orient.core.tx.OTransaction;
 import org.ioc.orm.cache.EntityCache;
 import org.ioc.orm.exceptions.OrmException;
 import org.ioc.orm.factory.DatabaseSessionFactory;
-import org.ioc.orm.factory.EntityBuilder;
-import org.ioc.orm.factory.EntityPersistence;
+import org.ioc.orm.factory.FacilityBuilder;
+import org.ioc.orm.factory.FacilityMapper;
 import org.ioc.orm.factory.SchemaQuery;
-import org.ioc.orm.factory.orient.query.OrientClosingQuery;
+import org.ioc.orm.factory.orient.query.AutoClosingQuery;
 import org.ioc.orm.factory.orient.query.OrientQuery;
 import org.ioc.orm.factory.orient.query.OrientSchemaQuery;
-import org.ioc.orm.metadata.transaction.AbstractTransactional;
+import org.ioc.orm.metadata.transaction.AbstractTx;
 import org.ioc.orm.metadata.transaction.Tx;
 import org.ioc.orm.metadata.type.ColumnMetadata;
-import org.ioc.orm.metadata.type.EntityMetadata;
+import org.ioc.orm.metadata.type.FacilityMetadata;
 import org.ioc.orm.metadata.visitors.column.ColumnVisitor;
 import org.ioc.orm.metadata.visitors.container.type.OrientContainerFactory;
-import org.ioc.orm.metadata.visitors.handler.type.OrientEntityAdder;
+import org.ioc.orm.metadata.visitors.handler.type.OrientFacilityAdder;
 import org.ioc.utils.Assertion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,13 +57,14 @@ import static org.ioc.orm.util.OrientUtils.*;
  * @author GenCloud
  * @date 10/2018
  */
-public class OrientDatabaseSession extends AbstractTransactional implements DatabaseSessionFactory {
+public class OrientDatabaseSession extends AbstractTx implements DatabaseSessionFactory {
 	private static final Logger log = LoggerFactory.getLogger(OrientDatabaseSession.class);
-	protected final ODatabaseDocument databaseDocument;
+
+	private final ODatabaseDocument databaseDocument;
 	private final EntityCache entityCache;
 	private final Map<String, OrientQuery> queryMap;
 
-	private final EntityPersistence entityPersistence = new EntityPersistence(this);
+	private final FacilityMapper facilityMapper = new FacilityMapper(this);
 
 	public OrientDatabaseSession(ODatabaseDocument databaseDocument, Map<String, OrientQuery> queryMap, EntityCache entityCache) {
 		this.entityCache = entityCache;
@@ -127,113 +128,91 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
 	}
 
 	@Override
-	public void save(EntityMetadata entityMetadata, Object element) {
+	public void save(FacilityMetadata facilityMetadata, Object element) {
 		try (Tx tx = openTx()) {
-			final OrientEntityAdder orientEntityAdder = new OrientEntityAdder(this);
-			entityPersistence.save(entityMetadata, element, orientEntityAdder);
+			final OrientFacilityAdder orientEntityAdder = new OrientFacilityAdder(this);
+			facilityMapper.save(facilityMetadata, element, orientEntityAdder);
 			tx.success();
 		} catch (Exception e) {
-			throw new OrmException("Unable to create/save new orientdb document.", e);
+			throw new OrmException("Unable to create/save new document.", e);
 		}
 	}
 
 	@Override
-	public void delete(EntityMetadata entityMetadata, Object element) throws OrmException {
-		Assertion.checkNotNull(entityMetadata);
+	public void delete(FacilityMetadata facilityMetadata, Object element) throws OrmException {
+		Assertion.checkNotNull(facilityMetadata);
 
 		try (Tx tx = openTx()) {
 			final Map<ColumnMetadata, Object> metadataObjectMap = new LinkedHashMap<>();
-			for (ColumnMetadata columnMetadata : entityMetadata.getPrimaryKeys()) {
-				final ColumnVisitor accessor = entityMetadata.getVisitor(columnMetadata);
-				final Object value = accessor != null ? accessor.getValue(element, this) : null;
-				if (value != null) {
-					metadataObjectMap.put(columnMetadata, value);
+			for (ColumnMetadata columnMetadata : facilityMetadata.getPrimaryKeys()) {
+				final ColumnVisitor accessor = facilityMetadata.getVisitor(columnMetadata);
+				final Object o = accessor != null ? accessor.getValue(element, this) : null;
+				if (o != null) {
+					metadataObjectMap.put(columnMetadata, o);
 				}
 			}
 
-			final OIdentifiable identifiable = findIdentifyByMap(entityMetadata, metadataObjectMap);
+			final OIdentifiable identifiable = findIdentifyByMap(facilityMetadata, metadataObjectMap);
 			if (identifiable != null) {
 				databaseDocument.delete(identifiable.getIdentity());
 			}
 
 			tx.success();
 
-			final Object key = entityMetadata.getIdVisitor().fromObject(element);
-			entityCache.remove(entityMetadata, key);
+			final Object key = facilityMetadata.getIdVisitor().fromObject(element);
+			entityCache.delete(facilityMetadata, key);
 		} catch (Exception e) {
-			throw new OrmException("Unable to delete orientdb document.", e);
+			throw new OrmException("Unable to delete database document.", e);
 		}
 	}
 
 	@Override
-	public SchemaQuery query(EntityMetadata meta, String queryOrName, Map<String, Object> params) throws OrmException {
-		final OrientQuery query = queryMap.get(queryOrName);
-		if (query != null) {
-			return ofNamedQuery(meta, query, params);
+	public SchemaQuery query(FacilityMetadata facilityMetadata, String query, Map<String, Object> params) throws OrmException {
+		final OrientQuery orientQuery = queryMap.get(query);
+		if (orientQuery != null) {
+			return ofNamedQuery(facilityMetadata, orientQuery, params);
 		} else {
-			return ofNullQuery(meta, queryOrName, params);
+			return ofNullQuery(facilityMetadata, query, params);
 		}
 	}
 
-	private SchemaQuery ofNamedQuery(EntityMetadata meta, OrientQuery query, Map<String, Object> params) {
-		final OrientClosingQuery q = new OrientClosingQuery(databaseDocument, query.getQuery(), params);
-		return new OrientSchemaQuery(this, meta, q);
-	}
-
-	private SchemaQuery ofNullQuery(EntityMetadata meta, String query, Map<String, Object> params) {
-		final OrientClosingQuery q = new OrientClosingQuery(databaseDocument, query, params);
-		return new OrientSchemaQuery(this, meta, q);
-	}
-
-	protected final OrientClosingQuery ofQuery(String query) {
-		return new OrientClosingQuery(databaseDocument, query, Collections.emptyList());
-	}
-
-	protected final OrientClosingQuery ofQuery(String query, Collection<?> args) {
-		return new OrientClosingQuery(databaseDocument, query, args);
-	}
-
-	protected final OrientClosingQuery ofQuery(String query, Map<String, Object> args) {
-		return new OrientClosingQuery(databaseDocument, query, args);
-	}
-
 	@Override
-	public boolean exists(EntityMetadata entityMetadata, Object key) throws OrmException {
-		Assertion.checkNotNull(entityMetadata);
+	public boolean exists(FacilityMetadata facilityMetadata, Object key) throws OrmException {
+		Assertion.checkNotNull(facilityMetadata);
 
 		if (key == null) {
 			return false;
 		}
 
 		try {
-			return findIdentifyByKey(entityMetadata, key) != null;
+			return findIdentifyByKey(facilityMetadata, key) != null;
 		} catch (Exception e) {
 			throw new OrmException("Unable to query document.", e);
 		}
 	}
 
 	@Override
-	public Object fetch(EntityMetadata entityMetadata, Object key) throws OrmException {
-		Assertion.checkNotNull(entityMetadata);
+	public Object fetch(FacilityMetadata facilityMetadata, Object key) throws OrmException {
+		Assertion.checkNotNull(facilityMetadata);
 
 		if (key == null) {
 			return null;
 		}
 
-		final Object existing = entityCache.find(entityMetadata, key, Object.class);
+		final Object existing = entityCache.get(facilityMetadata, key, Object.class);
 		if (existing != null) {
 			return existing;
 		}
 
 		try {
-			final OIdentifiable rid = findIdentifyByKey(entityMetadata, key);
+			final OIdentifiable rid = findIdentifyByKey(facilityMetadata, key);
 			final ODocument document = findDocument(rid);
 			if (document != null) {
-				final Map<ColumnMetadata, Object> data = new LinkedHashMap<>(convertValues(entityMetadata, document));
-				if (entityMetadata.validate(data)) {
-					final EntityBuilder builder = new EntityBuilder(this, new OrientContainerFactory(this));
-					final Object instance = builder.build(entityMetadata, data);
-					entityCache.put(entityMetadata, key, instance);
+				final Map<ColumnMetadata, Object> data = new LinkedHashMap<>(convertValues(facilityMetadata, document));
+				if (facilityMetadata.validate(data)) {
+					final FacilityBuilder builder = new FacilityBuilder(this, new OrientContainerFactory(this));
+					final Object instance = builder.build(facilityMetadata, data);
+					entityCache.add(facilityMetadata, key, instance);
 					return instance;
 				}
 			}
@@ -245,15 +224,15 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
 	}
 
 	@Override
-	public List<Object> fetch(EntityMetadata entityMetadata, Object... keys) throws OrmException {
-		Assertion.checkNotNull(entityMetadata);
+	public List<Object> fetch(FacilityMetadata facilityMetadata, Object... keys) throws OrmException {
+		Assertion.checkNotNull(facilityMetadata);
 
 		if (keys == null || keys.length <= 0) {
 			return Collections.emptyList();
 		}
 
 		final Set<Object> hashSet = new HashSet<>(Arrays.asList(keys));
-		final Map<Object, Object> cached = entityCache.find(entityMetadata, Arrays.asList(keys), Object.class);
+		final Map<Object, Object> cached = entityCache.get(facilityMetadata, Arrays.asList(keys), Object.class);
 		final List<Object> cachedElements;
 		hashSet.removeAll(cached.keySet());
 		try {
@@ -267,11 +246,11 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
 		}
 
 		final Map<Object, Map<ColumnMetadata, Object>> entityData = new HashMap<>();
-		for (OIdentifiable rid : findIdentifyByKeys(entityMetadata, hashSet)) {
+		for (OIdentifiable rid : findIdentifyByKeys(facilityMetadata, hashSet)) {
 			final ODocument document = findDocument(rid);
 			if (document != null) {
-				final Map<ColumnMetadata, Object> data = convertValues(entityMetadata, document);
-				final Object key = entityMetadata.getIdVisitor().ofKey(data);
+				final Map<ColumnMetadata, Object> data = convertValues(facilityMetadata, document);
+				final Object key = facilityMetadata.getIdVisitor().ofKey(data);
 				if (key != null) {
 					final Map<ColumnMetadata, Object> objectMap = entityData.computeIfAbsent(key, k -> new LinkedHashMap<>());
 					objectMap.putAll(data);
@@ -281,12 +260,12 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
 
 		final List<Object> result = new ArrayList<>(cachedElements);
 		entityData.forEach((o, data) -> {
-			if (entityMetadata.validate(data)) {
-				final EntityBuilder builder = new EntityBuilder(this, new OrientContainerFactory(this));
-				final Object instance = builder.build(entityMetadata, data);
+			if (facilityMetadata.validate(data)) {
+				final FacilityBuilder builder = new FacilityBuilder(this, new OrientContainerFactory(this));
+				final Object instance = builder.build(facilityMetadata, data);
 				if (instance != null) {
-					final Object key = entityMetadata.getIdVisitor().fromObject(data);
-					entityCache.put(entityMetadata, key, instance);
+					final Object key = facilityMetadata.getIdVisitor().fromObject(data);
+					entityCache.add(facilityMetadata, key, instance);
 					result.add(instance);
 				}
 			}
@@ -295,29 +274,29 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
 	}
 
 	@Override
-	public List<Object> fetchAll(EntityMetadata entityMetadata) throws OrmException {
-		Assertion.checkNotNull(entityMetadata);
-		final ORecordIteratorCluster<ORecord> allDocuments = findAllDocuments(entityMetadata.getTable());
+	public List<Object> fetchAll(FacilityMetadata facilityMetadata) throws OrmException {
+		Assertion.checkNotNull(facilityMetadata);
+		final ORecordIteratorCluster<ORecord> allDocuments = findAllDocuments(facilityMetadata.getTable());
 		final List<Object> objects = new ArrayList<>();
 		if (allDocuments != null) {
 			for (ORecord record : allDocuments) {
 				if (record != null) {
 					if (record instanceof ODocument) {
-						final Map<ColumnMetadata, Object> data = new LinkedHashMap<>(convertValues(entityMetadata,
+						final Map<ColumnMetadata, Object> data = new LinkedHashMap<>(convertValues(facilityMetadata,
 								(ODocument) record));
 
-						if (entityMetadata.validate(data)) {
-							final Object key = entityMetadata.getIdVisitor().fromObject(data);
-							final Object cached = entityCache.find(entityMetadata, key, Object.class);
+						if (facilityMetadata.validate(data)) {
+							final Object key = facilityMetadata.getIdVisitor().fromObject(data);
+							final Object cached = entityCache.get(facilityMetadata, key, Object.class);
 							if (cached != null) {
 								objects.add(cached);
 								continue;
 							}
 
-							final EntityBuilder builder = new EntityBuilder(this, new OrientContainerFactory(this));
-							final Object instance = builder.build(entityMetadata, data);
+							final FacilityBuilder builder = new FacilityBuilder(this, new OrientContainerFactory(this));
+							final Object instance = builder.build(facilityMetadata, data);
 							if (instance != null) {
-								entityCache.put(entityMetadata, key, instance);
+								entityCache.add(facilityMetadata, key, instance);
 								objects.add(instance);
 							}
 						}
@@ -329,10 +308,45 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
 		return Collections.unmodifiableList(objects);
 	}
 
+	/**
+	 * Function for execute custom named entity queries.
+	 *
+	 * @param facilityMetadata queering entity meta data
+	 * @param orientQuery      query to execute
+	 * @param params           query arguments
+	 * @return result of executing
+	 */
+	private SchemaQuery ofNamedQuery(FacilityMetadata facilityMetadata, OrientQuery orientQuery, Map<String, Object> params) {
+		final AutoClosingQuery q = new AutoClosingQuery(databaseDocument, orientQuery.getQuery(), params);
+		return new OrientSchemaQuery(this, facilityMetadata, q);
+	}
+
+	/**
+	 * Function for execute custom another entity queries.
+	 *
+	 * @param facilityMetadata queering entity meta data
+	 * @param query            query to execute
+	 * @param params           query arguments
+	 * @return result of executing
+	 */
+	private SchemaQuery ofNullQuery(FacilityMetadata facilityMetadata, String query, Map<String, Object> params) {
+		final AutoClosingQuery closingQuery = new AutoClosingQuery(databaseDocument, query, params);
+		return new OrientSchemaQuery(this, facilityMetadata, closingQuery);
+	}
+
+	/**
+	 * @return database schema
+	 */
 	public final ODatabaseDocument getDocument() {
 		return databaseDocument;
 	}
 
+	/**
+	 * Find entity schema by primary key.
+	 *
+	 * @param item primary key entity
+	 * @return instance schema
+	 */
 	public final ODocument findDocument(OIdentifiable item) {
 		if (item == null) {
 			return null;
@@ -350,11 +364,15 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
 		return databaseDocument.load(identity);
 	}
 
-	public final ORecordIteratorCluster<ORecord> findAllDocuments(String type) {
+	/**
+	 * @param type
+	 * @return
+	 */
+	private ORecordIteratorCluster<ORecord> findAllDocuments(String type) {
 		return databaseDocument.browseCluster(type);
 	}
 
-	public OIdentifiable findIdentifyByMap(EntityMetadata entityMetadata, Map<ColumnMetadata, Object> keys) {
+	public OIdentifiable findIdentifyByMap(FacilityMetadata facilityMetadata, Map<ColumnMetadata, Object> keys) {
 		final List<ColumnMetadata> columnMetadataList = new ArrayList<>();
 		keys.keySet().stream()
 				.filter(ColumnMetadata::isPrimaryKey)
@@ -369,8 +387,8 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
 		}
 
 		if (arguments.size() == 1) {
-			final String indexName = keyIndex(entityMetadata);
-			final String schemaName = entityMetadata.getTable();
+			final String indexName = keyIndex(facilityMetadata);
+			final String schemaName = facilityMetadata.getTable();
 			final OIndex keyIdx = databaseDocument.getMetadata().getIndexManager().getClassIndex(schemaName, indexName);
 			if (keyIdx != null) {
 				final Object packedKey = arguments.iterator().next();
@@ -387,7 +405,7 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
 		}
 
 		final StringBuilder queryBuilder = new StringBuilder()
-				.append("SELECT FROM INDEX:").append(keyIndex(entityMetadata)).append(" ")
+				.append("SELECT FROM INDEX:").append(keyIndex(facilityMetadata)).append(" ")
 				.append("WHERE key");
 		queryBuilder.append(" = [");
 		for (int i = 0; i < arguments.size(); i++) {
@@ -422,21 +440,21 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
 		return null;
 	}
 
-	private Collection<OIdentifiable> findIdentifyByKeys(EntityMetadata meta, Set<Object> keys) {
-		if (meta == null || keys == null || keys.isEmpty()) {
+	private Collection<OIdentifiable> findIdentifyByKeys(FacilityMetadata facilityMetadata, Set<Object> keys) {
+		if (facilityMetadata == null || keys == null || keys.isEmpty()) {
 			return Collections.emptyList();
 		}
 
 		final Collection<OIdentifiable> docs = keys
 				.stream()
-				.map(key -> findIdentifyByKey(meta, key))
+				.map(key -> findIdentifyByKey(facilityMetadata, key))
 				.filter(Objects::nonNull)
 				.collect(Collectors.toCollection(() -> new ArrayList<>(keys.size())));
 		return Collections.unmodifiableCollection(docs);
 	}
 
-	public final OIdentifiable findIdentifyByKey(EntityMetadata meta, Object key) {
-		if (meta == null || key == null) {
+	public final OIdentifiable findIdentifyByKey(FacilityMetadata facilityMetadata, Object key) {
+		if (facilityMetadata == null || key == null) {
 			return null;
 		}
 
@@ -444,7 +462,7 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
 			return fixIdentifyRecord((OIdentifiable) key);
 		}
 
-		final OIdentifiable identifiable = findIdentifyByMap(meta, meta.getIdVisitor().fromKey(key));
+		final OIdentifiable identifiable = findIdentifyByMap(facilityMetadata, facilityMetadata.getIdVisitor().fromKey(key));
 		if (identifiable != null) {
 			return fixIdentifyRecord(identifiable);
 		} else {
@@ -476,24 +494,24 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
 	}
 
 	@SuppressWarnings("unchecked")
-	public final <T> T install(EntityMetadata meta, ODocument document) throws OrmException {
+	public final <T> T install(FacilityMetadata facilityMetadata, ODocument document) throws OrmException {
 		if (document == null) {
 			return null;
 		}
 
-		final Map<ColumnMetadata, Object> objectMap = convertValues(meta, document);
+		final Map<ColumnMetadata, Object> objectMap = convertValues(facilityMetadata, document);
 		if (objectMap == null || objectMap.isEmpty()) {
 			return null;
 		}
 
 		final OrientContainerFactory containerFactory = new OrientContainerFactory(this);
-		final T element = (T) new EntityBuilder(this, containerFactory).build(meta, objectMap);
+		final T element = (T) new FacilityBuilder(this, containerFactory).build(facilityMetadata, objectMap);
 		if (element == null) {
 			return null;
 		}
 
-		final Object key = meta.getIdVisitor().fromObject(element);
-		entityCache.put(meta, key, element);
+		final Object key = facilityMetadata.getIdVisitor().fromObject(element);
+		entityCache.add(facilityMetadata, key, element);
 		return element;
 	}
 }

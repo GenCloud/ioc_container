@@ -23,7 +23,7 @@ import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
 import org.ioc.orm.exceptions.OrmException;
 import org.ioc.orm.factory.orient.OrientDocumentConverter;
 import org.ioc.orm.factory.orient.session.OrientDatabaseSession;
-import org.ioc.orm.metadata.type.EntityMetadata;
+import org.ioc.orm.metadata.type.FacilityMetadata;
 import org.ioc.orm.metadata.visitors.container.DataContainer;
 
 import java.util.*;
@@ -38,7 +38,7 @@ public class OrientLazyQueryContainer implements DataContainer {
 	private final AtomicBoolean loaded = new AtomicBoolean(false);
 
 	private final OrientDatabaseSession databaseSession;
-	private final EntityMetadata entityMetadata;
+	private final FacilityMetadata facilityMetadata;
 	private final boolean collection;
 	private final String query;
 	private final List<Object> parameters;
@@ -46,10 +46,10 @@ public class OrientLazyQueryContainer implements DataContainer {
 
 	private final List<ODocument> documents = new ArrayList<>();
 
-	public OrientLazyQueryContainer(OrientDatabaseSession databaseSession, EntityMetadata entityMetadata, boolean collection,
+	public OrientLazyQueryContainer(OrientDatabaseSession databaseSession, FacilityMetadata facilityMetadata, boolean collection,
 									String query, List<Object> parameters, OrientDocumentConverter converter) {
 		this.databaseSession = databaseSession;
-		this.entityMetadata = entityMetadata;
+		this.facilityMetadata = facilityMetadata;
 		this.collection = collection;
 		this.query = query;
 		this.parameters = new ArrayList<>(parameters);
@@ -61,7 +61,7 @@ public class OrientLazyQueryContainer implements DataContainer {
 		try {
 			return ensureResults().isEmpty();
 		} catch (Exception e) {
-			throw new OrmException("Unable to query lazy loaded results from [" + entityMetadata + "].", e);
+			throw new OrmException("Unable to query lazy loaded results from [" + facilityMetadata + "].", e);
 		}
 	}
 
@@ -82,7 +82,7 @@ public class OrientLazyQueryContainer implements DataContainer {
 				return converter.convert(results.iterator().next());
 			}
 		} catch (Exception e) {
-			throw new OrmException("Unable to entity lazy loaded results for metadata [" + entityMetadata + "].", e);
+			throw new OrmException("Unable to entity lazy loaded results for metadata [" + facilityMetadata + "].", e);
 		}
 	}
 

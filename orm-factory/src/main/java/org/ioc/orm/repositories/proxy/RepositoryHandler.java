@@ -24,11 +24,11 @@ import net.sf.cglib.reflect.FastMethod;
 import org.ioc.orm.annotations.Query;
 import org.ioc.orm.exceptions.RepositoryInvocationException;
 import org.ioc.orm.exceptions.RepositoryMappingException;
-import org.ioc.orm.factory.EntityManager;
+import org.ioc.orm.factory.FacilityManager;
 import org.ioc.orm.factory.SchemaQuery;
 import org.ioc.orm.interpretator.MethodsAnalyzer;
 import org.ioc.orm.metadata.transaction.Tx;
-import org.ioc.orm.metadata.type.EntityMetadata;
+import org.ioc.orm.metadata.type.FacilityMetadata;
 import org.ioc.orm.metadata.type.QueryMetadata;
 import org.ioc.orm.repositories.ProxyRepository;
 import org.slf4j.Logger;
@@ -48,21 +48,21 @@ import java.util.*;
 public class RepositoryHandler implements InvocationHandler {
 	private static final Logger log = LoggerFactory.getLogger(RepositoryHandler.class);
 	private static final Collection<String> ignoredMethods = Arrays.asList("equals", "hashCode", "toString");
-	private final EntityManager entityManager;
+	private final FacilityManager facilityManager;
 	private final Class<?> entityClass;
-	private final EntityMetadata entityMetadata;
+	private final FacilityMetadata facilityMetadata;
 	private final ProxyRepository repository;
 	private final MethodsAnalyzer methodsAnalyzer;
 	private final boolean logQueries;
 
-	public RepositoryHandler(EntityManager entityManager, Class<?> entityClass, EntityMetadata entityMetadata,
+	public RepositoryHandler(FacilityManager facilityManager, Class<?> entityClass, FacilityMetadata facilityMetadata,
 							 ProxyRepository repository, boolean logQueries) {
-		this.entityManager = entityManager;
+		this.facilityManager = facilityManager;
 		this.entityClass = entityClass;
-		this.entityMetadata = entityMetadata;
+		this.facilityMetadata = facilityMetadata;
 		this.repository = repository;
 
-		methodsAnalyzer = new MethodsAnalyzer(entityMetadata);
+		methodsAnalyzer = new MethodsAnalyzer(facilityMetadata);
 		this.logQueries = logQueries;
 	}
 
@@ -73,7 +73,7 @@ public class RepositoryHandler implements InvocationHandler {
 				log.debug("Intercepting proxy method invocation under transaction for repository type [{}].", repository.getClass().getSimpleName());
 			}
 
-			try (Tx tx = entityManager.openTx()) {
+			try (Tx tx = facilityManager.openTx()) {
 				final Object invoked = analyzeAndInvoke(method, args);
 				tx.success();
 				return invoked;
@@ -126,7 +126,7 @@ public class RepositoryHandler implements InvocationHandler {
 					final String[] hints = namedQuery.params();
 
 					SchemaQuery schemaQuery;
-					final Optional<QueryMetadata> opt = entityMetadata.getQueryMetadataCollection()
+					final Optional<QueryMetadata> opt = facilityMetadata.getQueryMetadataCollection()
 							.stream()
 							.filter(q -> q.getName().equalsIgnoreCase(query))
 							.findFirst();
@@ -143,7 +143,7 @@ public class RepositoryHandler implements InvocationHandler {
 							schemaQuery = repository.executePreparedQueryWithoutParams(query);
 						}
 					} else {
-						throw new RepositoryMappingException("Could not find NamedQuery in Schema - " + query);
+						throw new RepositoryMappingException("Could not get NamedQuery in Schema - " + query);
 					}
 
 					if (!isList) {

@@ -24,6 +24,6 @@ import org.ioc.orm.exceptions.OrmException;
  * @author GenCloud
  * @date 10/2018
  */
-public interface EntityProvider<T> {
+public interface FacilityProvider<T> {
 	T of() throws OrmException;
 }

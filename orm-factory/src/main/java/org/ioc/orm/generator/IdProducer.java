@@ -16,27 +16,18 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.ioc.orm.metadata.relation.bag;
+package org.ioc.orm.generator;
 
+import org.ioc.orm.exceptions.OrmException;
 import org.ioc.orm.factory.SessionFactory;
-import org.ioc.orm.metadata.relation.BagMapper;
-import org.ioc.orm.metadata.type.EntityMetadata;
-import org.ioc.orm.metadata.visitors.container.DataContainer;
+import org.ioc.orm.metadata.type.FacilityMetadata;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.io.Serializable;
 
 /**
  * @author GenCloud
  * @date 10/2018
  */
-public class LazyEntitySetBag<T> extends LazyEntityBag<T> implements Set<T> {
-	public LazyEntitySetBag(SessionFactory session, EntityMetadata meta, DataContainer data, BagMapper<T> factory) {
-		super(session, meta, data, factory, HashSet::new);
-	}
-
-	@Override
-	public LazyEntitySetBag<T> copy() {
-		return new LazyEntitySetBag<>(sessionFactory, entityMetadata, dataContainer, tiBagMapper);
-	}
+public interface IdProducer {
+	Serializable create(SessionFactory sessionFactory, FacilityMetadata facilityMetadata) throws OrmException;
 }

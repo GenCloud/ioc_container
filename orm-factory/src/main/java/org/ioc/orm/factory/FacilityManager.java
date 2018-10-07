@@ -20,9 +20,9 @@ package org.ioc.orm.factory;
 
 import org.ioc.orm.exceptions.OrmException;
 import org.ioc.orm.metadata.EntityMetadataSelector;
-import org.ioc.orm.metadata.transaction.AbstractTransactional;
+import org.ioc.orm.metadata.transaction.AbstractTx;
 import org.ioc.orm.metadata.transaction.Tx;
-import org.ioc.orm.metadata.type.EntityMetadata;
+import org.ioc.orm.metadata.type.FacilityMetadata;
 import org.ioc.utils.Assertion;
 
 import java.util.Collections;
@@ -33,11 +33,11 @@ import java.util.Map;
  * @author GenCloud
  * @date 10/2018
  */
-public class EntityManager extends AbstractTransactional {
+public class FacilityManager extends AbstractTx {
 	private final DatabaseSessionFactory databaseSession;
 	private final EntityMetadataSelector entityMetadataSelector;
 
-	public EntityManager(DatabaseSessionFactory databaseSession, EntityMetadataSelector entityMetadataSelector) {
+	public FacilityManager(DatabaseSessionFactory databaseSession, EntityMetadataSelector entityMetadataSelector) {
 		Assertion.checkNotNull(databaseSession);
 		Assertion.checkNotNull(entityMetadataSelector);
 
@@ -66,7 +66,7 @@ public class EntityManager extends AbstractTransactional {
 	public <T> SchemaQuery<T> query(Class<T> clazz, String name, Map<String, Object> parameters) throws OrmException {
 		Assertion.checkNotNull(clazz, "type");
 
-		final EntityMetadata metadata = entityMetadataSelector.getMetadata(clazz);
+		final FacilityMetadata metadata = entityMetadataSelector.getMetadata(clazz);
 		if (metadata == null) {
 			return null;
 		}
@@ -81,7 +81,7 @@ public class EntityManager extends AbstractTransactional {
 			return false;
 		}
 
-		final EntityMetadata metadata = entityMetadataSelector.getMetadata(clazz);
+		final FacilityMetadata metadata = entityMetadataSelector.getMetadata(clazz);
 		if (metadata == null) {
 			return false;
 		}
@@ -97,7 +97,7 @@ public class EntityManager extends AbstractTransactional {
 			return null;
 		}
 
-		final EntityMetadata metadata = entityMetadataSelector.getMetadata(clazz);
+		final FacilityMetadata metadata = entityMetadataSelector.getMetadata(clazz);
 		if (metadata == null) {
 			return null;
 		}
@@ -114,7 +114,7 @@ public class EntityManager extends AbstractTransactional {
 	public <T> List<T> fetchAll(Class<? extends T> clazz) {
 		Assertion.checkNotNull(clazz, "type");
 
-		final EntityMetadata metadata = entityMetadataSelector.getMetadata(clazz);
+		final FacilityMetadata metadata = entityMetadataSelector.getMetadata(clazz);
 		if (metadata == null) {
 			return null;
 		}
@@ -135,13 +135,13 @@ public class EntityManager extends AbstractTransactional {
 		databaseSession.save(findMetadata(element), element);
 	}
 
-	private <T> EntityMetadata findMetadata(T element) {
+	private <T> FacilityMetadata findMetadata(T element) {
 		Assertion.checkNotNull(element, "vertex");
 
 		final Class<?> clazz = element.getClass();
-		final EntityMetadata metadata = entityMetadataSelector.getMetadata(clazz);
+		final FacilityMetadata metadata = entityMetadataSelector.getMetadata(clazz);
 		if (metadata == null) {
-			throw new OrmException("Could not find metadata for element [" + element + "]. Register it.");
+			throw new OrmException("Could not get metadata for element [" + element + "]. Register it.");
 		}
 
 		return metadata;

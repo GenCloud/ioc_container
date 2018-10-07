@@ -24,7 +24,7 @@ import org.ioc.orm.exceptions.OrmException;
 import org.ioc.orm.factory.orient.session.OrientDatabaseSession;
 import org.ioc.orm.metadata.relation.mapper.OrientBagMapper;
 import org.ioc.orm.metadata.type.ColumnMetadata;
-import org.ioc.orm.metadata.type.EntityMetadata;
+import org.ioc.orm.metadata.type.FacilityMetadata;
 import org.ioc.orm.metadata.visitors.container.DataContainer;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -39,16 +39,16 @@ public class OrientLazyDataContainer implements DataContainer {
 	private final AtomicBoolean loaded = new AtomicBoolean(false);
 
 	private final OrientDatabaseSession databaseSession;
-	private final EntityMetadata entityMetadata;
+	private final FacilityMetadata facilityMetadata;
 	private final ColumnMetadata columnMetadata;
 	private final Object key;
 
 	private ODocument document;
 
-	public OrientLazyDataContainer(OrientDatabaseSession databaseSession, EntityMetadata meta, ColumnMetadata columnMetadata,
-								   Object key) {
+	public OrientLazyDataContainer(OrientDatabaseSession databaseSession, FacilityMetadata facilityMetadata,
+								   ColumnMetadata columnMetadata, Object key) {
 		this.databaseSession = databaseSession;
-		this.entityMetadata = meta;
+		this.facilityMetadata = facilityMetadata;
 		this.columnMetadata = columnMetadata;
 		this.key = key;
 	}
@@ -58,7 +58,7 @@ public class OrientLazyDataContainer implements DataContainer {
 		try {
 			return ensureResults().isEmpty();
 		} catch (Exception e) {
-			throw new OrmException("Unable to query lazy loaded results from [" + entityMetadata + "] columnMetadata [" + columnMetadata + "].", e);
+			throw new OrmException("Unable to query lazy loaded results from [" + facilityMetadata + "] columnMetadata [" + columnMetadata + "].", e);
 		}
 	}
 
@@ -71,7 +71,7 @@ public class OrientLazyDataContainer implements DataContainer {
 		try {
 			return convertValue(document, columnMetadata);
 		} catch (Exception e) {
-			throw new OrmException("Unable to toEntity lazy loaded results for columnMetadata [" + columnMetadata + "] on entityMetadata [" + entityMetadata + "].", e);
+			throw new OrmException("Unable to toEntity lazy loaded results for columnMetadata [" + columnMetadata + "] on facilityMetadata [" + facilityMetadata + "].", e);
 		}
 	}
 
@@ -80,11 +80,11 @@ public class OrientLazyDataContainer implements DataContainer {
 			return document;
 		}
 		try {
-			final OIdentifiable record = new OrientBagMapper(entityMetadata).fromKey(databaseSession, key);
+			final OIdentifiable record = new OrientBagMapper(facilityMetadata).fromKey(databaseSession, key);
 			document = databaseSession.findDocument(record);
 			loaded.getAndSet(true);
 		} catch (Exception e) {
-			throw new OrmException("Unable to fetch orientdb document by key [" + key + "].", e);
+			throw new OrmException("Unable to fetch database document by key [" + key + "].", e);
 		}
 		return document;
 	}

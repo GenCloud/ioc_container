@@ -24,13 +24,21 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
+ * Annotation to determine the registered named query of an entity and its repository function.
+ *
  * @author GenCloud
  * @date 10/2018
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
 public @interface Query {
+	/**
+	 * @return name of registered named query
+	 */
 	String name();
 
+	/**
+	 * @return argument's in named query
+	 */
 	String[] params();
 }

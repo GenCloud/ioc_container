@@ -21,7 +21,7 @@ package org.ioc.orm.interpretator;
 import org.ioc.orm.exceptions.OrmException;
 import org.ioc.orm.interpretator.specs.KeyWord;
 import org.ioc.orm.interpretator.specs.KeyWordResolver;
-import org.ioc.orm.metadata.type.EntityMetadata;
+import org.ioc.orm.metadata.type.FacilityMetadata;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -36,8 +36,8 @@ public class MethodsAnalyzer {
 
 	private KeyWordResolver keyWordResolver;
 
-	public MethodsAnalyzer(EntityMetadata entityMetadata) {
-		keyWordResolver = new KeyWordResolver(entityMetadata);
+	public MethodsAnalyzer(FacilityMetadata facilityMetadata) {
+		keyWordResolver = new KeyWordResolver(facilityMetadata);
 	}
 
 	public String toQuery(Method method, Object[] args) throws IllegalArgumentException {

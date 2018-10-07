@@ -27,11 +27,11 @@ import org.ioc.orm.metadata.type.*;
 public interface DataContainerFactory {
 	DataContainer createStatic(Object value);
 
-	DataContainer ofLazy(EntityMetadata entityMetadata, ColumnMetadata column, Object key);
+	DataContainer ofLazy(FacilityMetadata facilityMetadata, ColumnMetadata column, Object key);
 
-	DataContainer ofJoinBag(EntityMetadata entityMetadata, JoinBagMetadata column, Object key);
+	DataContainer ofJoinBag(FacilityMetadata facilityMetadata, JoinBagMetadata column, Object key);
 
-	DataContainer ofJoinColumn(EntityMetadata entityMetadata, JoinColumnMetadata column, Object key);
+	DataContainer ofJoinColumn(FacilityMetadata facilityMetadata, JoinColumnMetadata column, Object key);
 
-	DataContainer ofMappedColumn(EntityMetadata entityMetadata, MappedColumnMetadata column, Object key);
+	DataContainer ofMappedColumn(FacilityMetadata facilityMetadata, MappedColumnMetadata column, Object key);
 }

@@ -21,10 +21,18 @@ package org.ioc.orm.metadata.transaction;
 import org.ioc.orm.exceptions.OrmException;
 
 /**
+ * Manager for handling unit operations.
+ *
  * @author GenCloud
  * @date 10/2018
  */
 public interface ITransactional {
+	void start() throws OrmException;
+
+	void commit() throws OrmException;
+
+	void rollback() throws OrmException;
+
 	void close();
 
 	void withTx(TxRunnable txRunnable) throws OrmException;
@@ -34,10 +42,4 @@ public interface ITransactional {
 	Tx openTx() throws OrmException;
 
 	boolean pending();
-
-	void start() throws OrmException;
-
-	void commit() throws OrmException;
-
-	void rollback() throws OrmException;
 }

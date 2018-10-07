@@ -22,9 +22,9 @@ import org.ioc.orm.exceptions.OrmException;
 import org.ioc.orm.factory.SessionFactory;
 import org.ioc.orm.metadata.relation.BagMapper;
 import org.ioc.orm.metadata.relation.LazyBag;
-import org.ioc.orm.metadata.relation.bag.LazyEntityListBag;
-import org.ioc.orm.metadata.relation.bag.LazyEntitySetBag;
-import org.ioc.orm.metadata.type.EntityMetadata;
+import org.ioc.orm.metadata.relation.bag.LazyFacilityListBag;
+import org.ioc.orm.metadata.relation.bag.LazyFacilitySetBag;
+import org.ioc.orm.metadata.type.FacilityMetadata;
 import org.ioc.orm.metadata.visitors.column.ColumnVisitor;
 import org.ioc.orm.metadata.visitors.column.FieldColumnVisitor;
 import org.ioc.orm.metadata.visitors.container.DataContainer;
@@ -42,19 +42,19 @@ import java.util.Set;
  */
 public class ManyJoinColumnVisitor extends FieldColumnVisitor implements ColumnVisitor {
 	private final BagMapper bagMapper;
-	private final EntityMetadata entityMetadata;
+	private final FacilityMetadata facilityMetadata;
 	private final boolean lazy;
 
-	public ManyJoinColumnVisitor(Field field, EntityMetadata entityMetadata, boolean lazy,
+	public ManyJoinColumnVisitor(Field field, FacilityMetadata facilityMetadata, boolean lazy,
 								 final BagMapper bagMapper) {
 		super(field);
 		this.bagMapper = bagMapper;
-		this.entityMetadata = entityMetadata;
+		this.facilityMetadata = facilityMetadata;
 		this.lazy = lazy;
 	}
 
-	public EntityMetadata getMetadata() {
-		return entityMetadata;
+	public FacilityMetadata getMetadata() {
+		return facilityMetadata;
 	}
 
 	public boolean isLazy() {
@@ -138,9 +138,9 @@ public class ManyJoinColumnVisitor extends FieldColumnVisitor implements ColumnV
 		if (lazy) {
 			try {
 				if (Set.class.isAssignableFrom(getRawField().getType())) {
-					return setValue(o, new LazyEntitySetBag(sessionFactory, entityMetadata, dataContainer, bagMapper));
+					return setValue(o, new LazyFacilitySetBag(sessionFactory, facilityMetadata, dataContainer, bagMapper));
 				} else {
-					return setValue(o, new LazyEntityListBag(sessionFactory, entityMetadata, dataContainer, bagMapper));
+					return setValue(o, new LazyFacilityListBag(sessionFactory, facilityMetadata, dataContainer, bagMapper));
 				}
 			} catch (Exception e) {
 				throw new OrmException("Unable to setValue lazy join-column collection from dataContainer holder [" + dataContainer + "].", e);
@@ -155,7 +155,7 @@ public class ManyJoinColumnVisitor extends FieldColumnVisitor implements ColumnV
 				if (keys.isEmpty()) {
 					setValue(o, new ArrayListSet());
 				} else {
-					final List<Object> relations = sessionFactory.fetch(entityMetadata, keys.toArray());
+					final List<Object> relations = sessionFactory.fetch(facilityMetadata, keys.toArray());
 					if (relations == null || relations.isEmpty()) {
 						setValue(o, new ArrayListSet());
 					} else {

@@ -23,19 +23,19 @@ package org.ioc.orm.metadata.type;
  * @date 10/2018
  */
 public class MappedColumnMetadata extends ColumnMetadata {
-	private final EntityMetadata entityMetadata;
+	private final FacilityMetadata facilityMetadata;
 	private final ColumnMetadata columnMetadata;
 
-	public MappedColumnMetadata(EntityMetadata entityMetadata, ColumnMetadata columnMetadata,
+	public MappedColumnMetadata(FacilityMetadata facilityMetadata, ColumnMetadata columnMetadata,
 								final String name, String property, Class<?> clazz,
 								final boolean isLazyLoading) {
 		super(name, property, clazz, false, isLazyLoading, false);
-		this.entityMetadata = entityMetadata;
+		this.facilityMetadata = facilityMetadata;
 		this.columnMetadata = columnMetadata;
 	}
 
-	public EntityMetadata getEntityMetadata() {
-		return entityMetadata;
+	public FacilityMetadata getFacilityMetadata() {
+		return facilityMetadata;
 	}
 
 	public ColumnMetadata getColumnMetadata() {

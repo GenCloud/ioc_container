@@ -23,19 +23,19 @@ package org.ioc.orm.metadata.type;
  * @date 10/2018
  */
 public class JoinBagMetadata extends ColumnMetadata {
-	private final EntityMetadata entityMetadata;
+	private final FacilityMetadata facilityMetadata;
 	private final boolean embedded;
 
 	public JoinBagMetadata(String name, String property, Class<?> clazz,
-						   final EntityMetadata entityMetadata, boolean primary, boolean isLazyLoading,
+						   final FacilityMetadata facilityMetadata, boolean primary, boolean isLazyLoading,
 						   final boolean embedded) {
 		super(name, property, clazz, primary, isLazyLoading, false);
-		this.entityMetadata = entityMetadata;
+		this.facilityMetadata = facilityMetadata;
 		this.embedded = embedded;
 	}
 
-	public EntityMetadata getEntityMetadata() {
-		return entityMetadata;
+	public FacilityMetadata getFacilityMetadata() {
+		return facilityMetadata;
 	}
 
 	@Override

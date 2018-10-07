@@ -18,20 +18,49 @@
  */
 package org.ioc.orm.factory;
 
-import org.ioc.orm.metadata.type.EntityMetadata;
+import org.ioc.orm.metadata.type.FacilityMetadata;
 
 import java.util.List;
 
 /**
+ * Session container for retrieving database/cache entities.
+ *
  * @author GenCloud
  * @date 10/2018
  */
 public interface SessionFactory {
-	boolean exists(EntityMetadata entityMetadata, Object key);
+	/**
+	 * Check if entity with key exists in database.
+	 *
+	 * @param facilityMetadata entity meta data
+	 * @param key              entity primary key
+	 * @return true if entity exists
+	 */
+	boolean exists(FacilityMetadata facilityMetadata, Object key);
 
-	Object fetch(EntityMetadata entityMetadata, Object key);
+	/**
+	 * Fetching entity from database by primary key.
+	 *
+	 * @param facilityMetadata entity meta data.
+	 * @param key              entity primary key
+	 * @return entity instance if exists
+	 */
+	Object fetch(FacilityMetadata facilityMetadata, Object key);
 
-	List<Object> fetch(EntityMetadata entityMetadata, Object... keys);
+	/**
+	 * Fetching entities from database by primary key's.
+	 *
+	 * @param facilityMetadata entity meta data.
+	 * @param keys             collection entity primary key
+	 * @return collection of entity instances if exists
+	 */
+	List<Object> fetch(FacilityMetadata facilityMetadata, Object... keys);
 
-	List<Object> fetchAll(EntityMetadata entityMetadata);
+	/**
+	 * Fetching all entities from database.
+	 *
+	 * @param facilityMetadata entity meta data.
+	 * @return collection of entity
+	 */
+	List<Object> fetchAll(FacilityMetadata facilityMetadata);
 }

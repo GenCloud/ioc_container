@@ -21,11 +21,21 @@ package org.ioc.orm.factory.orient;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 
 /**
+ * Manager of control database schema.
+ *
  * @author GenCloud
  * @date 10/2018
  */
 public interface ODBPool {
+	/**
+	 * Acquire orient database schema.
+	 *
+	 * @return instance of database schema
+	 */
 	ODatabaseDocument acquire();
 
+	/**
+	 * Close database document.
+	 */
 	void close();
 }

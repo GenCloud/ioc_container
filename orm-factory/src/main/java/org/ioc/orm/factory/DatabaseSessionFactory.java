@@ -20,7 +20,7 @@ package org.ioc.orm.factory;
 
 import org.ioc.orm.exceptions.OrmException;
 import org.ioc.orm.metadata.transaction.ITransactional;
-import org.ioc.orm.metadata.type.EntityMetadata;
+import org.ioc.orm.metadata.type.FacilityMetadata;
 
 import java.util.Map;
 
@@ -33,9 +33,9 @@ public interface DatabaseSessionFactory extends SessionFactory, ITransactional {
 
 	void clear();
 
-	void save(EntityMetadata entityMetadata, Object o) throws OrmException;
+	void save(FacilityMetadata facilityMetadata, Object o) throws OrmException;
 
-	void delete(EntityMetadata entityMetadata, Object o) throws OrmException;
+	void delete(FacilityMetadata facilityMetadata, Object o) throws OrmException;
 
-	SchemaQuery query(EntityMetadata entityMetadata, String query, Map<String, Object> params) throws OrmException;
+	SchemaQuery query(FacilityMetadata facilityMetadata, String query, Map<String, Object> params) throws OrmException;
 }

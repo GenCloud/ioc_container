@@ -20,7 +20,7 @@ package org.ioc.orm.metadata.relation.mapper;
 
 import org.ioc.orm.factory.SessionFactory;
 import org.ioc.orm.metadata.relation.BagMapper;
-import org.ioc.orm.metadata.type.EntityMetadata;
+import org.ioc.orm.metadata.type.FacilityMetadata;
 import org.ioc.utils.Assertion;
 
 import java.util.Arrays;
@@ -34,16 +34,16 @@ import java.util.stream.Collectors;
  * @date 10/2018
  */
 public class BaseBagMapper<T> implements BagMapper<T> {
-	private final EntityMetadata entityMetadata;
+	private final FacilityMetadata facilityMetadata;
 
-	public BaseBagMapper(EntityMetadata entityMetadata) {
-		Assertion.checkNotNull(entityMetadata, "entity metadata");
+	public BaseBagMapper(FacilityMetadata facilityMetadata) {
+		Assertion.checkNotNull(facilityMetadata, "entity metadata");
 
-		this.entityMetadata = entityMetadata;
+		this.facilityMetadata = facilityMetadata;
 	}
 
-	public EntityMetadata getEntityMetadata() {
-		return entityMetadata;
+	public FacilityMetadata getFacilityMetadata() {
+		return facilityMetadata;
 	}
 
 	@Override
@@ -53,7 +53,7 @@ public class BaseBagMapper<T> implements BagMapper<T> {
 
 	@Override
 	public Object formObject(SessionFactory sessionFactory, T value) {
-		return entityMetadata.getIdVisitor().fromObject(value);
+		return facilityMetadata.getIdVisitor().fromObject(value);
 	}
 
 	@SafeVarargs
@@ -64,7 +64,7 @@ public class BaseBagMapper<T> implements BagMapper<T> {
 		}
 
 		return Collections.unmodifiableList(Arrays.stream(values)
-				.map(value -> entityMetadata.getIdVisitor().fromObject(value))
+				.map(value -> facilityMetadata.getIdVisitor().fromObject(value))
 				.filter(Objects::nonNull)
 				.collect(Collectors.toList()));
 	}
@@ -72,12 +72,12 @@ public class BaseBagMapper<T> implements BagMapper<T> {
 	@Override
 	@SuppressWarnings("unchecked")
 	public T ofObject(SessionFactory sessionFactory, Object value) {
-		return (T) sessionFactory.fetch(entityMetadata, value);
+		return (T) sessionFactory.fetch(facilityMetadata, value);
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
 	public List<T> ofObjects(SessionFactory sessionFactory, Object... values) {
-		return (List<T>) sessionFactory.fetch(entityMetadata, values);
+		return (List<T>) sessionFactory.fetch(facilityMetadata, values);
 	}
 }

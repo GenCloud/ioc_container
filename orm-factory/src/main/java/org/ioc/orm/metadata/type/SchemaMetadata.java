@@ -27,90 +27,90 @@ import java.util.*;
  * @author GenCloud
  * @date 10/2018
  */
-public class SchemaMetadata implements EntityMetadataSelector, Iterable<EntityMetadata> {
-	private final EntityMetadataCollection entityMetadataCollection;
+public class SchemaMetadata implements EntityMetadataSelector, Iterable<FacilityMetadata> {
+	private final FacilityMetadataCollection facilityMetadataCollection;
 
-	public SchemaMetadata(Collection<EntityMetadata> collection) {
+	public SchemaMetadata(Collection<FacilityMetadata> collection) {
 		Assertion.checkNotNull(collection, "collection");
 		Assertion.checkArgument(!collection.isEmpty(), "empty");
 
-		entityMetadataCollection = new EntityMetadataCollection(collection);
+		facilityMetadataCollection = new FacilityMetadataCollection(collection);
 	}
 
-	static boolean findEntityMetadata(String labelOrType, EntityMetadata meta) {
-		if (labelOrType.equalsIgnoreCase(meta.getName())) {
+	static boolean findEntityMetadata(String labelOrType, FacilityMetadata facilityMetadata) {
+		if (labelOrType.equalsIgnoreCase(facilityMetadata.getName())) {
 			return true;
-		} else if (labelOrType.equalsIgnoreCase(meta.getTable())) {
+		} else if (labelOrType.equalsIgnoreCase(facilityMetadata.getTable())) {
 			return true;
 		} else {
-			return meta.getTypes()
+			return facilityMetadata.getTypes()
 					.stream()
 					.anyMatch(clazz -> labelOrType.equalsIgnoreCase(clazz.getSimpleName()));
 		}
 	}
 
 	public Set<Class> getTypes() {
-		return entityMetadataCollection.getTypes();
+		return facilityMetadataCollection.getTypes();
 	}
 
 	public Collection<String> getTables() {
 		final Set<String> tables = new TreeSet<>();
-		for (EntityMetadata metadata : entityMetadataCollection) {
+		for (FacilityMetadata metadata : facilityMetadataCollection) {
 			tables.add(metadata.getTable());
 		}
 		return Collections.unmodifiableCollection(tables);
 	}
 
-	public Collection<EntityMetadata> getEntityMetadataCollection() {
-		return entityMetadataCollection.collectAll();
+	public Collection<FacilityMetadata> getFacilityMetadataCollection() {
+		return facilityMetadataCollection.collectAll();
 	}
 
-	public EntityMetadata getEntity(String labelOrType) {
+	public FacilityMetadata getEntity(String labelOrType) {
 		if (labelOrType == null || labelOrType.isEmpty()) {
 			return null;
 		}
 
-		for (EntityMetadata meta : entityMetadataCollection) {
-			if (findEntityMetadata(labelOrType, meta)) {
-				return meta;
+		for (FacilityMetadata facilityMetadata : facilityMetadataCollection) {
+			if (findEntityMetadata(labelOrType, facilityMetadata)) {
+				return facilityMetadata;
 			}
 		}
 		return null;
 	}
 
 	@Override
-	public Iterator<EntityMetadata> iterator() {
-		return entityMetadataCollection.iterator();
+	public Iterator<FacilityMetadata> iterator() {
+		return facilityMetadataCollection.iterator();
 	}
 
 	@Override
-	public EntityMetadata getMetadata(Class<?> clazz) {
-		return entityMetadataCollection.getMetadata(clazz);
+	public FacilityMetadata getMetadata(Class<?> clazz) {
+		return facilityMetadataCollection.getMetadata(clazz);
 	}
 
 	@Override
-	public EntityMetadata getMetadata(String labelOrType) {
-		return entityMetadataCollection.getMetadata(labelOrType);
+	public FacilityMetadata getMetadata(String labelOrType) {
+		return facilityMetadataCollection.getMetadata(labelOrType);
 	}
 
 	@Override
 	public boolean contains(Class<?> clazz) {
-		return entityMetadataCollection.contains(clazz);
+		return facilityMetadataCollection.contains(clazz);
 	}
 
 	@Override
-	public boolean contains(EntityMetadata entityMetadata) {
-		return entityMetadataCollection.contains(entityMetadata);
+	public boolean contains(FacilityMetadata facilityMetadata) {
+		return facilityMetadataCollection.contains(facilityMetadata);
 	}
 
 	@Override
-	public Collection<EntityMetadata> collectAll() {
-		return entityMetadataCollection.collectAll();
+	public Collection<FacilityMetadata> collectAll() {
+		return facilityMetadataCollection.collectAll();
 	}
 
 	@Override
 	public int size() {
-		return entityMetadataCollection.size();
+		return facilityMetadataCollection.size();
 	}
 
 	@Override
@@ -125,11 +125,11 @@ public class SchemaMetadata implements EntityMetadataSelector, Iterable<EntityMe
 
 		SchemaMetadata that = (SchemaMetadata) o;
 
-		return Objects.equals(entityMetadataCollection, that.entityMetadataCollection);
+		return Objects.equals(facilityMetadataCollection, that.facilityMetadataCollection);
 	}
 
 	@Override
 	public int hashCode() {
-		return entityMetadataCollection != null ? entityMetadataCollection.hashCode() : 0;
+		return facilityMetadataCollection != null ? facilityMetadataCollection.hashCode() : 0;
 	}
 }

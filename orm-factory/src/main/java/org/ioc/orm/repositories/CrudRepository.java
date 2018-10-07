@@ -27,7 +27,7 @@ import java.util.List;
  */
 public interface CrudRepository<Entity, ID> {
 	/**
-	 * Finds all instances of a given @{@code EntityMetadata}-annotated class bag.
+	 * Finds all instances of a given @{@code FacilityMetadata}-annotated class bag.
 	 *
 	 * @return non-empty ofList of result ofList. never <code>null</code>.
 	 */
@@ -35,7 +35,7 @@ public interface CrudRepository<Entity, ID> {
 	<E> E fetch(ID id);
 
 	/**
-	 * Finds all instances of a given @{@code EntityMetadata}-annotated class bag.
+	 * Finds all instances of a given @{@code FacilityMetadata}-annotated class bag.
 	 *
 	 * @return non-empty ofList of result ofList. never <code>null</code>.
 	 */

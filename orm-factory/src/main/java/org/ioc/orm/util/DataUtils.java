@@ -39,7 +39,7 @@ import java.util.UUID;
  * @date 10/2018
  */
 @SuppressWarnings("deprecation")
-public class DataUtils {
+class DataUtils {
 	private static final Logger log = LoggerFactory.getLogger(DataUtils.class);
 
 	private static ObjectMapper createMapper() {
@@ -113,7 +113,7 @@ public class DataUtils {
 		return bytesToUUID(ByteBuffer.wrap(bytes));
 	}
 
-	public static UUID bytesToUUID(ByteBuffer bytes) {
+	private static UUID bytesToUUID(ByteBuffer bytes) {
 		if (bytes == null) {
 			return null;
 		}

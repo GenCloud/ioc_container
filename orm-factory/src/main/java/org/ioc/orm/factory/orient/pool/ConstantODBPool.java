@@ -31,8 +31,8 @@ import static org.ioc.orm.util.OrientUtils.toUrl;
 public class ConstantODBPool implements ODBPool {
 	private final OPartitionedDatabasePool pool;
 
-	public ConstantODBPool(String url, String database, String user, String pwd) {
-		pool = new OPartitionedDatabasePool(toUrl(url, database), user, pwd);
+	public ConstantODBPool(String url, String database, String username, String password) {
+		pool = new OPartitionedDatabasePool(toUrl(url, database), username, password);
 	}
 
 	@Override

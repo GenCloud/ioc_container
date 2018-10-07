@@ -18,7 +18,7 @@
  */
 package org.ioc.orm.metadata;
 
-import org.ioc.orm.metadata.type.EntityMetadata;
+import org.ioc.orm.metadata.type.FacilityMetadata;
 
 import java.util.Collection;
 
@@ -27,15 +27,15 @@ import java.util.Collection;
  * @date 10/2018
  */
 public interface EntityMetadataSelector {
-	EntityMetadata getMetadata(Class<?> clazz);
+	FacilityMetadata getMetadata(Class<?> clazz);
 
-	EntityMetadata getMetadata(String labelOrType);
+	FacilityMetadata getMetadata(String labelOrType);
 
 	boolean contains(Class<?> clazz);
 
-	boolean contains(EntityMetadata entityMetadata);
+	boolean contains(FacilityMetadata facilityMetadata);
 
-	Collection<EntityMetadata> collectAll();
+	Collection<FacilityMetadata> collectAll();
 
 	int size();
 }

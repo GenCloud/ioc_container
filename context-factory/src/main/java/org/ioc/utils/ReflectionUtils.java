@@ -120,8 +120,8 @@ public class ReflectionUtils {
 		return list;
 	}
 
-	public static <T extends Annotation> T findAnnotation(Class<?> entityClass, Class<T> clazz) {
-		final List<T> list = findAnnotations(entityClass, clazz);
+	public static <T extends Annotation> T searchAnnotation(Class<?> entityClass, Class<T> clazz) {
+		final List<T> list = searchAnnotations(entityClass, clazz);
 		if (list.isEmpty()) {
 			return null;
 		}
@@ -129,9 +129,9 @@ public class ReflectionUtils {
 		return list.get(0);
 	}
 
-	public static <T extends Annotation> List<T> findAnnotations(Class<?> entityClass, Class<T> clazz) {
+	public static <T extends Annotation> List<T> searchAnnotations(Class<?> entityClass, Class<T> clazz) {
 		final List<T> list = new ArrayList<>();
-		getHierarchy(entityClass).forEach(type -> {
+		toClassHierarchy(entityClass).forEach(type -> {
 			final T classAnnotation = type.getAnnotation(clazz);
 			if (classAnnotation != null) {
 				list.add(classAnnotation);
@@ -146,7 +146,7 @@ public class ReflectionUtils {
 		return Collections.unmodifiableList(list);
 	}
 
-	public static List<Class<?>> getHierarchy(Class<?> entityClass) {
+	public static List<Class<?>> toClassHierarchy(Class<?> entityClass) {
 		if (entityClass == null || Object.class.equals(entityClass)) {
 			return Collections.emptyList();
 		}

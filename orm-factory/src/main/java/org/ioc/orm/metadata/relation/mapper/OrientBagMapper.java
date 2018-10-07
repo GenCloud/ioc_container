@@ -24,7 +24,7 @@ import org.ioc.orm.exceptions.OrmException;
 import org.ioc.orm.factory.SessionFactory;
 import org.ioc.orm.factory.orient.session.OrientDatabaseSession;
 import org.ioc.orm.metadata.relation.BagMapper;
-import org.ioc.orm.metadata.type.EntityMetadata;
+import org.ioc.orm.metadata.type.FacilityMetadata;
 import org.ioc.utils.Assertion;
 
 import java.util.*;
@@ -35,12 +35,12 @@ import java.util.stream.Collectors;
  * @date 10/2018
  */
 public class OrientBagMapper<T> implements BagMapper<T> {
-	private final EntityMetadata entityMetadata;
+	private final FacilityMetadata facilityMetadata;
 
-	public OrientBagMapper(EntityMetadata entityMetadata) {
-		Assertion.checkNotNull(entityMetadata);
+	public OrientBagMapper(FacilityMetadata facilityMetadata) {
+		Assertion.checkNotNull(facilityMetadata);
 
-		this.entityMetadata = entityMetadata;
+		this.facilityMetadata = facilityMetadata;
 	}
 
 	@Override
@@ -50,7 +50,7 @@ public class OrientBagMapper<T> implements BagMapper<T> {
 		}
 
 		final OrientDatabaseSession databaseSession = (OrientDatabaseSession) sessionFactory;
-		final OIdentifiable rid = databaseSession.findIdentifyByKey(entityMetadata, key);
+		final OIdentifiable rid = databaseSession.findIdentifyByKey(facilityMetadata, key);
 		return rid != null ? rid.getIdentity() : null;
 	}
 
@@ -60,7 +60,7 @@ public class OrientBagMapper<T> implements BagMapper<T> {
 			return null;
 		}
 
-		final Object key = entityMetadata.getIdVisitor().fromObject(value);
+		final Object key = facilityMetadata.getIdVisitor().fromObject(value);
 		return fromKey(sessionFactory, key);
 	}
 
@@ -72,7 +72,7 @@ public class OrientBagMapper<T> implements BagMapper<T> {
 		}
 
 		final List<ORID> list = Arrays.stream(values)
-				.map(value -> entityMetadata.getIdVisitor().fromObject(value))
+				.map(value -> facilityMetadata.getIdVisitor().fromObject(value))
 				.map(key -> fromKey(sessionFactory, key))
 				.filter(Objects::nonNull)
 				.collect(Collectors.toCollection(() -> new ArrayList<>(values.length)));
@@ -83,12 +83,12 @@ public class OrientBagMapper<T> implements BagMapper<T> {
 	@Override
 	@SuppressWarnings("unchecked")
 	public T ofObject(SessionFactory sessionFactory, Object value) {
-		return (T) sessionFactory.fetch(entityMetadata, value);
+		return (T) sessionFactory.fetch(facilityMetadata, value);
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
 	public List<T> ofObjects(SessionFactory sessionFactory, Object... values) {
-		return (List<T>) sessionFactory.fetch(entityMetadata, values);
+		return (List<T>) sessionFactory.fetch(facilityMetadata, values);
 	}
 }

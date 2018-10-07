@@ -18,18 +18,27 @@
  */
 package org.ioc.orm.factory;
 
-import org.ioc.orm.exceptions.OrmException;
-
 import java.util.Collection;
 
 /**
+ * Custom result set tool for fetching elements.
+ *
  * @author GenCloud
  * @date 10/2018
  */
 public interface SchemaQuery<T> extends Iterable<T>, AutoCloseable {
-	T first() throws OrmException;
+	/**
+	 * @return return found element.
+	 */
+	T first();
 
-	Collection<T> list() throws OrmException;
+	/**
+	 * @return collection of found elements
+	 */
+	Collection<T> list();
 
-	boolean empty() throws OrmException;
+	/**
+	 * @return true if element not null
+	 */
+	boolean empty();
 }

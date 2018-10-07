@@ -25,21 +25,21 @@ import java.util.Objects;
  * @date 10/2018
  */
 public class OrientQuery {
-	private final String jpaQuery;
-	private final String orientQuery;
+	private final String javaPersistentQuery;
+	private final String orientPersistentQuery;
 
-	public OrientQuery(String jpaQuery, String orientQuery) {
-		this.jpaQuery = jpaQuery;
-		this.orientQuery = orientQuery;
+	public OrientQuery(String javaPersistentQuery, String orientPersistentQuery) {
+		this.javaPersistentQuery = javaPersistentQuery;
+		this.orientPersistentQuery = orientPersistentQuery;
 	}
 
 	public String getQuery() {
-		return orientQuery;
+		return orientPersistentQuery;
 	}
 
 	@Override
 	public String toString() {
-		return jpaQuery;
+		return javaPersistentQuery;
 	}
 
 	@Override
@@ -53,17 +53,17 @@ public class OrientQuery {
 
 		OrientQuery that = (OrientQuery) o;
 
-		if (!Objects.equals(jpaQuery, that.jpaQuery)) {
+		if (!Objects.equals(javaPersistentQuery, that.javaPersistentQuery)) {
 			return false;
 		}
 
-		return Objects.equals(orientQuery, that.orientQuery);
+		return Objects.equals(orientPersistentQuery, that.orientPersistentQuery);
 	}
 
 	@Override
 	public int hashCode() {
-		int result = jpaQuery != null ? jpaQuery.hashCode() : 0;
-		result = 31 * result + (orientQuery != null ? orientQuery.hashCode() : 0);
+		int result = javaPersistentQuery != null ? javaPersistentQuery.hashCode() : 0;
+		result = 31 * result + (orientPersistentQuery != null ? orientPersistentQuery.hashCode() : 0);
 		return result;
 	}
 }

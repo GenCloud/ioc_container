@@ -30,15 +30,17 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import static org.ioc.orm.util.OrientUtils.convertValue;
+
 /**
  * @author GenCloud
  * @date 10/2018
  */
 public class OrientContainerFactory implements DataContainerFactory {
-	private final OrientDatabaseSession session;
+	private final OrientDatabaseSession databaseSession;
 
-	public OrientContainerFactory(OrientDatabaseSession session) {
-		this.session = session;
+	public OrientContainerFactory(OrientDatabaseSession databaseSession) {
+		this.databaseSession = databaseSession;
 	}
 
 	@Override
@@ -47,15 +49,15 @@ public class OrientContainerFactory implements DataContainerFactory {
 	}
 
 	@Override
-	public DataContainer ofLazy(EntityMetadata entity, ColumnMetadata column, Object key) {
+	public DataContainer ofLazy(FacilityMetadata entity, ColumnMetadata column, Object key) {
 		if (entity == null || column == null || key == null) {
 			return null;
 		}
-		return new OrientLazyDataContainer(session, entity, column, key);
+		return new OrientLazyDataContainer(databaseSession, entity, column, key);
 	}
 
 	@Override
-	public DataContainer ofJoinBag(EntityMetadata entity, JoinBagMetadata column, Object key) {
+	public DataContainer ofJoinBag(FacilityMetadata entity, JoinBagMetadata column, Object key) {
 		if (entity == null || column == null || key == null) {
 			return null;
 		}
@@ -80,12 +82,12 @@ public class OrientContainerFactory implements DataContainerFactory {
 			first = false;
 			parameters.add(value);
 		}
-		final OrientDocumentConverter handler = document -> OrientUtils.convertValue(document, column);
-		return new OrientLazyQueryContainer(session, entity, column.isBag(), query.toString(), parameters, handler);
+		final OrientDocumentConverter handler = document -> convertValue(document, column);
+		return new OrientLazyQueryContainer(databaseSession, entity, column.isBag(), query.toString(), parameters, handler);
 	}
 
 	@Override
-	public DataContainer ofJoinColumn(EntityMetadata entity, JoinColumnMetadata column, Object key) {
+	public DataContainer ofJoinColumn(FacilityMetadata entity, JoinColumnMetadata column, Object key) {
 		if (entity == null || column == null || key == null) {
 			return null;
 		}
@@ -110,22 +112,22 @@ public class OrientContainerFactory implements DataContainerFactory {
 			parameters.add(value);
 		}
 		final OrientDocumentConverter handler = document -> OrientUtils.convertKey(entity, document);
-		return new OrientLazyQueryContainer(session, entity, column.isBag(), query.toString(), parameters, handler);
+		return new OrientLazyQueryContainer(databaseSession, entity, column.isBag(), query.toString(), parameters, handler);
 	}
 
 	@Override
-	public DataContainer ofMappedColumn(EntityMetadata entity, MappedColumnMetadata column, Object key) {
+	public DataContainer ofMappedColumn(FacilityMetadata entity, MappedColumnMetadata column, Object key) {
 		if (entity == null || column == null || key == null) {
 			return null;
 		}
 
-		final EntityMetadata mappedEntity = column.getEntityMetadata();
+		final FacilityMetadata mappedEntity = column.getFacilityMetadata();
 		final ColumnMetadata mappedColumn = column.getColumnMetadata();
 
 		final String query = "select from " + mappedEntity.getTable() + " " +
 				"where " + mappedColumn.getName() + " = ?";
 		final OrientDocumentConverter handler = document -> OrientUtils.convertKey(mappedEntity, document);
-		final Object rid = session.findIdentifyByKey(entity, key);
-		return new OrientLazyQueryContainer(session, mappedEntity, column.isBag(), query, Collections.singletonList(rid), handler);
+		final Object rid = databaseSession.findIdentifyByKey(entity, key);
+		return new OrientLazyQueryContainer(databaseSession, mappedEntity, column.isBag(), query, Collections.singletonList(rid), handler);
 	}
 }

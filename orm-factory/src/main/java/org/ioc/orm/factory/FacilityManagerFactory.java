@@ -19,29 +19,37 @@
 package org.ioc.orm.factory;
 
 import org.ioc.orm.exceptions.OrmException;
-import org.ioc.orm.metadata.type.EntityMetadata;
+import org.ioc.orm.metadata.type.FacilityMetadata;
 import org.ioc.orm.metadata.type.SchemaMetadata;
 
 /**
+ * Manager for instantiating entity manager and configuring schema database.
+ *
  * @author GenCloud
  * @date 10/2018
  */
-public class EntityManagerFactory {
+public class FacilityManagerFactory {
 	private final Schema schema;
 	private final SchemaMetadata schemaMetadata;
 	private boolean configured = false;
 
-	public EntityManagerFactory(Schema schema, SchemaMetadata schemaMetadata) {
+	public FacilityManagerFactory(Schema schema, SchemaMetadata schemaMetadata) {
 		this.schema = schema;
 		this.schemaMetadata = schemaMetadata;
 	}
 
-	public EntityManager create() throws OrmException {
+	/**
+	 * Create entity manager with session factory.
+	 *
+	 * @return entity manager instance
+	 * @throws OrmException
+	 */
+	public FacilityManager create() throws OrmException {
 		installDatabase();
-		return new EntityManager(schema.openSession(), schemaMetadata);
+		return new FacilityManager(schema.openSession(), schemaMetadata);
 	}
 
-	protected synchronized void installDatabase() throws OrmException {
+	private synchronized void installDatabase() throws OrmException {
 		if (configured) {
 			return;
 		}
@@ -50,9 +58,9 @@ public class EntityManagerFactory {
 			schema.update();
 			schemaMetadata.collectAll();
 
-			for (EntityMetadata meta : schemaMetadata) {
-				meta.getQueryMetadataCollection()
-						.forEach(query -> schema.installQuery(meta, query.getName(), query.getQuery()));
+			for (FacilityMetadata facilityMetadata : schemaMetadata) {
+				facilityMetadata.getQueryMetadataCollection()
+						.forEach(query -> schema.installQuery(facilityMetadata, query.getName(), query.getQuery()));
 			}
 			configured = true;
 		} catch (Exception e) {

@@ -30,9 +30,9 @@ target/
 
 logs/
 
-*/test/cache
-*/test/database
-*/test/log
+*/cache/
+*/database/
+*/log/
 
 *.jar
 

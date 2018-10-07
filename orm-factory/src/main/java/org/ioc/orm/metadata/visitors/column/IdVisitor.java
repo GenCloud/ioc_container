@@ -16,15 +16,20 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.ioc.orm.property;
+package org.ioc.orm.metadata.visitors.column;
 
 import org.ioc.orm.metadata.type.ColumnMetadata;
-import org.ioc.orm.metadata.type.EntityMetadata;
+
+import java.util.Map;
 
 /**
  * @author GenCloud
  * @date 10/2018
  */
-public interface PropertyFilter {
-	boolean accept(EntityMetadata meta, ColumnMetadata column);
+public interface IdVisitor {
+	Object fromObject(Object entity);
+
+	Map<ColumnMetadata, Object> fromKey(Object key);
+
+	Object ofKey(Map<ColumnMetadata, Object> map);
 }

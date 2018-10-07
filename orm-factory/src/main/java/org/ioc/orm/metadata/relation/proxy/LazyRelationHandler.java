@@ -22,7 +22,7 @@ import net.sf.cglib.proxy.InvocationHandler;
 import org.ioc.orm.exceptions.OrmException;
 import org.ioc.orm.factory.SessionFactory;
 import org.ioc.orm.metadata.type.ColumnMetadata;
-import org.ioc.orm.metadata.type.EntityMetadata;
+import org.ioc.orm.metadata.type.FacilityMetadata;
 import org.ioc.orm.metadata.visitors.column.ColumnVisitor;
 import org.ioc.orm.metadata.visitors.container.DataContainer;
 import org.ioc.orm.metadata.visitors.container.type.BaseDataContainer;
@@ -44,19 +44,19 @@ public class LazyRelationHandler implements InvocationHandler {
 
 	private final AtomicBoolean initialized = new AtomicBoolean(false);
 
-	private final EntityMetadata entityMetadata;
+	private final FacilityMetadata facilityMetadata;
 	private final RelationVisitor relationVisitor;
 	private final SessionFactory sessionFactory;
 	private final Class<?> entityClass;
 
-	public LazyRelationHandler(EntityMetadata entityMetadata, RelationVisitor relationVisitor,
+	public LazyRelationHandler(FacilityMetadata facilityMetadata, RelationVisitor relationVisitor,
 							   SessionFactory sessionFactory, Class<?> entityClass) {
 		this.entityClass = entityClass;
-		Assertion.checkNotNull(entityMetadata, "entity metadata");
+		Assertion.checkNotNull(facilityMetadata, "entity metadata");
 		Assertion.checkNotNull(relationVisitor, "visitor");
 		Assertion.checkNotNull(sessionFactory, "sessionFactory");
 
-		this.entityMetadata = entityMetadata;
+		this.facilityMetadata = facilityMetadata;
 		this.relationVisitor = relationVisitor;
 		this.sessionFactory = sessionFactory;
 	}
@@ -75,7 +75,7 @@ public class LazyRelationHandler implements InvocationHandler {
 		}
 
 		if (log.isDebugEnabled()) {
-			log.debug("Intercepting proxy method invocation, fetching lazy relation for [{}].", entityMetadata);
+			log.debug("Intercepting proxy method invocation, fetching lazy relation for [{}].", facilityMetadata);
 		}
 
 		final Object value = relationVisitor.visit();
@@ -85,10 +85,10 @@ public class LazyRelationHandler implements InvocationHandler {
 		}
 
 		if (log.isDebugEnabled()) {
-			log.debug("Lazy relation fetched, copying entityMetadata values from instance [{}].", value);
+			log.debug("Lazy relation fetched, copying facilityMetadata values from instance [{}].", value);
 		}
 
-		for (Map.Entry<ColumnMetadata, ColumnVisitor> entry : entityMetadata.getColumnVisitorMap()) {
+		for (Map.Entry<ColumnMetadata, ColumnVisitor> entry : facilityMetadata.getColumnVisitorMap()) {
 			final ColumnVisitor visitor = entry.getValue();
 			final Object columnValue = visitor.getValue(value, sessionFactory);
 			final DataContainer data = new BaseDataContainer(columnValue);

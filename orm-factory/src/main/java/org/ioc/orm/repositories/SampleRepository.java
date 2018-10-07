@@ -18,7 +18,7 @@
  */
 package org.ioc.orm.repositories;
 
-import org.ioc.orm.factory.EntityManager;
+import org.ioc.orm.factory.FacilityManager;
 import org.ioc.orm.factory.SchemaQuery;
 import org.ioc.utils.Assertion;
 
@@ -30,52 +30,52 @@ import java.util.Map;
  * @date 10/2018
  */
 public class SampleRepository<Entity, ID> implements ProxyRepository<Entity, ID> {
-	private final EntityManager entityManager;
+	private final FacilityManager facilityManager;
 	private final Class<Entity> entityClass;
 
-	public SampleRepository(EntityManager entityManager, Class<Entity> entityClass) {
-		Assertion.checkNotNull(entityManager);
+	public SampleRepository(FacilityManager facilityManager, Class<Entity> entityClass) {
+		Assertion.checkNotNull(facilityManager);
 		Assertion.checkNotNull(entityClass);
 
-		this.entityManager = entityManager;
+		this.facilityManager = facilityManager;
 		this.entityClass = entityClass;
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
 	public <E> E fetch(ID id) {
-		return (E) entityManager.fetch(entityClass, id);
+		return (E) facilityManager.fetch(entityClass, id);
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
 	public <E> List<E> fetchAll() {
-		return (List<E>) entityManager.fetchAll(entityClass);
+		return (List<E>) facilityManager.fetchAll(entityClass);
 	}
 
 	@Override
 	public void save(Entity entity) {
-		entityManager.save(entity);
+		facilityManager.save(entity);
 	}
 
 	@Override
 	public void delete(Entity entity) {
-		entityManager.delete(entity);
+		facilityManager.delete(entity);
 	}
 
 	@Override
 	public boolean exists(ID id) {
-		return entityManager.exists(entityClass, id);
+		return facilityManager.exists(entityClass, id);
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
 	public SchemaQuery<Entity> executePreparedQuery(String prepared, Map<String, Object> params) {
-		return entityManager.query(entityClass, prepared, params);
+		return facilityManager.query(entityClass, prepared, params);
 	}
 
 	@Override
 	public SchemaQuery<Entity> executePreparedQueryWithoutParams(String prepared) {
-		return entityManager.query(entityClass, prepared);
+		return facilityManager.query(entityClass, prepared);
 	}
 }

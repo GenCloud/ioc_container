@@ -21,7 +21,7 @@ package org.ioc.orm.metadata.visitors.column.type;
 import org.ioc.orm.exceptions.OrmException;
 import org.ioc.orm.factory.SessionFactory;
 import org.ioc.orm.metadata.relation.BagMapper;
-import org.ioc.orm.metadata.type.EntityMetadata;
+import org.ioc.orm.metadata.type.FacilityMetadata;
 import org.ioc.orm.metadata.visitors.column.ColumnVisitor;
 import org.ioc.orm.metadata.visitors.column.FieldColumnVisitor;
 import org.ioc.orm.metadata.visitors.container.DataContainer;
@@ -35,13 +35,13 @@ import java.lang.reflect.Field;
  */
 public class SingleJoinColumnVisitor extends FieldColumnVisitor implements ColumnVisitor {
 	private final BagMapper bagMapper;
-	private final EntityMetadata entityMetadata;
+	private final FacilityMetadata facilityMetadata;
 	private final boolean isLazyLoading;
 
-	public SingleJoinColumnVisitor(Field field, EntityMetadata entityMetadata, boolean isLazyLoading,
+	public SingleJoinColumnVisitor(Field field, FacilityMetadata facilityMetadata, boolean isLazyLoading,
 								   final BagMapper bagMapper) {
 		super(field);
-		this.entityMetadata = entityMetadata;
+		this.facilityMetadata = facilityMetadata;
 		this.isLazyLoading = isLazyLoading;
 		this.bagMapper = bagMapper;
 	}
@@ -69,7 +69,7 @@ public class SingleJoinColumnVisitor extends FieldColumnVisitor implements Colum
 
 			return RelationsUtils.isInitialized(relation);
 		} catch (Exception e) {
-			throw new OrmException("Unable to determine if entityMetadata/proxy column [" + getRawField().getName() + "] is loaded.", e);
+			throw new OrmException("Unable to determine if facilityMetadata/proxy column [" + getRawField().getName() + "] is loaded.", e);
 		}
 	}
 
@@ -102,7 +102,7 @@ public class SingleJoinColumnVisitor extends FieldColumnVisitor implements Colum
 			try {
 				final Object related;
 				if (isLazyLoading) {
-					related = RelationsUtils.createProxy(entityMetadata, key, sessionFactory, bagMapper);
+					related = RelationsUtils.createProxy(facilityMetadata, key, sessionFactory, bagMapper);
 				} else {
 					related = bagMapper.ofObject(sessionFactory, key);
 				}

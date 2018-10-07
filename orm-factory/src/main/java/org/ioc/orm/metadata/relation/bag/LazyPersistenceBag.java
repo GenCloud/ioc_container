@@ -34,14 +34,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @date 10/2018
  */
 public abstract class LazyPersistenceBag<T> implements LazyBag<T> {
-	protected final DataContainer dataContainer;
-	protected final SessionFactory sessionFactory;
+	final DataContainer dataContainer;
+	final SessionFactory sessionFactory;
 	private final BagFactory<T> bagFactory;
 	private final AtomicBoolean initialized = new AtomicBoolean(false);
 	private Collection<T> entities;
 
-	public LazyPersistenceBag(SessionFactory sessionFactory, DataContainer dataContainer,
-							  final BagFactory<T> bagFactory) {
+	LazyPersistenceBag(SessionFactory sessionFactory, DataContainer dataContainer,
+					   final BagFactory<T> bagFactory) {
 		Assertion.checkNotNull(dataContainer, "container");
 		Assertion.checkNotNull(sessionFactory, "sessionFactory");
 		Assertion.checkNotNull(bagFactory, "collection factory");
@@ -56,7 +56,7 @@ public abstract class LazyPersistenceBag<T> implements LazyBag<T> {
 		return initialized.get();
 	}
 
-	protected Collection<T> getBag() {
+	Collection<T> getBag() {
 		return installEntities();
 	}
 

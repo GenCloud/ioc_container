@@ -27,6 +27,8 @@ import org.ioc.orm.factory.orient.ODBPool;
 import java.util.*;
 
 /**
+ * Local (disk path) database schema manager.
+ *
  * @author GenCloud
  * @date 10/2018
  */
@@ -39,17 +41,17 @@ public class LocalODBPool implements ODBPool {
 
 	private final Set<ODatabaseDocument> opened = new HashSet<>();
 
-	private final Timer timer = new Timer(getClass().getName() + "-Timer", true);
+	private final Timer timer = new Timer(getClass().getName() + "- Timer", true);
 
-	private final long timerDelay = getTimeOutDelay();
+	private final long timerDelay = timerDelay();
 
-	public LocalODBPool(String url, String user, String password) {
+	public LocalODBPool(String url, String username, String password) {
 		this.url = url;
-		this.username = user;
+		this.username = username;
 		this.password = password;
 	}
 
-	private static long getTimeOutDelay() {
+	private static long timerDelay() {
 		final String prop = System.getProperty("local.pool.closeDelay");
 		if (prop == null || prop.trim().isEmpty()) {
 			return 0;
@@ -68,25 +70,25 @@ public class LocalODBPool implements ODBPool {
 			Orient.instance().startup();
 		}
 
-		final ODatabaseDocument db = new ODatabaseDocumentTx(url);
-		if (!db.exists()) {
-			db.create();
+		final ODatabaseDocument documentTx = new ODatabaseDocumentTx(url);
+		if (!documentTx.exists()) {
+			documentTx.create();
 		} else {
-			db.open(username, password);
+			documentTx.open(username, password);
 		}
 
-		db.activateOnCurrentThread();
+		documentTx.activateOnCurrentThread();
 
-		opened.add(db);
+		opened.add(documentTx);
 
 		if (timerDelay > 0) {
 			timer.schedule(new CloseTask(), timerDelay);
 		}
 
-		return db;
+		return documentTx;
 	}
 
-	private synchronized boolean checkOpenConnections() {
+	private synchronized boolean checkOpen() {
 		if (opened.isEmpty()) {
 			return false;
 		}
@@ -111,7 +113,7 @@ public class LocalODBPool implements ODBPool {
 	private class CloseTask extends TimerTask {
 		@Override
 		public void run() {
-			if (checkOpenConnections()) {
+			if (checkOpen()) {
 				timer.schedule(new CloseTask(), timerDelay);
 			}
 		}

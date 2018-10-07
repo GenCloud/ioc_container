@@ -16,24 +16,18 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.ioc.orm.property;
+package org.ioc.orm.metadata.visitors.handler;
 
+import org.ioc.orm.exceptions.OrmException;
 import org.ioc.orm.metadata.type.ColumnMetadata;
-import org.ioc.orm.metadata.type.EntityMetadata;
+import org.ioc.orm.metadata.type.FacilityMetadata;
+
+import java.util.Map;
 
 /**
  * @author GenCloud
  * @date 10/2018
  */
-public class EmptyPropertyFilter implements PropertyFilter {
-	private static final PropertyFilter instance = new EmptyPropertyFilter();
-
-	public static PropertyFilter getInstance() {
-		return EmptyPropertyFilter.instance;
-	}
-
-	@Override
-	public boolean accept(EntityMetadata meta, ColumnMetadata column) {
-		return true;
-	}
+public interface FacilityAdder {
+	boolean add(FacilityMetadata facilityMetadata, Map<ColumnMetadata, Object> objectMap) throws OrmException;
 }

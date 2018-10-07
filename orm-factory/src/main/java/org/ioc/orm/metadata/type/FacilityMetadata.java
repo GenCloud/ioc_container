@@ -18,16 +18,15 @@
  */
 package org.ioc.orm.metadata.type;
 
-import org.ioc.orm.generator.IdGenerator;
-import org.ioc.orm.generator.type.UUIDGenerator;
+import org.ioc.orm.generator.IdProducer;
+import org.ioc.orm.generator.type.UUIDProducer;
 import org.ioc.orm.metadata.visitors.column.ColumnVisitor;
-import org.ioc.orm.metadata.visitors.id.IdVisitor;
-import org.ioc.orm.metadata.visitors.id.type.NullIdVisitor;
+import org.ioc.orm.metadata.visitors.column.IdVisitor;
+import org.ioc.orm.metadata.visitors.column.type.NullIdVisitor;
 import org.ioc.utils.Assertion;
 import org.ioc.utils.collections.ArrayListSet;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static org.ioc.utils.ReflectionUtils.instantiateClass;
 
@@ -35,7 +34,7 @@ import static org.ioc.utils.ReflectionUtils.instantiateClass;
  * @author GenCloud
  * @date 10/2018
  */
-public class EntityMetadata implements Iterable<ColumnMetadata>, Comparable<EntityMetadata> {
+public class FacilityMetadata implements Iterable<ColumnMetadata>, Comparable<FacilityMetadata> {
 	private final String name;
 
 	private final Set<Class<?>> types;
@@ -43,13 +42,13 @@ public class EntityMetadata implements Iterable<ColumnMetadata>, Comparable<Enti
 	private final List<IndexMetadata> indexMetadataList = new ArrayList<>();
 	private final Map<Class<?>, InheritMetadata> inheritMetadataMap = new HashMap<>();
 	private final Map<ColumnMetadata, ColumnVisitor> columnVisitorMap = new HashMap<>();
-	private final Map<ColumnMetadata, IdGenerator> idGeneratorMap = new HashMap<>();
+	private final Map<ColumnMetadata, IdProducer> idGeneratorMap = new HashMap<>();
 	private final Collection<QueryMetadata> queryMetadataCollection = new ArrayListSet<>();
 
 	private String table;
 	private IdVisitor idVisitor = NullIdVisitor.getInstance();
 
-	public EntityMetadata(String name, String table, Collection<Class<?>> collection) {
+	public FacilityMetadata(String name, String table, Collection<Class<?>> collection) {
 		Assertion.checkNotNull(name, "name null");
 		Assertion.checkNotNull(collection, "collection null");
 		Assertion.checkArgument(!name.isEmpty(), "blank name");
@@ -62,14 +61,14 @@ public class EntityMetadata implements Iterable<ColumnMetadata>, Comparable<Enti
 		types.addAll(collection);
 	}
 
-	public Map<ColumnMetadata, Object> filter(Map<ColumnMetadata, Object> data, Object instance) {
-		if (data == null || data.isEmpty()) {
+	public Map<ColumnMetadata, Object> filter(Map<ColumnMetadata, Object> objectMap, Object instance) {
+		if (objectMap == null || objectMap.isEmpty()) {
 			return Collections.emptyMap();
 		}
 
-		final Map<ColumnMetadata, Object> filtered = new HashMap<>(data.size());
+		final Map<ColumnMetadata, Object> filtered = new HashMap<>(objectMap.size());
 		if (!inheritMetadataMap.isEmpty()) {
-			InheritMetadata inheritMetadata = inheritMetadataMap.entrySet()
+			final InheritMetadata inheritMetadata = inheritMetadataMap.entrySet()
 					.stream()
 					.filter(entry -> entry.getKey().isInstance(instance))
 					.findFirst()
@@ -82,7 +81,7 @@ public class EntityMetadata implements Iterable<ColumnMetadata>, Comparable<Enti
 			filtered.put(inheritMetadata.getColumn(), inheritMetadata.getValue());
 		}
 
-		data.forEach((key, value) -> {
+		objectMap.forEach((key, value) -> {
 			if (hasColumn(key)) {
 				filtered.put(key, value);
 			}
@@ -91,14 +90,14 @@ public class EntityMetadata implements Iterable<ColumnMetadata>, Comparable<Enti
 		return filtered;
 	}
 
-	public boolean validate(Map<ColumnMetadata, Object> data) {
-		if (data == null || data.isEmpty()) {
+	public boolean validate(Map<ColumnMetadata, Object> objectMap) {
+		if (objectMap == null || objectMap.isEmpty()) {
 			return false;
 		}
 
 		return getPrimaryKeys()
 				.stream()
-				.noneMatch(key -> data.get(key) == null);
+				.noneMatch(key -> objectMap.get(key) == null);
 	}
 
 	public Object build(Map<ColumnMetadata, Object> data) {
@@ -142,20 +141,6 @@ public class EntityMetadata implements Iterable<ColumnMetadata>, Comparable<Enti
 		return Collections.unmodifiableSet(types);
 	}
 
-	public Collection<ColumnMetadata> getLazyLoaded() {
-		return Collections.unmodifiableList(getColumnMetadataCollection()
-				.stream()
-				.filter(ColumnMetadata::isLazyLoaded)
-				.collect(Collectors.toList()));
-	}
-
-	public Collection<ColumnMetadata> getEagerLoaded() {
-		return Collections.unmodifiableList(getColumnMetadataCollection()
-				.stream()
-				.filter(column -> !column.isLazyLoaded())
-				.collect(Collectors.toList()));
-	}
-
 	public ColumnMetadata getPrimaryKey() {
 		return getColumnMetadataCollection()
 				.stream()
@@ -174,53 +159,56 @@ public class EntityMetadata implements Iterable<ColumnMetadata>, Comparable<Enti
 		return Collections.unmodifiableSet(keys);
 	}
 
-	public boolean hasColumn(ColumnMetadata column) {
-		if (column == null) {
+	private boolean hasColumn(ColumnMetadata columnMetadata) {
+		if (columnMetadata == null) {
 			return false;
 		}
-		return columnMetadataCollection.contains(column);
+		return columnMetadataCollection.contains(columnMetadata);
 	}
 
 	public Collection<ColumnMetadata> getColumnMetadataCollection() {
 		return Collections.unmodifiableCollection(columnMetadataCollection);
 	}
 
-	public int getNumColumns() {
+	@SuppressWarnings("unused")
+	public int getSizeOfColumns() {
 		return columnMetadataCollection.size();
 	}
 
+	@SuppressWarnings("unused")
 	public boolean hasColumn(String nameOrProperty) {
-		return findColumn(nameOrProperty) != null;
+		return findColumnMetadata(nameOrProperty) != null;
 	}
 
-	public ColumnMetadata findColumn(String nameOrProperty) {
-		if (nameOrProperty == null || nameOrProperty.isEmpty()) {
+	public ColumnMetadata findColumnMetadata(String type) {
+		if (type == null || type.isEmpty()) {
 			return null;
 		}
 
-		for (ColumnMetadata meta : columnMetadataCollection) {
-			if (nameOrProperty.equalsIgnoreCase(meta.getName())) {
-				return meta;
+		for (ColumnMetadata columnMetadata : columnMetadataCollection) {
+			if (type.equalsIgnoreCase(columnMetadata.getName())) {
+				return columnMetadata;
 			}
-			if (nameOrProperty.equalsIgnoreCase(meta.getProperty())) {
-				return meta;
+			if (type.equalsIgnoreCase(columnMetadata.getProperty())) {
+				return columnMetadata;
 			}
 		}
 		return null;
 	}
 
-	public boolean addColumn(ColumnMetadata column) {
-		if (column == null) {
+	public boolean addColumnMetadata(ColumnMetadata columnMetadata) {
+		if (columnMetadata == null) {
 			return false;
 		}
-		return columnMetadataCollection.add(column);
+		return columnMetadataCollection.add(columnMetadata);
 	}
 
-	public boolean removeColumn(ColumnMetadata column) {
-		if (column == null) {
+	@SuppressWarnings("unused")
+	public boolean removeColumnMetadata(ColumnMetadata columnMetadata) {
+		if (columnMetadata == null) {
 			return false;
 		}
-		return columnMetadataCollection.remove(column);
+		return columnMetadataCollection.remove(columnMetadata);
 	}
 
 	@Override
@@ -228,33 +216,37 @@ public class EntityMetadata implements Iterable<ColumnMetadata>, Comparable<Enti
 		return Collections.unmodifiableCollection(columnMetadataCollection).iterator();
 	}
 
-	public boolean addIndex(IndexMetadata column) {
-		if (column == null) {
-			return false;
-		}
-		return indexMetadataList.add(column);
-	}
-
-	public boolean removeIndexed(IndexMetadata column) {
-		if (column == null) {
-			return false;
+	public void addIndex(IndexMetadata indexMetadata) {
+		if (indexMetadata == null) {
+			return;
 		}
 
-		return indexMetadataList.remove(column);
+		indexMetadataList.add(indexMetadata);
 	}
 
-	public boolean isIndexed(ColumnMetadata column) {
-		if (column == null) {
+	@SuppressWarnings("unused")
+	public boolean removeIndex(IndexMetadata indexMetadata) {
+		if (indexMetadata == null) {
 			return false;
 		}
 
-		return indexMetadataList.stream().anyMatch(index -> index.getMetadataList().contains(column));
+		return indexMetadataList.remove(indexMetadata);
 	}
 
-	public boolean addQuery(QueryMetadata q) {
-		return queryMetadataCollection.add(q);
+	@SuppressWarnings("unused")
+	public boolean isIndexColumn(ColumnMetadata columnMetadata) {
+		if (columnMetadata == null) {
+			return false;
+		}
+
+		return indexMetadataList.stream().anyMatch(index -> index.getMetadataList().contains(columnMetadata));
 	}
 
+	public void addQuery(QueryMetadata q) {
+		queryMetadataCollection.add(q);
+	}
+
+	@SuppressWarnings("unused")
 	public boolean removeQuery(QueryMetadata q) {
 		return queryMetadataCollection.add(q);
 	}
@@ -279,21 +271,6 @@ public class EntityMetadata implements Iterable<ColumnMetadata>, Comparable<Enti
 		return columnVisitorMap.get(column);
 	}
 
-	public ColumnVisitor getVisitor(String columnName) {
-		if (columnName == null || columnName.isEmpty()) {
-			return null;
-		}
-
-		for (Map.Entry<ColumnMetadata, ColumnVisitor> entry : columnVisitorMap.entrySet()) {
-			final ColumnMetadata column = entry.getKey();
-			if (columnName.equalsIgnoreCase(column.getName())
-					|| columnName.equalsIgnoreCase(column.getProperty())) {
-				return entry.getValue();
-			}
-		}
-		return null;
-	}
-
 	public void setInherited(Class<?> clazz, InheritMetadata discriminator) {
 		if (clazz == null) {
 			return;
@@ -306,7 +283,7 @@ public class EntityMetadata implements Iterable<ColumnMetadata>, Comparable<Enti
 		}
 	}
 
-	public IdGenerator getGenerator(ColumnMetadata column) {
+	public IdProducer getProducer(ColumnMetadata column) {
 		if (column == null) {
 			return null;
 		}
@@ -314,41 +291,40 @@ public class EntityMetadata implements Iterable<ColumnMetadata>, Comparable<Enti
 		return idGeneratorMap.get(column);
 	}
 
-	public boolean setGenerator(ColumnMetadata column, IdGenerator generator) {
+	public void setProducer(ColumnMetadata column, IdProducer generator) {
 		if (column == null) {
-			return false;
+			return;
 		}
 
 		if (generator == null) {
-			return idGeneratorMap.remove(column) != null;
+			idGeneratorMap.remove(column);
+			return;
 		}
 
 		idGeneratorMap.put(column, generator);
-		return true;
 	}
 
-	public boolean setVisitor(ColumnMetadata column, ColumnVisitor visitor) {
+	public void setVisitor(ColumnMetadata column, ColumnVisitor visitor) {
 		if (column == null) {
-			return false;
+			return;
 		}
 
 		if (visitor == null) {
-			return columnVisitorMap.remove(column) != null;
+			columnVisitorMap.remove(column);
 		} else {
 			columnVisitorMap.put(column, visitor);
-			return true;
 		}
 	}
 
-	public boolean putColumns(Map<ColumnMetadata, ColumnVisitor> map) {
+	public boolean addColumns(Map<ColumnMetadata, ColumnVisitor> map) {
 		if (map == null || map.isEmpty()) {
 			return false;
 		}
 
 		map.forEach((column, visitor) -> {
-			addColumn(column);
+			addColumnMetadata(column);
 			if (column.isPrimaryKey() && column.getType().equals(UUID.class)) {
-				setGenerator(column, UUIDGenerator.getInstance());
+				setProducer(column, UUIDProducer.getInstance());
 			}
 			setVisitor(column, visitor);
 		});
@@ -374,16 +350,13 @@ public class EntityMetadata implements Iterable<ColumnMetadata>, Comparable<Enti
 		return table;
 	}
 
-	void setTable(String table) {
-		this.table = table;
-	}
-
 	@Override
-	public int compareTo(EntityMetadata entityMetadata) {
-		if (entityMetadata == null) {
+	public int compareTo(FacilityMetadata facilityMetadata) {
+		if (facilityMetadata == null) {
 			return 1;
 		}
-		return name.compareToIgnoreCase(entityMetadata.name);
+
+		return name.compareToIgnoreCase(facilityMetadata.name);
 	}
 
 	@Override
@@ -401,7 +374,7 @@ public class EntityMetadata implements Iterable<ColumnMetadata>, Comparable<Enti
 			return false;
 		}
 
-		EntityMetadata that = (EntityMetadata) o;
+		FacilityMetadata that = (FacilityMetadata) o;
 
 		if (!Objects.equals(name, that.name)) {
 			return false;

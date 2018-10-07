@@ -25,17 +25,19 @@ import org.ioc.utils.collections.ArrayListSet;
 
 import java.util.*;
 
+import static org.ioc.orm.metadata.type.SchemaMetadata.findEntityMetadata;
+
 /**
  * @author GenCloud
  * @date 10/2018
  */
-public class EntityMetadataCollection implements EntityMetadataSelector, Iterable<EntityMetadata> {
-	private final Map<Class, EntityMetadata> classMap = new HashMap<>();
+public class FacilityMetadataCollection implements EntityMetadataSelector, Iterable<FacilityMetadata> {
+	private final Map<Class, FacilityMetadata> classMap = new HashMap<>();
 
-	public EntityMetadataCollection(Iterable<EntityMetadata> metadataIterable) {
-		Assertion.checkNotNull(metadataIterable, "meta iter");
+	public FacilityMetadataCollection(Iterable<FacilityMetadata> metadataIterable) {
+		Assertion.checkNotNull(metadataIterable);
 
-		for (EntityMetadata metadata : metadataIterable) {
+		for (FacilityMetadata metadata : metadataIterable) {
 			metadata.getTypes().forEach(clazz -> classMap.put(clazz, metadata));
 		}
 	}
@@ -45,17 +47,17 @@ public class EntityMetadataCollection implements EntityMetadataSelector, Iterabl
 	}
 
 	@Override
-	public EntityMetadata getMetadata(Class<?> clazz) {
+	public FacilityMetadata getMetadata(Class<?> clazz) {
 		if (clazz == null) {
 			return null;
 		}
 
-		final EntityMetadata entityMetadata = classMap.get(clazz);
-		if (entityMetadata != null) {
-			return entityMetadata;
+		final FacilityMetadata facilityMetadata = classMap.get(clazz);
+		if (facilityMetadata != null) {
+			return facilityMetadata;
 		}
 
-		final Collection<EntityMetadata> collection = findMeta(clazz);
+		final Collection<FacilityMetadata> collection = findMeta(clazz);
 		if (collection.isEmpty()) {
 			return null;
 		}
@@ -68,29 +70,29 @@ public class EntityMetadataCollection implements EntityMetadataSelector, Iterabl
 	}
 
 	@Override
-	public final EntityMetadata getMetadata(String labelOrType) {
-		if (labelOrType == null || labelOrType.isEmpty()) {
+	public final FacilityMetadata getMetadata(String type) {
+		if (type == null || type.isEmpty()) {
 			return null;
 		}
 
 		return classMap.values()
 				.stream()
-				.filter(meta -> SchemaMetadata.findEntityMetadata(labelOrType, meta))
+				.filter(entityMetadata -> findEntityMetadata(type, entityMetadata))
 				.findFirst()
 				.orElse(null);
 	}
 
-	private Collection<EntityMetadata> findMeta(Class<?> clazz) {
+	private Collection<FacilityMetadata> findMeta(Class<?> clazz) {
 		if (clazz == null) {
 			return Collections.emptyList();
 		}
 
-		final EntityMetadata entityMetadata = classMap.get(clazz);
-		if (entityMetadata != null) {
-			return Collections.singletonList(entityMetadata);
+		final FacilityMetadata facilityMetadata = classMap.get(clazz);
+		if (facilityMetadata != null) {
+			return Collections.singletonList(facilityMetadata);
 		}
 
-		final Set<EntityMetadata> set = new ArrayListSet<>(4);
+		final Set<FacilityMetadata> set = new ArrayListSet<>(4);
 		classMap.forEach((key, entityMeta) -> {
 			if (((Class<?>) key).isAssignableFrom(clazz) || clazz.isAssignableFrom(key)) {
 				set.add(entityMeta);
@@ -105,7 +107,7 @@ public class EntityMetadataCollection implements EntityMetadataSelector, Iterabl
 	}
 
 	@Override
-	public Collection<EntityMetadata> collectAll() {
+	public Collection<FacilityMetadata> collectAll() {
 		return Collections.unmodifiableCollection(classMap.values());
 	}
 
@@ -115,15 +117,15 @@ public class EntityMetadataCollection implements EntityMetadataSelector, Iterabl
 	}
 
 	@Override
-	public boolean contains(EntityMetadata entityMetadata) {
-		if (entityMetadata == null) {
+	public boolean contains(FacilityMetadata facilityMetadata) {
+		if (facilityMetadata == null) {
 			return false;
 		}
 
 		return classMap.entrySet()
 				.stream()
-				.anyMatch(entry -> entityMetadata == entry.getValue()
-						|| entityMetadata.compareTo(entry.getValue()) == 0);
+				.anyMatch(entry -> facilityMetadata == entry.getValue()
+						|| facilityMetadata.compareTo(entry.getValue()) == 0);
 	}
 
 	@Override
@@ -132,7 +134,7 @@ public class EntityMetadataCollection implements EntityMetadataSelector, Iterabl
 	}
 
 	@Override
-	public Iterator<EntityMetadata> iterator() {
+	public Iterator<FacilityMetadata> iterator() {
 		return Collections.unmodifiableCollection(classMap.values()).iterator();
 	}
 }

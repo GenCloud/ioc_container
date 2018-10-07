@@ -30,14 +30,14 @@ import java.util.Objects;
 public abstract class FieldColumnVisitor {
 	private final Field field;
 
-	public FieldColumnVisitor(Field field) {
+	protected FieldColumnVisitor(Field field) {
 		Assertion.checkNotNull(field, "field");
 
 		this.field = field;
 		field.setAccessible(true);
 	}
 
-	public Field getRawField() {
+	protected Field getRawField() {
 		return field;
 	}
 

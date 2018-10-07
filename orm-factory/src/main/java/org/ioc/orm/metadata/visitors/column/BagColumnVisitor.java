@@ -36,7 +36,7 @@ public abstract class BagColumnVisitor extends FieldColumnVisitor implements Col
 	private final Class<?> clazz;
 	private final boolean lazyLoading;
 
-	public BagColumnVisitor(Field field, Class<?> clazz, boolean lazyLoading) {
+	protected BagColumnVisitor(Field field, Class<?> clazz, boolean lazyLoading) {
 		super(field);
 		Assertion.checkNotNull(clazz, "class");
 

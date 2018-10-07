@@ -19,7 +19,7 @@
 package org.ioc.orm.metadata.visitors.column.factory;
 
 import org.ioc.orm.metadata.relation.mapper.BaseBagMapper;
-import org.ioc.orm.metadata.type.EntityMetadata;
+import org.ioc.orm.metadata.type.FacilityMetadata;
 import org.ioc.orm.metadata.visitors.column.ColumnVisitor;
 import org.ioc.orm.metadata.visitors.column.ColumnVisitorFactory;
 import org.ioc.orm.metadata.visitors.column.type.BaseColumnVisitor;
@@ -39,12 +39,12 @@ public class BaseColumnVisitorFactory implements ColumnVisitorFactory {
 	}
 
 	@Override
-	public ColumnVisitor manyVisit(Field field, EntityMetadata entityMetadata, boolean isLazyLoading) {
-		return new ManyJoinColumnVisitor(field, entityMetadata, isLazyLoading, new BaseBagMapper(entityMetadata));
+	public ColumnVisitor manyVisit(Field field, FacilityMetadata facilityMetadata, boolean isLazyLoading) {
+		return new ManyJoinColumnVisitor(field, facilityMetadata, isLazyLoading, new BaseBagMapper(facilityMetadata));
 	}
 
 	@Override
-	public ColumnVisitor singleVisit(Field field, EntityMetadata entityMetadata, boolean isLazyLoading) {
-		return new SingleJoinColumnVisitor(field, entityMetadata, isLazyLoading, new BaseBagMapper(entityMetadata));
+	public ColumnVisitor singleVisit(Field field, FacilityMetadata facilityMetadata, boolean isLazyLoading) {
+		return new SingleJoinColumnVisitor(field, facilityMetadata, isLazyLoading, new BaseBagMapper(facilityMetadata));
 	}
 }

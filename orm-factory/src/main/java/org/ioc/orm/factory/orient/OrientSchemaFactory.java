@@ -18,6 +18,7 @@
  */
 package org.ioc.orm.factory.orient;
 
+import com.orientechnologies.orient.core.Orient;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.orientechnologies.orient.core.metadata.schema.OType;
@@ -26,6 +27,7 @@ import net.sf.cglib.proxy.Enhancer;
 import org.apache.commons.io.FilenameUtils;
 import org.ioc.annotations.context.IoCRepository;
 import org.ioc.context.factories.Factory;
+import org.ioc.context.processors.DestroyProcessor;
 import org.ioc.context.sensible.ContextSensible;
 import org.ioc.context.sensible.EnvironmentSensible;
 import org.ioc.context.type.IoCContext;
@@ -35,18 +37,18 @@ import org.ioc.enviroment.configurations.datasource.OrientDatasourceAutoConfigur
 import org.ioc.exceptions.IoCException;
 import org.ioc.orm.cache.EntityCache;
 import org.ioc.orm.exceptions.OrmException;
-import org.ioc.orm.factory.EntityManager;
-import org.ioc.orm.factory.EntityManagerFactory;
+import org.ioc.orm.factory.FacilityManager;
+import org.ioc.orm.factory.FacilityManagerFactory;
 import org.ioc.orm.factory.Schema;
 import org.ioc.orm.factory.orient.pool.ConstantODBPool;
 import org.ioc.orm.factory.orient.pool.LocalODBPool;
 import org.ioc.orm.factory.orient.query.OrientQuery;
 import org.ioc.orm.factory.orient.session.OrientDatabaseSession;
-import org.ioc.orm.generator.IdGenerator;
-import org.ioc.orm.generator.type.OrientIdGenerator;
-import org.ioc.orm.metadata.inspectors.EntityMetadataInspector;
+import org.ioc.orm.generator.IdProducer;
+import org.ioc.orm.generator.type.OrientIdProducer;
+import org.ioc.orm.metadata.inspectors.FacilityMetadataInspector;
 import org.ioc.orm.metadata.type.ColumnMetadata;
-import org.ioc.orm.metadata.type.EntityMetadata;
+import org.ioc.orm.metadata.type.FacilityMetadata;
 import org.ioc.orm.metadata.type.IndexMetadata;
 import org.ioc.orm.metadata.type.SchemaMetadata;
 import org.ioc.orm.metadata.visitors.column.ColumnVisitorFactory;
@@ -59,9 +61,9 @@ import org.ioc.orm.util.QueryingUtils;
 import org.ioc.utils.collections.ArrayListSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import javax.persistence.Entity;
-import javax.persistence.SequenceGenerator;
 import javax.persistence.TableGenerator;
 import java.io.File;
 import java.lang.reflect.ParameterizedType;
@@ -69,19 +71,22 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import static javax.persistence.GenerationType.*;
+import static com.orientechnologies.orient.core.metadata.schema.OClass.INDEX_TYPE.UNIQUE;
+import static com.orientechnologies.orient.core.metadata.schema.OType.STRING;
+import static javax.persistence.GenerationType.IDENTITY;
+import static javax.persistence.GenerationType.TABLE;
+import static org.apache.commons.lang3.StringUtils.join;
 import static org.ioc.enviroment.configurations.datasource.OrientDatasourceAutoConfiguration.DDL.dropCreate;
 import static org.ioc.enviroment.configurations.datasource.OrientDatasourceAutoConfiguration.DDL.none;
 import static org.ioc.enviroment.configurations.datasource.OrientDatasourceAutoConfiguration.OrientType.*;
 import static org.ioc.orm.util.OrientUtils.*;
 import static org.ioc.utils.ReflectionUtils.*;
-import static org.ioc.utils.StringUtils.camelToSnakeCase;
 
 /**
  * @author GenCloud
  * @date 10/2018
  */
-public class OrientSchemaFactory implements Schema, ContextSensible, Factory, EnvironmentSensible<OrientDatasourceAutoConfiguration> {
+public class OrientSchemaFactory implements Schema, ContextSensible, DestroyProcessor, Factory, EnvironmentSensible<OrientDatasourceAutoConfiguration> {
 	private static final Logger log = LoggerFactory.getLogger(OrientSchemaFactory.class);
 	private static final ColumnVisitorFactory columnFactory = new OrientVisitorFactory();
 
@@ -92,6 +97,7 @@ public class OrientSchemaFactory implements Schema, ContextSensible, Factory, En
 	private SchemaMetadata schemaMetadata;
 	private OrientDatasourceAutoConfiguration configuration;
 	private IoCContext context;
+	private FacilityManager facilityManager;
 
 	/**
 	 * Default function for initialize installed object factories.
@@ -100,6 +106,9 @@ public class OrientSchemaFactory implements Schema, ContextSensible, Factory, En
 	 */
 	@Override
 	public void initialize() throws IoCException {
+		SLF4JBridgeHandler.removeHandlersForRootLogger();
+		SLF4JBridgeHandler.install();
+
 		final OrientType type = configuration.getDatabaseType();
 		final String url = configuration.getUrl();
 		final String database = configuration.getDatabase();
@@ -122,17 +131,19 @@ public class OrientSchemaFactory implements Schema, ContextSensible, Factory, En
 			pool = new ConstantODBPool(url, database, username, password);
 		}
 
-		final EntityMetadataInspector parser = new EntityMetadataInspector(columnFactory, types);
+		final FacilityMetadataInspector parser = new FacilityMetadataInspector(columnFactory, types);
 		schemaMetadata = new SchemaMetadata(parser.analyze());
 
-		createDatabase();
+		Orient.instance().startup();
+		createSchema();
 
 		final List<Class<?>> repositories = findClassesByAnnotation(IoCRepository.class, packages);
-		final EntityManager entityManager = new EntityManagerFactory(this, getMetadata()).create();
+		facilityManager = new FacilityManagerFactory(this, getMetadata()).create();
+
 		repositories.stream().filter(CrudRepository.class::isAssignableFrom).forEach(c -> {
 			final ParameterizedType parameterizedType = (ParameterizedType) c.getGenericInterfaces()[0];
 			final Class<?> entity = (Class<?>) parameterizedType.getActualTypeArguments()[0];
-			final Object repo = installProxyRepository(entityManager, c, entity);
+			final Object repo = installProxyRepository(facilityManager, c, entity);
 			final String repoName = resolveTypeName(getOrigin(repo.getClass()));
 			context.setType(repoName, repo);
 
@@ -144,11 +155,11 @@ public class OrientSchemaFactory implements Schema, ContextSensible, Factory, En
 		log.info("Successful initialized [{}]", getClass().getSimpleName());
 	}
 
-	private <E, ID> Object installProxyRepository(EntityManager entityManager, Class<?> interfaceClass, Class<E> entityClass) {
+	private <E, ID> Object installProxyRepository(FacilityManager facilityManager, Class<?> interfaceClass, Class<E> entityClass) {
 		final boolean logQueries = configuration.isLogQueries();
-		final EntityMetadata entityMetadata = schemaMetadata.getMetadata(entityClass);
-		final SampleRepository<E, ID> repository = new SampleRepository<>(entityManager, entityClass);
-		final RepositoryHandler dynamicRepository = new RepositoryHandler(entityManager, entityClass, entityMetadata,
+		final FacilityMetadata facilityMetadata = schemaMetadata.getMetadata(entityClass);
+		final SampleRepository<E, ID> repository = new SampleRepository<>(facilityManager, entityClass);
+		final RepositoryHandler dynamicRepository = new RepositoryHandler(facilityManager, entityClass, facilityMetadata,
 				repository, logQueries);
 
 		final Enhancer enhancer = new Enhancer();
@@ -174,7 +185,7 @@ public class OrientSchemaFactory implements Schema, ContextSensible, Factory, En
 		this.configuration = configuration;
 	}
 
-	public ODatabaseDocument createDatabase() {
+	public ODatabaseDocument createSchema() {
 		return pool.acquire();
 	}
 
@@ -185,7 +196,7 @@ public class OrientSchemaFactory implements Schema, ContextSensible, Factory, En
 
 	@Override
 	public OrientDatabaseSession openSession() {
-		return new OrientDatabaseSession(createDatabase(), queryMap, cache);
+		return new OrientDatabaseSession(createSchema(), queryMap, cache);
 	}
 
 	@Override
@@ -194,61 +205,104 @@ public class OrientSchemaFactory implements Schema, ContextSensible, Factory, En
 			return;
 		}
 
-		try (ODatabaseDocument database = createDatabase()) {
-			schemaMetadata.getEntityMetadataCollection().forEach(entity -> {
-				refreshEntityWithTransaction(entity, database);
-				refreshGenerators(entity, database);
+		try (ODatabaseDocument database = createSchema()) {
+			schemaMetadata.getFacilityMetadataCollection().forEach(entity -> {
+				updateFacilityWithoutTransaction(entity, database);
+				updateProducers(entity, database);
 			});
 		} catch (Exception e) {
-			throw new OrmException("Unable to refresh databaseDocument.", e);
+			throw new OrmException("Unable to refresh database schema.", e);
 		}
 	}
 
-	private void refreshGenerators(EntityMetadata entityMetadata, ODatabaseDocument databaseDocument) {
-		entityMetadata.getTypes().forEach(entityType -> {
-			final EntityMetadataInspector analyzer = new EntityMetadataInspector(new OrientVisitorFactory(), entityType);
-			analyzer.getGenerators(entityType).forEach((field, generator) -> {
-				final String type = generator.generator();
-				String tableName = "id_generator";
+	@Override
+	public void installQuery(FacilityMetadata facilityMetadata, String name, String query) {
+		if (name == null || name.isEmpty()) {
+			return;
+		}
+
+		if (query == null || query.isEmpty()) {
+			return;
+		}
+
+		if (queryMap.containsKey(name)) {
+			return;
+		}
+
+		final String tableQuery = QueryingUtils.prepareQuery(facilityMetadata, query);
+		if (tableQuery == null || tableQuery.isEmpty()) {
+			return;
+		}
+
+		final OrientQuery prepared = new OrientQuery(query, tableQuery);
+		queryMap.put(name, prepared);
+	}
+
+	@Override
+	public boolean uninstallQuery(String name) {
+		if (name == null || name.isEmpty()) {
+			return false;
+		}
+
+		return queryMap.remove(name) != null;
+	}
+
+	@Override
+	public void closeSession() {
+		pool.close();
+	}
+
+	@Override
+	public void destroy() {
+		if (facilityManager != null) {
+			facilityManager.close();
+			facilityManager = null;
+		}
+
+		closeSession();
+	}
+
+	/**
+	 * Function of refresh primary key producers in entity meta data.
+	 *
+	 * @param facilityMetadata entity meta data
+	 * @param databaseDocument orient schema
+	 */
+	private void updateProducers(FacilityMetadata facilityMetadata, ODatabaseDocument databaseDocument) {
+		facilityMetadata.getTypes().forEach(entityType -> {
+			final FacilityMetadataInspector analyzer = new FacilityMetadataInspector(new OrientVisitorFactory(), entityType);
+			analyzer.getGenerators(entityType).forEach((field, producer) -> {
+				final String type = producer.generator();
+				String tableName = "id_producer";
 				String keyColumn = "id";
-				String keyValue = camelToSnakeCase(entityMetadata.getName());
 				String valueColumn = "value";
 
-				if (TABLE.equals(generator.strategy())) {
-					for (TableGenerator table : findAnnotations(entityType, TableGenerator.class)) {
+				if (producer.strategy() == IDENTITY) {
+					throw new OrmException("No support available primary key producing.");
+				} else if (producer.strategy() == TABLE) {
+					for (TableGenerator table : searchAnnotations(entityType, TableGenerator.class)) {
 						if (type.equalsIgnoreCase(table.name())) {
 							if (!table.table().isEmpty()) {
 								tableName = table.table();
 							}
+
 							if (!table.pkColumnName().isEmpty()) {
 								keyColumn = table.pkColumnName();
 							}
-							if (!table.pkColumnValue().isEmpty()) {
-								keyValue = table.pkColumnValue();
-							}
+
 							if (!table.valueColumnName().isEmpty()) {
 								valueColumn = table.valueColumnName();
 							}
 						}
 					}
-				} else if (SEQUENCE.equals(generator.strategy())) {
-					for (SequenceGenerator sequence : findAnnotations(entityType, SequenceGenerator.class)) {
-						if (type.equalsIgnoreCase(sequence.name())) {
-							if (!sequence.sequenceName().isEmpty()) {
-								keyValue = sequence.sequenceName();
-							}
-						}
-					}
-				} else if (IDENTITY.equals(generator.strategy())) {
-					throw new OrmException("No support available for orient-db identity primary key generation.");
 				}
 
 				final String fieldName = field.getName();
 				final String indexName = tableName + "." + keyColumn;
-				final ColumnMetadata column = entityMetadata.findColumn(fieldName);
+				final ColumnMetadata columnMetadata = facilityMetadata.findColumnMetadata(fieldName);
 
-				if (column == null) {
-					throw new OrmException("Unable to locate primary key [" + fieldName + "] for entity [" + entityMetadata + "].");
+				if (columnMetadata == null) {
+					throw new OrmException("Unable to locate primary key [" + fieldName + "] for entity [" + facilityMetadata + "].");
 				}
 
 				if (ddl == dropCreate) {
@@ -263,41 +317,46 @@ public class OrientSchemaFactory implements Schema, ContextSensible, Factory, En
 					}
 				}
 
-				final OClass schemaClass = databaseDocument.getMetadata().getSchema().getOrCreateClass(tableName);
-				if (!schemaClass.existsProperty(keyColumn)) {
-					schemaClass.createProperty(keyColumn, OType.STRING);
+				final OClass createClass = databaseDocument.getMetadata().getSchema().getOrCreateClass(tableName);
+				if (!createClass.existsProperty(keyColumn)) {
+					createClass.createProperty(keyColumn, STRING);
 				}
 
-				if (!schemaClass.existsProperty(valueColumn)) {
-					schemaClass.createProperty(valueColumn, OrientUtils.columnType(column));
+				if (!createClass.existsProperty(valueColumn)) {
+					createClass.createProperty(valueColumn, OrientUtils.columnType(columnMetadata));
 				}
 
-				if (!schemaClass.areIndexed(keyColumn)) {
-					schemaClass.createIndex(indexName, OClass.INDEX_TYPE.UNIQUE, keyColumn);
+				if (!createClass.areIndexed(keyColumn)) {
+					createClass.createIndex(indexName, UNIQUE, keyColumn);
 				}
 
-				final IdGenerator idGenerator = new OrientIdGenerator(tableName, indexName, keyColumn, valueColumn, keyValue,
-						this);
-				entityMetadata.setGenerator(column, idGenerator);
-				log.info("Set counter id generator for [{}] on entity [{}].", column, entityMetadata);
+				final IdProducer orientIdProducer = new OrientIdProducer(tableName, indexName, keyColumn, valueColumn, this);
+				facilityMetadata.setProducer(columnMetadata, orientIdProducer);
+				log.info("Set counter id generator for [{}] on entity [{}].", columnMetadata, facilityMetadata);
 			});
 		});
 	}
 
-	private void refreshEntityWithTransaction(EntityMetadata entityMetadata, ODatabaseDocument database) {
-		final String keyIndex = OrientUtils.keyIndex(entityMetadata);
-		final String schemaName = entityMetadata.getTable();
+	/**
+	 * Refresh entity tables in schema database.
+	 *
+	 * @param facilityMetadata entity meta data
+	 * @param databaseDocument orient schema
+	 */
+	private void updateFacilityWithoutTransaction(FacilityMetadata facilityMetadata, ODatabaseDocument databaseDocument) {
+		final String keyIndex = keyIndex(facilityMetadata);
+		final String schemaName = facilityMetadata.getTable();
 
 		if (ddl == dropCreate) {
-			if (hasClass(database, schemaName)) {
-				database.command(new OCommandSQL("DELETE FROM " + schemaName + " UNSAFE")).execute();
+			if (hasClass(databaseDocument, schemaName)) {
+				databaseDocument.command(new OCommandSQL("DELETE FROM " + schemaName + " UNSAFE")).execute();
 			}
 
-			if (hasIndex(database, keyIndex)) {
-				database.command(new OCommandSQL("DROP INDEX " + keyIndex)).execute();
+			if (hasIndex(databaseDocument, keyIndex)) {
+				databaseDocument.command(new OCommandSQL("DROP INDEX " + keyIndex)).execute();
 			}
 
-			for (IndexMetadata indexMetadata : entityMetadata.getIndexMetadataList()) {
+			for (IndexMetadata indexMetadata : facilityMetadata.getIndexMetadataList()) {
 				final String indexName;
 				if (indexMetadata.getMetadataList().size() == 1) {
 					final ColumnMetadata column = indexMetadata.getMetadataList().iterator().next();
@@ -306,15 +365,15 @@ public class OrientSchemaFactory implements Schema, ContextSensible, Factory, En
 					indexName = schemaName + "." + indexMetadata.getName();
 				}
 
-				if (hasIndex(database, indexName)) {
-					database.command(new OCommandSQL("DROP INDEX " + indexName)).execute();
+				if (hasIndex(databaseDocument, indexName)) {
+					databaseDocument.command(new OCommandSQL("DROP INDEX " + indexName)).execute();
 				}
 			}
 		}
 
-		final OClass schemaClass = database.getMetadata().getSchema().getOrCreateClass(schemaName);
+		final OClass schemaClass = databaseDocument.getMetadata().getSchema().getOrCreateClass(schemaName);
 		final Set<ColumnMetadata> metadataSet = new ArrayListSet<>();
-		for (ColumnMetadata columnMetadata : entityMetadata) {
+		for (ColumnMetadata columnMetadata : facilityMetadata) {
 			final String property = columnMetadata.getName();
 			final OType type = OrientUtils.columnType(columnMetadata);
 			if (type != null && !schemaClass.existsProperty(property)) {
@@ -326,70 +385,41 @@ public class OrientSchemaFactory implements Schema, ContextSensible, Factory, En
 			}
 		}
 
-		if (!hasIndex(database, keyIndex)) {
+		if (!hasIndex(databaseDocument, keyIndex)) {
 			final Collection<String> names = metadataSet.stream()
 					.filter(Objects::nonNull)
 					.map(ColumnMetadata::getName)
 					.collect(Collectors.toList());
 			if (!names.isEmpty()) {
 				if (log.isDebugEnabled()) {
-					log.debug("Adding primary id index [{}] with {}", keyIndex, names);
+					log.debug("Adding primary index [{}] with {}", keyIndex, names);
 				}
-				database.command(new OCommandSQL("CREATE INDEX " + keyIndex + " ON " + schemaName + " (" + org.apache.commons.lang3.StringUtils.join(names, ",") + ") UNIQUE")).execute();
+
+				final String indexQuery = "create index " + keyIndex + " on " + schemaName + " (" + join(names, ",")
+						+ ") unique";
+
+				databaseDocument.command(new OCommandSQL(indexQuery)).execute();
 			}
 		}
 
-		entityMetadata.getIndexMetadataList().forEach(index -> {
-			final String uniqueness = index.isUnique() ? "UNIQUE" : "NOTUNIQUE";
+		facilityMetadata.getIndexMetadataList().forEach(index -> {
+			final String uniqueness = index.isUnique() ? "unique" : "notunique";
 			final Collection<String> names = index.getMetadataList()
 					.stream()
 					.map(ColumnMetadata::getName)
 					.collect(Collectors.toList());
+
 			final String indexName = schemaName + "." + index.getName();
-			if (!names.isEmpty() && !hasIndex(database, indexName)) {
+			if (!names.isEmpty() && !hasIndex(databaseDocument, indexName)) {
 				if (log.isDebugEnabled()) {
 					log.debug("Adding property index [{}] with {} ({})", indexName, names, uniqueness);
 				}
-				database.command(new OCommandSQL("CREATE INDEX " + indexName + " ON " + schemaName + " (" + org.apache.commons.lang3.StringUtils.join(names, ",") + ") " + uniqueness)).execute();
+
+				final String indexQuery = "create index " + indexName + " on " + schemaName + " (" + join(names, ",")
+						+ ") " + uniqueness;
+
+				databaseDocument.command(new OCommandSQL(indexQuery)).execute();
 			}
 		});
-	}
-
-	@Override
-	public boolean installQuery(EntityMetadata entityMetadata, String name, String query) {
-		if (name == null || name.isEmpty()) {
-			return false;
-		}
-
-		if (query == null || query.isEmpty()) {
-			return false;
-		}
-
-		if (queryMap.containsKey(name)) {
-			return false;
-		}
-
-		final String tableQuery = QueryingUtils.prepareQuery(entityMetadata, query);
-		if (tableQuery == null || tableQuery.isEmpty()) {
-			return false;
-		}
-
-		final OrientQuery prepared = new OrientQuery(query, tableQuery);
-		queryMap.put(name, prepared);
-		return true;
-	}
-
-	@Override
-	public boolean removeQuery(String name) {
-		if (name == null || name.isEmpty()) {
-			return false;
-		}
-
-		return queryMap.remove(name) != null;
-	}
-
-	@Override
-	public void closeSession() {
-		pool.close();
 	}
 }

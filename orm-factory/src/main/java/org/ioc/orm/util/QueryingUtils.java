@@ -18,7 +18,7 @@
  */
 package org.ioc.orm.util;
 
-import org.ioc.orm.metadata.type.EntityMetadata;
+import org.ioc.orm.metadata.type.FacilityMetadata;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -28,28 +28,28 @@ import java.util.regex.Pattern;
  * @date 10/2018
  */
 public class QueryingUtils {
-	public static String prepareQuery(EntityMetadata entityMetadata, String query) {
+	public static String prepareQuery(FacilityMetadata facilityMetadata, String query) {
 		if (query == null || query.isEmpty()) {
 			return "";
 		}
 
 		String result = query;
-		result = changeEntityNames(entityMetadata, result);
+		result = changeEntityNames(facilityMetadata, result);
 		result = installColumnNames(result);
 		return result;
 	}
 
-	private static String changeEntityNames(EntityMetadata entityMetadata, String query) {
-		if (entityMetadata == null) {
+	private static String changeEntityNames(FacilityMetadata facilityMetadata, String query) {
+		if (facilityMetadata == null) {
 			return query;
 		}
 
 		String result = query;
-		for (Class<?> clazz : entityMetadata.getTypes()) {
-			result = result.replace(clazz.getSimpleName(), entityMetadata.getTable());
+		for (Class<?> clazz : facilityMetadata.getTypes()) {
+			result = result.replace(clazz.getSimpleName(), facilityMetadata.getTable());
 			Class<?> parent = clazz.getSuperclass();
 			while (parent != null && !Object.class.equals(parent)) {
-				result = result.replace(parent.getSimpleName(), entityMetadata.getTable());
+				result = result.replace(parent.getSimpleName(), facilityMetadata.getTable());
 				parent = parent.getSuperclass();
 			}
 		}

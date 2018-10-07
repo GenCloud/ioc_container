@@ -23,7 +23,7 @@ import org.ioc.orm.exceptions.OrmException;
 import org.ioc.orm.factory.SessionFactory;
 import org.ioc.orm.metadata.relation.BagMapper;
 import org.ioc.orm.metadata.relation.proxy.LazyRelationHandler;
-import org.ioc.orm.metadata.type.EntityMetadata;
+import org.ioc.orm.metadata.type.FacilityMetadata;
 import org.ioc.orm.metadata.visitors.relation.RelationVisitor;
 import org.ioc.orm.metadata.visitors.relation.type.ManyToOneVisitor;
 
@@ -64,18 +64,18 @@ public class RelationsUtils {
 		return handlerContainer.getHandler() != null;
 	}
 
-	public static Object createProxy(EntityMetadata entityMetadata, Object key,
+	public static Object createProxy(FacilityMetadata facilityMetadata, Object key,
 									 SessionFactory sessionFactory, BagMapper bagMapper) {
-		if (entityMetadata == null) {
+		if (facilityMetadata == null) {
 			return null;
 		}
 
-		final Class<?> clazz = entityMetadata.getType(entityMetadata.getIdVisitor().fromKey(key));
+		final Class<?> clazz = facilityMetadata.getType(facilityMetadata.getIdVisitor().fromKey(key));
 		HandlerContainer handlerContainer = hadlers.get(clazz);
 		Object instance = null;
 		if (handlerContainer == null) {
 			final RelationVisitor visitor = new ManyToOneVisitor(key, sessionFactory, bagMapper);
-			final LazyRelationHandler handler = new LazyRelationHandler(entityMetadata, visitor, sessionFactory, clazz);
+			final LazyRelationHandler handler = new LazyRelationHandler(facilityMetadata, visitor, sessionFactory, clazz);
 			final Enhancer enhancer = new Enhancer();
 			enhancer.setSuperclass(clazz);
 			enhancer.setUseCache(false);
@@ -102,11 +102,11 @@ public class RelationsUtils {
 			this.instance = instance;
 		}
 
-		public Object getInstance() {
+		Object getInstance() {
 			return instance;
 		}
 
-		public LazyRelationHandler getHandler() {
+		LazyRelationHandler getHandler() {
 			return handler;
 		}
 	}

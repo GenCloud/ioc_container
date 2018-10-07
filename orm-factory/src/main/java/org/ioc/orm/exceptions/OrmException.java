@@ -37,7 +37,7 @@ public class OrmException extends IoCException {
 		super(message, throwable);
 	}
 
-	public OrmException(Throwable cause) {
+	OrmException(Throwable cause) {
 		super(cause);
 	}
 }

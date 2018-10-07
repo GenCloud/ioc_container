@@ -16,27 +16,38 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.ioc.orm.generator.type;
+package org.ioc.orm.metadata.transaction;
 
-import org.ioc.orm.factory.SessionFactory;
-import org.ioc.orm.generator.IdGenerator;
-import org.ioc.orm.metadata.type.EntityMetadata;
-
-import java.util.UUID;
+import org.ioc.orm.exceptions.OrmException;
 
 /**
  * @author GenCloud
  * @date 10/2018
  */
-public class UUIDGenerator implements IdGenerator {
-	private static final UUIDGenerator instance = new UUIDGenerator();
-
-	public static IdGenerator getInstance() {
-		return UUIDGenerator.instance;
+public abstract class AbstractTx implements ITransactional {
+	@Override
+	public void withTx(TxRunnable txRunnable) throws OrmException {
+		try (Tx tx = openTx()) {
+			tx.exec(txRunnable);
+		} catch (Exception e) {
+			throw new OrmException("Unable to exec transaction.", e);
+		}
 	}
 
 	@Override
-	public UUID create(SessionFactory sessionFactory, EntityMetadata entityMetadata) {
-		return UUID.randomUUID();
+	@SuppressWarnings("unchecked")
+	public <T> T withTx(TxCallable<T> tTxCallable) throws OrmException {
+		final Object[] tmp = new Object[1];
+		try (Tx tx = openTx()) {
+			tmp[0] = tx.exec(tTxCallable);
+		} catch (Exception e) {
+			throw new OrmException("Unable to exec transaction.", e);
+		}
+		return (T) tmp[0];
+	}
+
+	@Override
+	public Tx openTx() throws OrmException {
+		return new Tx(this);
 	}
 }

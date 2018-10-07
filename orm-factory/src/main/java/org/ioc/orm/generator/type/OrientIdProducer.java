@@ -27,8 +27,8 @@ import org.ioc.orm.exceptions.OrmException;
 import org.ioc.orm.factory.SessionFactory;
 import org.ioc.orm.factory.orient.OrientSchemaFactory;
 import org.ioc.orm.factory.orient.session.OrientDatabaseSession;
-import org.ioc.orm.generator.IdGenerator;
-import org.ioc.orm.metadata.type.EntityMetadata;
+import org.ioc.orm.generator.IdProducer;
+import org.ioc.orm.metadata.type.FacilityMetadata;
 
 /**
  * Sequenced id generator.
@@ -36,7 +36,7 @@ import org.ioc.orm.metadata.type.EntityMetadata;
  * @author GenCloud
  * @date 10/2018
  */
-public class OrientIdGenerator implements IdGenerator {
+public class OrientIdProducer implements IdProducer {
 	private static final Object lock = new Object();
 
 	private final String tableName;
@@ -46,8 +46,8 @@ public class OrientIdGenerator implements IdGenerator {
 	private final String keyValue;
 	private final OrientSchemaFactory schemaFactory;
 
-	public OrientIdGenerator(String tableName, String indexName, String keyColumn, String valueColumn, String keyValue,
-							 OrientSchemaFactory schemaFactory) {
+	public OrientIdProducer(String tableName, String indexName, String keyColumn, String valueColumn,
+							OrientSchemaFactory schemaFactory) {
 		this.tableName = tableName;
 		this.indexName = indexName;
 		this.keyColumn = keyColumn;
@@ -57,12 +57,12 @@ public class OrientIdGenerator implements IdGenerator {
 	}
 
 	@Override
-	public Long create(SessionFactory sessionFactory, EntityMetadata entityMetadata) throws OrmException {
+	public Long create(SessionFactory sessionFactory, FacilityMetadata facilityMetadata) throws OrmException {
 		if (sessionFactory == null) {
 			return null;
 		}
 
-		if (entityMetadata == null) {
+		if (facilityMetadata == null) {
 			return null;
 		}
 
@@ -70,10 +70,10 @@ public class OrientIdGenerator implements IdGenerator {
 			try {
 				if (sessionFactory instanceof OrientDatabaseSession) {
 					final ODatabaseDocument db = ((OrientDatabaseSession) sessionFactory).getDocument();
-					return generateWithDatabase(db);
+					return create(db);
 				} else {
-					try (ODatabaseDocument db = schemaFactory.createDatabase()) {
-						return generateWithDatabase(db);
+					try (ODatabaseDocument db = schemaFactory.createSchema()) {
+						return create(db);
 					}
 				}
 			} catch (Exception e) {
@@ -82,10 +82,10 @@ public class OrientIdGenerator implements IdGenerator {
 		}
 	}
 
-	private Long generateWithDatabase(ODatabaseDocument databaseDocument) {
+	private Long create(ODatabaseDocument databaseDocument) {
 		databaseDocument.begin();
 		for (int i = 0; i < 10; i++) {
-			final Long value = incrementCounter(databaseDocument);
+			final Long value = increment(databaseDocument);
 			if (value != null) {
 				databaseDocument.commit();
 				return value;
@@ -96,7 +96,7 @@ public class OrientIdGenerator implements IdGenerator {
 		throw new OrmException("Unable to generate counter id.");
 	}
 
-	private Long incrementCounter(ODatabaseDocument databaseDocument) {
+	private Long increment(ODatabaseDocument databaseDocument) {
 		ODocument document = findDocument(databaseDocument);
 		if (document == null) {
 			document = databaseDocument.newInstance(tableName);
@@ -118,25 +118,25 @@ public class OrientIdGenerator implements IdGenerator {
 	}
 
 	private ODocument findDocument(ODatabaseDocument databaseDocument) {
-		final OIndex keyIdx = databaseDocument.getMetadata().getIndexManager().getClassIndex(tableName, indexName);
-		if (keyIdx == null) {
+		final OIndex index = databaseDocument.getMetadata().getIndexManager().getClassIndex(tableName, indexName);
+		if (index == null) {
 			throw new OrmException("Unable to locate database index [" + indexName + "].");
 		}
 
-		final OIdentifiable guid = (OIdentifiable) keyIdx.get(keyValue);
-		if (guid == null) {
+		final OIdentifiable identifiable = (OIdentifiable) index.get(keyValue);
+		if (identifiable == null) {
 			return null;
 		}
 
-		final ORID rid = guid.getIdentity();
-		if (rid == null) {
+		final ORID identity = identifiable.getIdentity();
+		if (identity == null) {
 			return null;
 		}
 
-		final ODocument document = databaseDocument.load(rid);
-		if (document == null) {
-			throw new OrmException("Unable to load orientdb record id [" + rid + "].");
+		final ODocument entries = databaseDocument.load(identity);
+		if (entries == null) {
+			throw new OrmException("Unable to load database record id [" + identity + "].");
 		}
-		return document;
+		return entries;
 	}
 }

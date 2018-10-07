@@ -19,23 +19,52 @@
 package org.ioc.orm.factory;
 
 import org.ioc.orm.exceptions.OrmException;
-import org.ioc.orm.metadata.type.EntityMetadata;
+import org.ioc.orm.metadata.type.FacilityMetadata;
 import org.ioc.orm.metadata.type.SchemaMetadata;
 
 /**
+ * Head interface for control database.
+ *
  * @author GenCloud
  * @date 10/2018
  */
 public interface Schema {
+	/**
+	 * @return return generated schema meta data
+	 */
 	SchemaMetadata getMetadata();
 
+	/**
+	 * @return open new schema session
+	 */
 	DatabaseSessionFactory openSession();
 
+	/**
+	 * Refresh database schema.
+	 *
+	 * @throws OrmException
+	 */
 	void update() throws OrmException;
 
-	boolean installQuery(EntityMetadata meta, String name, String query) throws OrmException;
+	/**
+	 * Function for adding named queries (functions) to database schema.
+	 *
+	 * @param facilityMetadata entity meta data
+	 * @param name             name of query
+	 * @param query            named query
+	 */
+	void installQuery(FacilityMetadata facilityMetadata, String name, String query);
 
-	boolean removeQuery(String name) throws OrmException;
+	/**
+	 * Function for remove named queries (functions) from database schema.
+	 *
+	 * @param name name of query
+	 * @return true if query is removed.
+	 */
+	boolean uninstallQuery(String name);
 
+	/**
+	 * Close schema database session.
+	 */
 	void closeSession();
 }

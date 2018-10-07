@@ -34,9 +34,9 @@ public class ManyToOneVisitor implements RelationVisitor {
 	private final SessionFactory sessionFactory;
 
 	public ManyToOneVisitor(Object key, SessionFactory sessionFactory, BagMapper bagMapper) {
-		Assertion.checkNotNull(key, "key");
-		Assertion.checkNotNull(sessionFactory, "session factory");
-		Assertion.checkNotNull(bagMapper, "bag mapper");
+		Assertion.checkNotNull(key);
+		Assertion.checkNotNull(sessionFactory);
+		Assertion.checkNotNull(bagMapper);
 
 		this.key = key;
 		this.sessionFactory = sessionFactory;

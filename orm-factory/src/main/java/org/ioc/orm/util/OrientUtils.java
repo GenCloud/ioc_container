@@ -67,28 +67,28 @@ public class OrientUtils {
 		return OrientUtils.convertRaw(columnMetadata, raw);
 	}
 
-	public static Object convertKey(EntityMetadata entityMetadata, ODocument document) {
-		if (entityMetadata == null || document == null) {
+	public static Object convertKey(FacilityMetadata facilityMetadata, ODocument document) {
+		if (facilityMetadata == null || document == null) {
 			return null;
 		}
 
 		final Map<ColumnMetadata, Object> data = new LinkedHashMap<>();
-		entityMetadata.getPrimaryKeys().forEach(column -> {
+		facilityMetadata.getPrimaryKeys().forEach(column -> {
 			final Object value = convertValue(document, column);
 			if (value != null) {
 				data.put(column, value);
 			}
 		});
-		return entityMetadata.getIdVisitor().ofKey(data);
+		return facilityMetadata.getIdVisitor().ofKey(data);
 	}
 
-	public static Map<ColumnMetadata, Object> convertValues(EntityMetadata entityMetadata, ODocument document) {
-		if (entityMetadata == null || document == null) {
+	public static Map<ColumnMetadata, Object> convertValues(FacilityMetadata facilityMetadata, ODocument document) {
+		if (facilityMetadata == null || document == null) {
 			return Collections.emptyMap();
 		}
 
 		final Map<ColumnMetadata, Object> data = new LinkedHashMap<>();
-		entityMetadata.getColumnMetadataCollection().forEach(column -> {
+		facilityMetadata.getColumnMetadataCollection().forEach(column -> {
 			final String name = column.getName();
 			if (document.containsField(name)) {
 				final Object raw = document.field(name);
@@ -121,7 +121,7 @@ public class OrientUtils {
 			if (columnMetadata instanceof EmbeddedBagMetadata) {
 				generic = ((EmbeddedBagMetadata) columnMetadata).getType();
 			} else if (columnMetadata instanceof JoinBagMetadata) {
-				generic = ((JoinBagMetadata) columnMetadata).getEntityMetadata().getPrimaryKey().getType();
+				generic = ((JoinBagMetadata) columnMetadata).getFacilityMetadata().getPrimaryKey().getType();
 			} else {
 				generic = columnMetadata.getType();
 			}
@@ -365,17 +365,17 @@ public class OrientUtils {
 		return OType.BINARY;
 	}
 
-	public static String keyIndex(EntityMetadata entityMetadata) {
-		if (entityMetadata == null) {
+	public static String keyIndex(FacilityMetadata facilityMetadata) {
+		if (facilityMetadata == null) {
 			return null;
 		}
 
-		final Collection<ColumnMetadata> keys = entityMetadata.getPrimaryKeys();
+		final Collection<ColumnMetadata> keys = facilityMetadata.getPrimaryKeys();
 		if (keys.size() == 1) {
 			final ColumnMetadata key = keys.iterator().next();
-			return entityMetadata.getTable() + "." + key.getName();
+			return facilityMetadata.getTable() + "." + key.getName();
 		} else {
-			return entityMetadata.getTable() + ".key";
+			return facilityMetadata.getTable() + ".key";
 		}
 	}
 

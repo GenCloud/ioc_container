@@ -18,7 +18,7 @@
  */
 package org.ioc.orm.cache;
 
-import org.ioc.orm.metadata.type.EntityMetadata;
+import org.ioc.orm.metadata.type.FacilityMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,28 +27,42 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
+ * Custom implementation of cache for entities.
+ *
  * @author GenCloud
  * @date 10/2018
  */
 public class EntityCache {
 	private static final Logger log = LoggerFactory.getLogger(EntityCache.class);
 
-	private final Map<EntityMetadata, Map<Object, WeakReference>> cache = new TreeMap<>();
+	private final Map<FacilityMetadata, Map<Object, WeakReference>> cache = new TreeMap<>();
 
 	private int purgeCount = 0;
 
+	/**
+	 * Unload all items from the cache.
+	 */
 	public void invalidateAll() {
 		cache.values().forEach(Map::clear);
 		cache.clear();
 	}
 
+	/**
+	 * Getting entity from cache.
+	 *
+	 * @param facilityMetadata entity meta data for find
+	 * @param key              identifiable primary key
+	 * @param clazz            entity type
+	 * @param <T>              entity generic type
+	 * @return cached entity
+	 */
 	@SuppressWarnings("unchecked")
-	public <T> T find(EntityMetadata entityMetadata, Object key, Class<T> clazz) {
-		if (entityMetadata == null || key == null) {
+	public <T> T get(FacilityMetadata facilityMetadata, Object key, Class<T> clazz) {
+		if (facilityMetadata == null || key == null) {
 			return null;
 		}
 
-		final Map<Object, WeakReference> entities = cache.get(entityMetadata);
+		final Map<Object, WeakReference> entities = cache.get(facilityMetadata);
 		if (entities == null) {
 			return null;
 		}
@@ -75,73 +89,101 @@ public class EntityCache {
 		}
 	}
 
-	public <T> Map<Object, T> find(EntityMetadata meta, Collection<?> keys, Class<T> clazz) {
-		if (meta == null || keys == null || keys.isEmpty()) {
+	/**
+	 * Getting entities from cache.
+	 *
+	 * @param facilityMetadata entity meta data for find
+	 * @param objects          keys of finned entities
+	 * @param clazz            entity type
+	 * @param <T>              entity generic type
+	 * @return bucket of entity
+	 */
+	public <T> Map<Object, T> get(FacilityMetadata facilityMetadata, Collection<?> objects, Class<T> clazz) {
+		if (facilityMetadata == null || objects == null || objects.isEmpty()) {
 			return Collections.emptyMap();
 		}
 
 		final Map<Object, T> map = new HashMap<>();
-		keys.forEach(key -> {
-			final T item = find(meta, key, clazz);
+		objects.forEach(o -> {
+			final T item = get(facilityMetadata, o, clazz);
 			if (item != null) {
-				map.put(key, item);
+				map.put(o, item);
 			}
 		});
 		return Collections.unmodifiableMap(map);
 	}
 
-	public boolean remove(EntityMetadata meta, Object key) {
-		if (meta == null || meta.getIdVisitor() == null || key == null) {
+	/**
+	 * Remove entity from cache.
+	 *
+	 * @param facilityMetadata entity meta data for remove
+	 * @param key              identifiable primary key
+	 * @return true if entity has been removed
+	 */
+	public boolean delete(FacilityMetadata facilityMetadata, Object key) {
+		if (facilityMetadata == null || facilityMetadata.getIdVisitor() == null || key == null) {
 			return false;
 		}
 
-		final Map<Object, WeakReference> entities = cache.get(meta);
-		if (entities == null) {
+		final Map<Object, WeakReference> referenceMap = cache.get(facilityMetadata);
+		if (referenceMap == null) {
 			return false;
 		}
 
-		if (entities.remove(key) != null) {
-			checkPurge();
+		if (referenceMap.remove(key) != null) {
+			purge();
 			return true;
 		} else {
 			return false;
 		}
 	}
 
-	public boolean put(EntityMetadata meta, Object key, Object instance) {
-		if (meta == null || key == null) {
+	/**
+	 * Add entity to cache.
+	 *
+	 * @param facilityMetadata entity meta data for add (key)
+	 * @param key              identifiable primary key
+	 * @param instance         initialized instance of entity
+	 * @return true if entity is added to cache
+	 */
+	public boolean add(FacilityMetadata facilityMetadata, Object key, Object instance) {
+		if (facilityMetadata == null || key == null) {
 			return false;
 		}
 
-		Map<Object, WeakReference> entities = cache.get(meta);
-		if (entities == null) {
-			entities = new ConcurrentHashMap<>();
-			cache.put(meta, entities);
+		Map<Object, WeakReference> referenceMap = cache.get(facilityMetadata);
+		if (referenceMap == null) {
+			referenceMap = new ConcurrentHashMap<>();
+			cache.put(facilityMetadata, referenceMap);
 		}
 
 		try {
 			final boolean updated;
 			if (instance != null) {
 				final WeakReference reference = new WeakReference<>(instance);
-				entities.put(key, reference);
+				referenceMap.put(key, reference);
 				updated = true;
 			} else {
-				updated = entities.remove(key) != null;
+				updated = referenceMap.remove(key) != null;
 			}
 
 			if (updated) {
-				checkPurge();
+				purge();
 				return true;
 			} else {
 				return false;
 			}
 		} catch (Exception e) {
-			log.warn("Unable to retrieve key to getEntityCache entity [" + instance + "] of type [" + meta + "].", e);
+			log.warn("Unable to retrieve key to getEntityCache entity [" + instance + "] of type [" + facilityMetadata + "].", e);
 			return false;
 		}
 	}
 
-	private synchronized void checkPurge() {
+	/**
+	 * Purge cache where cache size >= 1000
+	 * TODO: find best practise or rewrite to ICache (cache-factory module)
+	 */
+	private synchronized void purge() {
 		purgeCount++;
 		final int purgeDelayCount = 1000;
 		if (purgeCount >= purgeDelayCount) {

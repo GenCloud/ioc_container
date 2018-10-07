@@ -16,18 +16,37 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.ioc.orm.metadata.visitors.handler;
+package org.ioc.orm.metadata.visitors.column.type;
 
-import org.ioc.orm.exceptions.OrmException;
 import org.ioc.orm.metadata.type.ColumnMetadata;
-import org.ioc.orm.metadata.type.EntityMetadata;
+import org.ioc.orm.metadata.visitors.column.IdVisitor;
 
+import java.util.Collections;
 import java.util.Map;
 
 /**
  * @author GenCloud
  * @date 10/2018
  */
-public interface EntityAdder {
-	boolean add(EntityMetadata entityMetadata, Map<ColumnMetadata, Object> objectMap) throws OrmException;
+public class NullIdVisitor implements IdVisitor {
+	private static final NullIdVisitor instance = new NullIdVisitor();
+
+	public static IdVisitor getInstance() {
+		return NullIdVisitor.instance;
+	}
+
+	@Override
+	public Object fromObject(Object entity) {
+		return null;
+	}
+
+	@Override
+	public Map<ColumnMetadata, Object> fromKey(Object key) {
+		return Collections.emptyMap();
+	}
+
+	@Override
+	public Object ofKey(Map<ColumnMetadata, Object> map) {
+		return null;
+	}
 }

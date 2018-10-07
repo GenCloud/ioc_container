@@ -16,42 +16,27 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.ioc.orm.metadata.visitors.id.type;
+package org.ioc.orm.generator.type;
 
-import org.ioc.orm.metadata.type.ColumnMetadata;
-import org.ioc.orm.metadata.visitors.id.IdVisitor;
+import org.ioc.orm.factory.SessionFactory;
+import org.ioc.orm.generator.IdProducer;
+import org.ioc.orm.metadata.type.FacilityMetadata;
 
-import java.util.Collections;
-import java.util.Map;
+import java.util.UUID;
 
 /**
  * @author GenCloud
  * @date 10/2018
  */
-public class NullIdVisitor implements IdVisitor {
-	private static final NullIdVisitor instance = new NullIdVisitor();
+public class UUIDProducer implements IdProducer {
+	private static final UUIDProducer instance = new UUIDProducer();
 
-	public static IdVisitor getInstance() {
-		return NullIdVisitor.instance;
+	public static IdProducer getInstance() {
+		return UUIDProducer.instance;
 	}
 
 	@Override
-	public Object fromObject(Object entity) {
-		return null;
-	}
-
-	@Override
-	public Map<ColumnMetadata, Object> fromKey(Object key) {
-		return Collections.emptyMap();
-	}
-
-	@Override
-	public Object fromMap(Map<ColumnMetadata, Object> data) {
-		return null;
-	}
-
-	@Override
-	public Object ofKey(Map<ColumnMetadata, Object> map) {
-		return null;
+	public UUID create(SessionFactory sessionFactory, FacilityMetadata facilityMetadata) {
+		return UUID.randomUUID();
 	}
 }

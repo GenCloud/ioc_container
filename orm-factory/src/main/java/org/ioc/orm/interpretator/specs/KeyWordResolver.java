@@ -19,7 +19,7 @@
 package org.ioc.orm.interpretator.specs;
 
 import org.ioc.orm.metadata.type.ColumnMetadata;
-import org.ioc.orm.metadata.type.EntityMetadata;
+import org.ioc.orm.metadata.type.FacilityMetadata;
 
 import java.util.Arrays;
 import java.util.List;
@@ -55,10 +55,10 @@ public class KeyWordResolver {
 			new KeyWord("CONTAINS", RESERVED_KEYWORDS, " like value")
 	);
 
-	private EntityMetadata entityMetadata;
+	private FacilityMetadata facilityMetadata;
 
-	public KeyWordResolver(EntityMetadata entityMetadata) {
-		this.entityMetadata = entityMetadata;
+	public KeyWordResolver(FacilityMetadata facilityMetadata) {
+		this.facilityMetadata = facilityMetadata;
 	}
 
 	public KeyWord find(String input) {
@@ -68,7 +68,7 @@ public class KeyWordResolver {
 			}
 		}
 
-		for (ColumnMetadata columnMetadata : entityMetadata) {
+		for (ColumnMetadata columnMetadata : facilityMetadata) {
 			final String columnName = columnMetadata.getName();
 			if (columnName.equalsIgnoreCase(input)) {
 				return new KeyWord(input, VARIABLE, " " + columnName);
@@ -78,6 +78,6 @@ public class KeyWordResolver {
 	}
 
 	public KeyWord fromOperator() {
-		return new KeyWord("FROM", RESERVED_KEYWORDS, " from " + entityMetadata.getTable());
+		return new KeyWord("FROM", RESERVED_KEYWORDS, " from " + facilityMetadata.getTable());
 	}
 }

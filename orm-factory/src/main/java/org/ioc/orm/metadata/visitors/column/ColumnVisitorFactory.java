@@ -18,7 +18,7 @@
  */
 package org.ioc.orm.metadata.visitors.column;
 
-import org.ioc.orm.metadata.type.EntityMetadata;
+import org.ioc.orm.metadata.type.FacilityMetadata;
 
 import java.lang.reflect.Field;
 
@@ -29,7 +29,7 @@ import java.lang.reflect.Field;
 public interface ColumnVisitorFactory {
 	ColumnVisitor of(Field field, Class<?> clazz);
 
-	ColumnVisitor manyVisit(Field field, EntityMetadata entityMetadata, boolean isLazyLoading);
+	ColumnVisitor manyVisit(Field field, FacilityMetadata facilityMetadata, boolean isLazyLoading);
 
-	ColumnVisitor singleVisit(Field field, EntityMetadata entityMetadata, boolean isLazyLoading);
+	ColumnVisitor singleVisit(Field field, FacilityMetadata facilityMetadata, boolean isLazyLoading);
 }

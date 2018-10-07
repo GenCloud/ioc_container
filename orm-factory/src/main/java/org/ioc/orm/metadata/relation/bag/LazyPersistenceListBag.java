@@ -32,8 +32,8 @@ import java.util.ListIterator;
  * @date 10/2018
  */
 public class LazyPersistenceListBag<T> extends LazyPersistenceBag<T> implements List<T> {
-	public LazyPersistenceListBag(SessionFactory session, DataContainer data) {
-		super(session, data, ArrayList::new);
+	public LazyPersistenceListBag(SessionFactory sessionFactory, DataContainer data) {
+		super(sessionFactory, data, ArrayList::new);
 	}
 
 	@Override

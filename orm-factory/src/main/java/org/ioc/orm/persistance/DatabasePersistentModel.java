@@ -20,10 +20,10 @@ package org.ioc.orm.persistance;
 
 import org.ioc.orm.exceptions.OrmException;
 import org.ioc.orm.factory.DatabaseSessionFactory;
-import org.ioc.orm.factory.EntityBuilder;
-import org.ioc.orm.factory.EntityPersistence;
+import org.ioc.orm.factory.FacilityBuilder;
+import org.ioc.orm.factory.FacilityMapper;
 import org.ioc.orm.metadata.type.ColumnMetadata;
-import org.ioc.orm.metadata.type.EntityMetadata;
+import org.ioc.orm.metadata.type.FacilityMetadata;
 import org.ioc.orm.metadata.visitors.container.DataContainerFactory;
 
 import java.io.IOException;
@@ -36,7 +36,7 @@ import java.util.Map;
 public class DatabasePersistentModel implements PersistentModel {
 	private final DatabaseSessionFactory databaseSessionFactory;
 	private final DataContainerFactory dataContainerFactory;
-	private final EntityMetadata entityMetadata;
+	private final FacilityMetadata facilityMetadata;
 	private final Object key;
 
 	private Object instance;
@@ -45,17 +45,17 @@ public class DatabasePersistentModel implements PersistentModel {
 
 	public DatabasePersistentModel(DatabaseSessionFactory databaseSessionFactory,
 								   final DataContainerFactory dataContainerFactory,
-								   final EntityMetadata entityMetadata, Object key) {
+								   final FacilityMetadata facilityMetadata, Object key) {
 		this.databaseSessionFactory = databaseSessionFactory;
 		this.dataContainerFactory = dataContainerFactory;
-		this.entityMetadata = entityMetadata;
+		this.facilityMetadata = facilityMetadata;
 		this.key = key;
 	}
 
 	@Override
 	public Map<ColumnMetadata, Object> get() throws OrmException {
 		final MemoryPersistentModel persistentModel = new MemoryPersistentModel();
-		new EntityPersistence(databaseSessionFactory).save(entityMetadata, ensureInstance(), persistentModel);
+		new FacilityMapper(databaseSessionFactory).save(facilityMetadata, ensureInstance(), persistentModel);
 		return persistentModel.get();
 	}
 
@@ -66,14 +66,14 @@ public class DatabasePersistentModel implements PersistentModel {
 			databaseSessionFactory.start();
 		}
 
-		new EntityBuilder(databaseSessionFactory, dataContainerFactory).update(entityMetadata, ensureInstance(), objectMap);
+		new FacilityBuilder(databaseSessionFactory, dataContainerFactory).update(facilityMetadata, ensureInstance(), objectMap);
 	}
 
 	private Object ensureInstance() {
 		if (instance != null) {
 			return instance;
 		}
-		instance = databaseSessionFactory.fetch(entityMetadata, key);
+		instance = databaseSessionFactory.fetch(facilityMetadata, key);
 		return instance;
 	}
 

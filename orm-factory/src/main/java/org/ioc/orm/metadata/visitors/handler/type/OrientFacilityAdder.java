@@ -23,8 +23,8 @@ import com.orientechnologies.orient.core.metadata.schema.OType;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import org.ioc.orm.factory.orient.session.OrientDatabaseSession;
 import org.ioc.orm.metadata.type.ColumnMetadata;
-import org.ioc.orm.metadata.type.EntityMetadata;
-import org.ioc.orm.metadata.visitors.handler.EntityAdder;
+import org.ioc.orm.metadata.type.FacilityMetadata;
+import org.ioc.orm.metadata.visitors.handler.FacilityAdder;
 import org.ioc.orm.util.OrientUtils;
 
 import java.util.LinkedHashMap;
@@ -34,15 +34,15 @@ import java.util.Map;
  * @author GenCloud
  * @date 10/2018
  */
-public class OrientEntityAdder implements EntityAdder {
+public class OrientFacilityAdder implements FacilityAdder {
 	private final OrientDatabaseSession databaseSession;
 
-	public OrientEntityAdder(OrientDatabaseSession databaseSession) {
+	public OrientFacilityAdder(OrientDatabaseSession databaseSession) {
 		this.databaseSession = databaseSession;
 	}
 
 	@Override
-	public boolean add(EntityMetadata entity, Map<ColumnMetadata, Object> data) {
+	public boolean add(FacilityMetadata entity, Map<ColumnMetadata, Object> data) {
 		final Map<ColumnMetadata, Object> keymap = new LinkedHashMap<>();
 		entity.getPrimaryKeys().forEach(column -> {
 			final Object value = data.get(column);

@@ -21,7 +21,6 @@ package org.ioc.orm.factory.orient.query;
 import com.orientechnologies.orient.core.command.OCommandResultListener;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
-import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.record.ORecord;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.sql.query.OSQLAsynchQuery;
@@ -37,15 +36,17 @@ import java.util.*;
 import java.util.concurrent.*;
 
 /**
+ * Type of query that is automatically closed when receiving information from database.
+ *
  * @author GenCloud
  * @date 10/2018
  */
-public class OrientClosingQuery implements Iterable<ODocument>, Closeable, AutoCloseable {
-	private static final Logger log = LoggerFactory.getLogger(OrientClosingQuery.class);
+public class AutoClosingQuery implements Iterable<ODocument>, Closeable, AutoCloseable {
+	private static final Logger log = LoggerFactory.getLogger(AutoClosingQuery.class);
 
 	private static final Executor EXECUTOR_SERVICE = Executors.newCachedThreadPool(r -> {
 		final Thread thread = new Thread(r);
-		thread.setName(OrientClosingQuery.class.getSimpleName() + "- Listener");
+		thread.setName(AutoClosingQuery.class.getSimpleName() + "- Listener");
 		thread.setDaemon(true);
 		return thread;
 	});
@@ -59,11 +60,7 @@ public class OrientClosingQuery implements Iterable<ODocument>, Closeable, AutoC
 
 	private boolean closed = false;
 
-	public OrientClosingQuery(ODatabaseDocument databaseDocument, String query) {
-		this(databaseDocument, query, Collections.emptyList());
-	}
-
-	public OrientClosingQuery(ODatabaseDocument databaseDocument, String query, Collection<?> params) {
+	private AutoClosingQuery(ODatabaseDocument databaseDocument, String query, Collection<?> params) {
 		Assertion.checkNotNull(databaseDocument);
 		Assertion.checkNotNull(query);
 
@@ -78,7 +75,7 @@ public class OrientClosingQuery implements Iterable<ODocument>, Closeable, AutoC
 		}
 	}
 
-	public OrientClosingQuery(ODatabaseDocument databaseDocument, String query, Map<String, Object> params) {
+	public AutoClosingQuery(ODatabaseDocument databaseDocument, String query, Map<String, Object> params) {
 		Assertion.checkNotNull(databaseDocument);
 		Assertion.checkNotNull(query);
 
@@ -93,7 +90,7 @@ public class OrientClosingQuery implements Iterable<ODocument>, Closeable, AutoC
 		}
 	}
 
-	private static void closeElement(Object obj) throws Exception {
+	private static void close(Object obj) throws Exception {
 		if (obj == null) {
 			return;
 		}
@@ -105,7 +102,7 @@ public class OrientClosingQuery implements Iterable<ODocument>, Closeable, AutoC
 		}
 	}
 
-	private static long getTimeOutDelay() {
+	private static long timerDelay() {
 		final String prop = System.getProperty("query.nonBlocking.timeOut");
 		if (prop == null || prop.trim().isEmpty()) {
 			return -1;
@@ -131,7 +128,7 @@ public class OrientClosingQuery implements Iterable<ODocument>, Closeable, AutoC
 		}
 	}
 
-	public boolean isClosed() {
+	private boolean isClosed() {
 		synchronized (this) {
 			if (closed) {
 				return true;
@@ -141,7 +138,7 @@ public class OrientClosingQuery implements Iterable<ODocument>, Closeable, AutoC
 		return databaseDocument.isClosed();
 	}
 
-	private synchronized Iterator<?> execute() {
+	private synchronized Iterator<?> exec() {
 		try {
 			closeResults();
 		} catch (Exception e) {
@@ -174,14 +171,14 @@ public class OrientClosingQuery implements Iterable<ODocument>, Closeable, AutoC
 
 	private synchronized void closeResults() throws Exception {
 		if (results != null) {
-			closeElement(results);
+			close(results);
 			results = null;
 		}
 	}
 
 	@Override
 	public Iterator<ODocument> iterator() {
-		final Iterator<?> iterator = execute();
+		final Iterator<?> iterator = exec();
 		if (iterator == null) {
 			return Collections.emptyIterator();
 		}
@@ -222,8 +219,6 @@ public class OrientClosingQuery implements Iterable<ODocument>, Closeable, AutoC
 					return databaseDocument.load((ORecord) obj);
 				} else if (obj instanceof OIdentifiable) {
 					return databaseDocument.load(((OIdentifiable) obj).getIdentity());
-				} else if (obj instanceof ORID) {
-					return databaseDocument.load((ORID) obj);
 				}
 
 				throw new OrmException("Unexpected document type [" + obj.getClass() + "].");
@@ -232,8 +227,7 @@ public class OrientClosingQuery implements Iterable<ODocument>, Closeable, AutoC
 	}
 
 	private static class EndOfServiceElement {
-		private final UUID uuid = UUID.randomUUID();
-		private final long millis = System.currentTimeMillis();
+		//Trigger class
 	}
 
 	private class OrientNonBlockingListener implements OCommandResultListener, Iterator<Object>, Closeable {
@@ -273,21 +267,21 @@ public class OrientClosingQuery implements Iterable<ODocument>, Closeable, AutoC
 			}
 		}
 
-		private boolean endService() {
+		private void endService() {
 			synchronized (this) {
 				done = true;
 			}
 
-			return offerElement(new EndOfServiceElement());
+			offerElement(new EndOfServiceElement());
 		}
 
 		private synchronized boolean isDone() {
 			return done;
 		}
 
-		public boolean offerElement(Object item) {
+		boolean offerElement(Object item) {
 			final long fetchStartMs = System.currentTimeMillis();
-			final long maxWaitMs = getTimeOutDelay();
+			final long maxWaitMs = timerDelay();
 			while (!isClosed() && !isDone()) {
 				try {
 					if (blockingQueue.offer(item, 100, TimeUnit.MILLISECONDS)) {
@@ -336,7 +330,7 @@ public class OrientClosingQuery implements Iterable<ODocument>, Closeable, AutoC
 			next = null;
 			needFetch = true;
 			final long fetchStartMs = System.currentTimeMillis();
-			final long maxWaitMs = getTimeOutDelay();
+			final long maxWaitMs = timerDelay();
 			while (!blockingQueue.isEmpty() || (!isClosed() && !isDone())) {
 				try {
 					final Object item = blockingQueue.poll(100, TimeUnit.MILLISECONDS);
