@@ -2,7 +2,6 @@
 
 # IoC Starter Framework
 
-[![Build Status](https://api.travis-ci.com/GenCloud/ioc_container.svg?branch=master)](https://api.travis-ci.com/GenCloud/ioc_container)
 ### Functional
 - introduction of dependencies through annotations;
 - lazy initialization of components (on demand);
