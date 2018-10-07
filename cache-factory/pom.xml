@@ -49,7 +49,7 @@
                     <message>Maven artifacts for ${project.version}</message>
                     <noJekyll>true</noJekyll>
                     <outputDirectory>${project.build.directory}/cache</outputDirectory>
-                    <branch>refs/heads/entityCache</branch>
+                    <branch>refs/heads/cache</branch>
                     <includes>
                         <include>**/*</include>
                     </includes>
