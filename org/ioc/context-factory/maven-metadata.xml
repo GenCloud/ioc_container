@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+  <groupId>org.ioc</groupId>
+  <artifactId>context-factory</artifactId>
+  <versioning>
+    <release>2.0.0.RELEASE</release>
+    <versions>
+      <version>2.0.0.RELEASE</version>
+    </versions>
+    <lastUpdated>20181007171603</lastUpdated>
+  </versioning>
+</metadata>
