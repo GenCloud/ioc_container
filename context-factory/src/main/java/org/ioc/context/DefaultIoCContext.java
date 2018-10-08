@@ -1,20 +1,20 @@
 /*
- * Copyright (c) 2018 DI (IoC) Container (Team: GC Dev, Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018 IoC Starter (Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
  *
- * This file is part of DI (IoC) Container Project.
+ * This file is part of IoC Starter Project.
  *
- * DI (IoC) Container Project is free software: you can redistribute it and/or modify
+ * IoC Starter Project is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * DI (IoC) Container Project is distributed in the hope that it will be useful,
+ * IoC Starter Project is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
+ * along with IoC Starter Project.  If not, see <http://www.gnu.org/licenses/>.
  */
 package org.ioc.context;
 
@@ -24,9 +24,14 @@ import org.ioc.annotations.context.*;
 import org.ioc.annotations.modules.CacheModule;
 import org.ioc.annotations.modules.DatabaseModule;
 import org.ioc.annotations.modules.ThreadingModule;
+import org.ioc.annotations.modules.WebModule;
 import org.ioc.aop.DynamicProxy;
+import org.ioc.context.factories.FactDispatcherFactory;
 import org.ioc.context.factories.Factory;
-import org.ioc.context.factories.*;
+import org.ioc.context.factories.core.InstanceFactory;
+import org.ioc.context.factories.core.PrototypeFactory;
+import org.ioc.context.factories.core.SingletonFactory;
+import org.ioc.context.factories.web.RequestFactory;
 import org.ioc.context.listeners.IListener;
 import org.ioc.context.listeners.facts.OnContextDestroyFact;
 import org.ioc.context.listeners.facts.OnTypeInitFact;
@@ -68,6 +73,7 @@ public class DefaultIoCContext extends AbstractIoCContext {
 
 	private final SingletonFactory singletonFactory = new SingletonFactory(instanceFactory);
 	private final PrototypeFactory prototypeFactory = new PrototypeFactory(instanceFactory);
+	private final ThreadLocal<RequestFactory> requestFactory = new ThreadLocal<>();
 
 	private List<Class<?>> aspects;
 
@@ -103,7 +109,7 @@ public class DefaultIoCContext extends AbstractIoCContext {
 	public void init(Class<?> mainSource, String... packages) {
 		this.packages = packages;
 
-		final List<TypeMetadata> types = findMetadataInClassPathByAnnotation(IoCComponent.class, packages)
+		final List<TypeMetadata> types = findMetadataInClassPath(packages)
 				.stream()
 				.filter(t -> !t.getType().isAnnotationPresent(Lazy.class))
 				.collect(Collectors.toList());
@@ -139,6 +145,11 @@ public class DefaultIoCContext extends AbstractIoCContext {
 
 		if (mainSource.isAnnotationPresent(DatabaseModule.class)) {
 			final DatabaseModule annotation = mainSource.getAnnotation(DatabaseModule.class);
+			configurations.add(annotation.autoConfigurationClass());
+		}
+
+		if (mainSource.isAnnotationPresent(WebModule.class)) {
+			final WebModule annotation = mainSource.getAnnotation(WebModule.class);
 			configurations.add(annotation.autoConfigurationClass());
 		}
 
@@ -233,8 +244,13 @@ public class DefaultIoCContext extends AbstractIoCContext {
 	public <O> O getType(String name) {
 		Object type = prototypeFactory.getType(name);
 		if (type == null) {
-			type = singletonFactory.getType(name);
-		} else {
+			type = getRequestFactory().getType(name);
+			if (type == null) {
+				type = singletonFactory.getType(name);
+			}
+		}
+
+		if (type != null) {
 			initPostConstruction(type);
 		}
 
@@ -248,10 +264,15 @@ public class DefaultIoCContext extends AbstractIoCContext {
 		if (o == null) {
 			o = prototypeFactory.getType(type);
 			if (o == null) {
-				o = singletonFactory.getType(type);
-			} else {
-				initPostConstruction(o);
+				o = getRequestFactory().getType(type);
+				if (o == null) {
+					o = singletonFactory.getType(type);
+				}
 			}
+		}
+
+		if (o != null) {
+			initPostConstruction(o);
 		}
 
 		return (O) o;
@@ -264,6 +285,8 @@ public class DefaultIoCContext extends AbstractIoCContext {
 		final TypeMetadata metadata = new TypeMetadata(name, instance, mode);
 		if (mode == Mode.SINGLETON) {
 			singletonFactory.addType(metadata);
+		} else if (mode == Mode.REQUEST) {
+			getRequestFactory().addType(metadata);
 		} else {
 			prototypeFactory.addType(metadata);
 		}
@@ -294,6 +317,8 @@ public class DefaultIoCContext extends AbstractIoCContext {
 
 			if (type.getMode() == Mode.PROTOTYPE) {
 				prototypeFactory.addType(type);
+			} else if (type.getMode() == Mode.REQUEST) {
+				getRequestFactory().addType(type);
 			} else {
 				singletonFactory.addType(type);
 			}
@@ -332,6 +357,7 @@ public class DefaultIoCContext extends AbstractIoCContext {
 		getDispatcherFactory().fireEvent(new OnContextDestroyFact(this));
 
 		prototypeFactory.getTypes().values().forEach(this::destroy);
+		getRequestFactory().getTypes().values().forEach(this::destroy);
 		singletonFactory.getTypes().values().forEach(this::destroy);
 	}
 
@@ -524,6 +550,15 @@ public class DefaultIoCContext extends AbstractIoCContext {
 		}
 
 		return o;
+	}
+
+	private RequestFactory getRequestFactory() {
+		RequestFactory requestFactory = this.requestFactory.get();
+		if (requestFactory == null) {
+			requestFactory = new RequestFactory(instanceFactory);
+			this.requestFactory.set(requestFactory);
+		}
+		return requestFactory;
 	}
 
 	public SingletonFactory getSingletonFactory() {

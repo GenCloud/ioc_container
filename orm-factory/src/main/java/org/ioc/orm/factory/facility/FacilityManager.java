@@ -1,24 +1,26 @@
 /*
- * Copyright (c) 2018 DI (IoC) Container (Team: GC Dev, Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018 IoC Starter (Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
  *
- * This file is part of DI (IoC) Container Project.
+ * This file is part of IoC Starter Project.
  *
- * DI (IoC) Container Project is free software: you can redistribute it and/or modify
+ * IoC Starter Project is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * DI (IoC) Container Project is distributed in the hope that it will be useful,
+ * IoC Starter Project is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
+ * along with IoC Starter Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.ioc.orm.factory;
+package org.ioc.orm.factory.facility;
 
 import org.ioc.orm.exceptions.OrmException;
+import org.ioc.orm.factory.DatabaseSessionFactory;
+import org.ioc.orm.factory.SchemaQuery;
 import org.ioc.orm.metadata.EntityMetadataSelector;
 import org.ioc.orm.metadata.transaction.AbstractTx;
 import org.ioc.orm.metadata.transaction.Tx;
@@ -50,10 +52,6 @@ public class FacilityManager extends AbstractTx {
 		databaseSession.close();
 	}
 
-	public void clear() {
-		databaseSession.clear();
-	}
-
 	public DatabaseSessionFactory getSession() {
 		return databaseSession;
 	}
@@ -67,44 +65,38 @@ public class FacilityManager extends AbstractTx {
 		Assertion.checkNotNull(clazz, "type");
 
 		final FacilityMetadata metadata = entityMetadataSelector.getMetadata(clazz);
-		if (metadata == null) {
-			return null;
+		if (metadata != null) {
+			return databaseSession.query(metadata, name, parameters);
 		}
 
-		return databaseSession.query(metadata, name, parameters);
+		return null;
 	}
 
 	public <T> boolean exists(Class<T> clazz, Object key) throws OrmException {
 		Assertion.checkNotNull(clazz, "type");
 
-		if (key == null) {
-			return false;
+		if (key != null) {
+			final FacilityMetadata metadata = entityMetadataSelector.getMetadata(clazz);
+			if (metadata != null) {
+				return databaseSession.exists(metadata, key);
+			}
 		}
 
-		final FacilityMetadata metadata = entityMetadataSelector.getMetadata(clazz);
-		if (metadata == null) {
-			return false;
-		}
-
-		return databaseSession.exists(metadata, key);
+		return false;
 	}
 
 	@SuppressWarnings("unchecked")
 	public <T> T fetch(Class<? extends T> clazz, Object key) throws OrmException {
 		Assertion.checkNotNull(clazz, "type");
 
-		if (key == null) {
-			return null;
-		}
-
-		final FacilityMetadata metadata = entityMetadataSelector.getMetadata(clazz);
-		if (metadata == null) {
-			return null;
-		}
-
-		final Object o = databaseSession.fetch(metadata, key);
-		if (o != null) {
-			return (T) o;
+		if (key != null) {
+			final FacilityMetadata metadata = entityMetadataSelector.getMetadata(clazz);
+			if (metadata != null) {
+				final Object o = databaseSession.fetch(metadata, key);
+				if (o != null) {
+					return (T) o;
+				}
+			}
 		}
 
 		return null;
@@ -115,13 +107,11 @@ public class FacilityManager extends AbstractTx {
 		Assertion.checkNotNull(clazz, "type");
 
 		final FacilityMetadata metadata = entityMetadataSelector.getMetadata(clazz);
-		if (metadata == null) {
-			return null;
-		}
-
-		final List<Object> result = databaseSession.fetchAll(metadata);
-		if (result != null) {
-			return (List<T>) result;
+		if (metadata != null) {
+			final List<Object> result = databaseSession.fetchAll(metadata);
+			if (result != null) {
+				return (List<T>) result;
+			}
 		}
 
 		return null;
@@ -136,7 +126,7 @@ public class FacilityManager extends AbstractTx {
 	}
 
 	private <T> FacilityMetadata findMetadata(T element) {
-		Assertion.checkNotNull(element, "vertex");
+		Assertion.checkNotNull(element);
 
 		final Class<?> clazz = element.getClass();
 		final FacilityMetadata metadata = entityMetadataSelector.getMetadata(clazz);

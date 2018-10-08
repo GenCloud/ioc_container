@@ -1,24 +1,25 @@
 /*
- * Copyright (c) 2018 DI (IoC) Container (Team: GC Dev, Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018 IoC Starter (Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
  *
- * This file is part of DI (IoC) Container Project.
+ * This file is part of IoC Starter Project.
  *
- * DI (IoC) Container Project is free software: you can redistribute it and/or modify
+ * IoC Starter Project is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * DI (IoC) Container Project is distributed in the hope that it will be useful,
+ * IoC Starter Project is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
+ * along with IoC Starter Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.ioc.orm.factory;
+package org.ioc.orm.factory.facility;
 
 import org.ioc.orm.exceptions.OrmException;
+import org.ioc.orm.factory.SessionFactory;
 import org.ioc.orm.generator.IdProducer;
 import org.ioc.orm.metadata.type.ColumnMetadata;
 import org.ioc.orm.metadata.type.FacilityMetadata;
@@ -58,7 +59,7 @@ public class FacilityMapper {
 			final ColumnVisitor visitor = facilityMetadata.getVisitor(column);
 			final IdProducer generator = facilityMetadata.getProducer(column);
 			if (generator != null && visitor != null && visitor.empty(instance)) {
-				final Object generated = generator.create(sessionFactory, facilityMetadata);
+				final Object generated = generator.install(sessionFactory, facilityMetadata);
 				final DataContainer container = new BaseDataContainer(generated);
 				visitor.setValue(instance, container, sessionFactory);
 			}

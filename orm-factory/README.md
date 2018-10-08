@@ -20,7 +20,7 @@ Add orm-factory module to your project. for maven projects just add this depende
         <dependency>
             <groupId>org.ioc</groupId>
             <artifactId>orm-factory</artifactId>
-            <version>2.0.0.RELEASE</version>
+            <version>2.0.2.STABLE</version>
         </dependency>
     </dependencies>
 ```

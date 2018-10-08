@@ -1,20 +1,20 @@
 /*
- * Copyright (c) 2018 DI (IoC) Container (Team: GC Dev, Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018 IoC Starter (Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
  *
- * This file is part of DI (IoC) Container Project.
+ * This file is part of IoC Starter Project.
  *
- * DI (IoC) Container Project is free software: you can redistribute it and/or modify
+ * IoC Starter Project is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * DI (IoC) Container Project is distributed in the hope that it will be useful,
+ * IoC Starter Project is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
+ * along with IoC Starter Project.  If not, see <http://www.gnu.org/licenses/>.
  */
 package org.ioc.orm.factory.orient.pool;
 
@@ -49,19 +49,6 @@ public class LocalODBPool implements ODBPool {
 		this.url = url;
 		this.username = username;
 		this.password = password;
-	}
-
-	private static long timerDelay() {
-		final String prop = System.getProperty("local.pool.closeDelay");
-		if (prop == null || prop.trim().isEmpty()) {
-			return 0;
-		}
-
-		try {
-			return Long.parseLong(prop);
-		} catch (Exception e) {
-			throw new OrmException("Unable to parse close delay value of [" + prop + "].", e);
-		}
 	}
 
 	@Override
@@ -109,6 +96,20 @@ public class LocalODBPool implements ODBPool {
 		opened.clear();
 		Orient.instance().shutdown();
 	}
+
+	private static long timerDelay() {
+		final String prop = System.getProperty("local.pool.closeDelay");
+		if (prop != null && !prop.isEmpty()) {
+			try {
+				return Long.parseLong(prop);
+			} catch (Exception e) {
+				throw new OrmException("Unable to parse close delay value of [" + prop + "].", e);
+			}
+		}
+
+		return 0;
+	}
+
 
 	private class CloseTask extends TimerTask {
 		@Override

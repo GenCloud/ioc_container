@@ -1,20 +1,20 @@
 /*
- * Copyright (c) 2018 DI (IoC) Container (Team: GC Dev, Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018 IoC Starter (Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
  *
- * This file is part of DI (IoC) Container Project.
+ * This file is part of IoC Starter Project.
  *
- * DI (IoC) Container Project is free software: you can redistribute it and/or modify
+ * IoC Starter Project is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * DI (IoC) Container Project is distributed in the hope that it will be useful,
+ * IoC Starter Project is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
+ * along with IoC Starter Project.  If not, see <http://www.gnu.org/licenses/>.
  */
 package org.ioc.orm.factory.orient;
 
@@ -26,24 +26,28 @@ import com.orientechnologies.orient.core.sql.OCommandSQL;
 import net.sf.cglib.proxy.Enhancer;
 import org.apache.commons.io.FilenameUtils;
 import org.ioc.annotations.context.IoCRepository;
+import org.ioc.annotations.context.Order;
+import org.ioc.cache.ICache;
+import org.ioc.cache.ICacheFactory;
 import org.ioc.context.factories.Factory;
 import org.ioc.context.processors.DestroyProcessor;
 import org.ioc.context.sensible.ContextSensible;
 import org.ioc.context.sensible.EnvironmentSensible;
+import org.ioc.context.sensible.factories.CacheFactorySensible;
 import org.ioc.context.type.IoCContext;
 import org.ioc.enviroment.configurations.datasource.OrientDatasourceAutoConfiguration;
 import org.ioc.enviroment.configurations.datasource.OrientDatasourceAutoConfiguration.DDL;
 import org.ioc.enviroment.configurations.datasource.OrientDatasourceAutoConfiguration.OrientType;
 import org.ioc.exceptions.IoCException;
-import org.ioc.orm.cache.EntityCache;
+import org.ioc.orm.cache.FacilityCacheManager;
 import org.ioc.orm.exceptions.OrmException;
-import org.ioc.orm.factory.FacilityManager;
-import org.ioc.orm.factory.FacilityManagerFactory;
 import org.ioc.orm.factory.Schema;
+import org.ioc.orm.factory.facility.FacilityManager;
+import org.ioc.orm.factory.facility.FacilityManagerFactory;
 import org.ioc.orm.factory.orient.pool.ConstantODBPool;
 import org.ioc.orm.factory.orient.pool.LocalODBPool;
 import org.ioc.orm.factory.orient.query.OrientQuery;
-import org.ioc.orm.factory.orient.session.OrientDatabaseSession;
+import org.ioc.orm.factory.orient.session.OrientDatabaseSessionFactory;
 import org.ioc.orm.generator.IdProducer;
 import org.ioc.orm.generator.type.OrientIdProducer;
 import org.ioc.orm.metadata.inspectors.FacilityMetadataInspector;
@@ -66,6 +70,7 @@ import org.slf4j.bridge.SLF4JBridgeHandler;
 import javax.persistence.Entity;
 import javax.persistence.TableGenerator;
 import java.io.File;
+import java.lang.ref.WeakReference;
 import java.lang.reflect.ParameterizedType;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -86,11 +91,14 @@ import static org.ioc.utils.ReflectionUtils.*;
  * @author GenCloud
  * @date 10/2018
  */
-public class OrientSchemaFactory implements Schema, ContextSensible, DestroyProcessor, Factory, EnvironmentSensible<OrientDatasourceAutoConfiguration> {
+@Order(998)
+public class OrientSchemaFactory implements Schema, ContextSensible, DestroyProcessor, Factory, CacheFactorySensible, EnvironmentSensible<OrientDatasourceAutoConfiguration> {
 	private static final Logger log = LoggerFactory.getLogger(OrientSchemaFactory.class);
 	private static final ColumnVisitorFactory columnFactory = new OrientVisitorFactory();
 
-	private final EntityCache cache = new EntityCache();
+	private ICacheFactory cacheFactory;
+	private FacilityCacheManager cache;
+
 	private final Map<String, OrientQuery> queryMap = new ConcurrentHashMap<>();
 	private ODBPool pool;
 	private DDL ddl;
@@ -132,7 +140,7 @@ public class OrientSchemaFactory implements Schema, ContextSensible, DestroyProc
 		}
 
 		final FacilityMetadataInspector parser = new FacilityMetadataInspector(columnFactory, types);
-		schemaMetadata = new SchemaMetadata(parser.analyze());
+		schemaMetadata = new SchemaMetadata(parser.inspect());
 
 		Orient.instance().startup();
 		createSchema();
@@ -152,9 +160,23 @@ public class OrientSchemaFactory implements Schema, ContextSensible, DestroyProc
 			}
 		});
 
+		final ICache<FacilityMetadata, Map<Object, WeakReference>> objects =
+				cacheFactory.installEternal("entity-cache", 1000);
+		cache = new FacilityCacheManager(objects);
+
 		log.info("Successful initialized [{}]", getClass().getSimpleName());
 	}
 
+	/**
+	 * Initialize user's repository to proxy class for intercept custom function's or CRUD.
+	 *
+	 * @param facilityManager entity manager
+	 * @param interfaceClass  type of repository
+	 * @param entityClass     repository controlled entity class
+	 * @param <E>             generic entity type
+	 * @param <ID>            generic primary key type
+	 * @return initialized proxy
+	 */
 	private <E, ID> Object installProxyRepository(FacilityManager facilityManager, Class<?> interfaceClass, Class<E> entityClass) {
 		final boolean logQueries = configuration.isLogQueries();
 		final FacilityMetadata facilityMetadata = schemaMetadata.getMetadata(entityClass);
@@ -185,6 +207,13 @@ public class OrientSchemaFactory implements Schema, ContextSensible, DestroyProc
 		this.configuration = configuration;
 	}
 
+	@Override
+	public void factoryInform(Factory cacheFactory) throws IoCException {
+		if (ICacheFactory.class.isAssignableFrom(cacheFactory.getClass())) {
+			this.cacheFactory = (ICacheFactory) cacheFactory;
+		}
+	}
+
 	public ODatabaseDocument createSchema() {
 		return pool.acquire();
 	}
@@ -195,8 +224,8 @@ public class OrientSchemaFactory implements Schema, ContextSensible, DestroyProc
 	}
 
 	@Override
-	public OrientDatabaseSession openSession() {
-		return new OrientDatabaseSession(createSchema(), queryMap, cache);
+	public OrientDatabaseSessionFactory openSession() {
+		return new OrientDatabaseSessionFactory(createSchema(), queryMap, cache);
 	}
 
 	@Override
@@ -254,6 +283,8 @@ public class OrientSchemaFactory implements Schema, ContextSensible, DestroyProc
 
 	@Override
 	public void destroy() {
+		cache = null;
+
 		if (facilityManager != null) {
 			facilityManager.close();
 			facilityManager = null;
@@ -271,7 +302,7 @@ public class OrientSchemaFactory implements Schema, ContextSensible, DestroyProc
 	private void updateProducers(FacilityMetadata facilityMetadata, ODatabaseDocument databaseDocument) {
 		facilityMetadata.getTypes().forEach(entityType -> {
 			final FacilityMetadataInspector analyzer = new FacilityMetadataInspector(new OrientVisitorFactory(), entityType);
-			analyzer.getGenerators(entityType).forEach((field, producer) -> {
+			analyzer.getProducers(entityType).forEach((field, producer) -> {
 				final String type = producer.generator();
 				String tableName = "id_producer";
 				String keyColumn = "id";
@@ -395,7 +426,7 @@ public class OrientSchemaFactory implements Schema, ContextSensible, DestroyProc
 					log.debug("Adding primary index [{}] with {}", keyIndex, names);
 				}
 
-				final String indexQuery = "create index " + keyIndex + " on " + schemaName + " (" + join(names, ",")
+				final String indexQuery = "install index " + keyIndex + " on " + schemaName + " (" + join(names, ",")
 						+ ") unique";
 
 				databaseDocument.command(new OCommandSQL(indexQuery)).execute();
@@ -415,7 +446,7 @@ public class OrientSchemaFactory implements Schema, ContextSensible, DestroyProc
 					log.debug("Adding property index [{}] with {} ({})", indexName, names, uniqueness);
 				}
 
-				final String indexQuery = "create index " + indexName + " on " + schemaName + " (" + join(names, ",")
+				final String indexQuery = "install index " + indexName + " on " + schemaName + " (" + join(names, ",")
 						+ ") " + uniqueness;
 
 				databaseDocument.command(new OCommandSQL(indexQuery)).execute();

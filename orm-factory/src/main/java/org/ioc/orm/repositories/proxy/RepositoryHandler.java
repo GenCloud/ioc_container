@@ -1,20 +1,20 @@
 /*
- * Copyright (c) 2018 DI (IoC) Container (Team: GC Dev, Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018 IoC Starter (Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
  *
- * This file is part of DI (IoC) Container Project.
+ * This file is part of IoC Starter Project.
  *
- * DI (IoC) Container Project is free software: you can redistribute it and/or modify
+ * IoC Starter Project is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * DI (IoC) Container Project is distributed in the hope that it will be useful,
+ * IoC Starter Project is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
+ * along with IoC Starter Project.  If not, see <http://www.gnu.org/licenses/>.
  */
 package org.ioc.orm.repositories.proxy;
 
@@ -24,8 +24,8 @@ import net.sf.cglib.reflect.FastMethod;
 import org.ioc.orm.annotations.Query;
 import org.ioc.orm.exceptions.RepositoryInvocationException;
 import org.ioc.orm.exceptions.RepositoryMappingException;
-import org.ioc.orm.factory.FacilityManager;
 import org.ioc.orm.factory.SchemaQuery;
+import org.ioc.orm.factory.facility.FacilityManager;
 import org.ioc.orm.interpretator.MethodsAnalyzer;
 import org.ioc.orm.metadata.transaction.Tx;
 import org.ioc.orm.metadata.type.FacilityMetadata;

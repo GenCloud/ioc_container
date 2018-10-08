@@ -1,25 +1,29 @@
 /*
- * Copyright (c) 2018 DI (IoC) Container (Team: GC Dev, Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018 IoC Starter (Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
  *
- * This file is part of DI (IoC) Container Project.
+ * This file is part of IoC Starter Project.
  *
- * DI (IoC) Container Project is free software: you can redistribute it and/or modify
+ * IoC Starter Project is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * DI (IoC) Container Project is distributed in the hope that it will be useful,
+ * IoC Starter Project is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
+ * along with IoC Starter Project.  If not, see <http://www.gnu.org/licenses/>.
  */
 package org.ioc.context;
 
 import org.ioc.annotations.context.IoCComponent;
+import org.ioc.annotations.web.IoCController;
+import org.ioc.annotations.web.MappingMethod;
+import org.ioc.annotations.web.UrlMapping;
 import org.ioc.aop.annotation.IoCAspect;
+import org.ioc.context.model.ControllerMetadata;
 import org.ioc.context.model.TypeMetadata;
 import org.ioc.context.type.IoCContext;
 import org.ioc.context.type.IoCScanner;
@@ -41,15 +45,21 @@ public abstract class AbstractIoCContext implements IoCContext, IoCScanner {
 
 	@Override
 	public List<TypeMetadata> findMetadataInClassPathByAnnotations(List<Class<? extends Annotation>> annotations, String... packages) {
-		final List<TypeMetadata> types = new LinkedList<>();
+		return resolveMetadata(findClassesByAnnotation(annotations, packages));
+	}
 
-		findClassesByAnnotation(annotations, packages)
-				.forEach(typeClass -> {
-					if (checkType(typeClass)) {
-						types.add(new TypeMetadata(resolveTypeName(typeClass), typeClass.getConstructors()[0], resolveLoadingMode(typeClass)));
-					}
-				});
-		return types;
+	@Override
+	public List<TypeMetadata> findMetadataInClassPathByAnnotation(Class<? extends Annotation> annotation, String... packages) {
+		return resolveMetadata(findClassesByAnnotation(annotation, packages));
+	}
+
+	@Override
+	public List<TypeMetadata> findMetadataInClassPath(String... packages) {
+		final List<Class<? extends Annotation>> annotations = new LinkedList<>();
+		annotations.add(IoCComponent.class);
+		annotations.add(IoCController.class);
+
+		return resolveMetadata(findClassesByAnnotation(annotations, packages));
 	}
 
 	@Override
@@ -67,35 +77,32 @@ public abstract class AbstractIoCContext implements IoCContext, IoCScanner {
 	}
 
 	@Override
-	public List<TypeMetadata> findMetadataInClassPathByAnnotation(Class<? extends Annotation> annotation, String... packages) {
-		final List<TypeMetadata> types = new LinkedList<>();
-
-		findClassesByAnnotation(annotation, packages)
-				.forEach(typeClass -> {
-					if (checkType(typeClass)) {
-						types.add(new TypeMetadata(resolveTypeName(typeClass), typeClass.getConstructors()[0], resolveLoadingMode(typeClass)));
-					}
-				});
-		return types;
-	}
-
-	@Override
-	public List<TypeMetadata> findMetadataInClassPath(String... packages) {
-		final List<Class<? extends Annotation>> annotations = new LinkedList<>();
-		final List<TypeMetadata> types = new LinkedList<>();
-		annotations.add(IoCComponent.class);
-
-		findClassesByAnnotation(annotations, packages)
-				.forEach(typeClass -> {
-					if (checkType(typeClass)) {
-						types.add(new TypeMetadata(resolveTypeName(typeClass), typeClass.getConstructors()[0], resolveLoadingMode(typeClass)));
-					}
-				});
-		return types;
-	}
-
-	@Override
 	public List<Class<?>> findAspects(String... packages) {
 		return findClassesByAnnotation(IoCAspect.class, packages);
+	}
+
+	private List<TypeMetadata> resolveMetadata(List<Class<?>> classesByAnnotation) {
+		final List<TypeMetadata> types = new LinkedList<>();
+		classesByAnnotation
+				.forEach(typeClass -> {
+					if (checkType(typeClass)) {
+						if (typeClass.isAnnotationPresent(IoCController.class)) {
+							final UrlMapping annotation = typeClass.getAnnotation(UrlMapping.class);
+							String mappedPath = "";
+							MappingMethod method = MappingMethod.GET;
+							if (annotation != null) {
+								mappedPath = annotation.value();
+								method = annotation.method();
+							}
+
+							types.add(new ControllerMetadata(resolveTypeName(typeClass), typeClass.getConstructors()[0], method, mappedPath));
+						} else {
+							types.add(new TypeMetadata(resolveTypeName(typeClass), typeClass.getConstructors()[0],
+									resolveLoadingMode(typeClass)));
+						}
+					}
+
+				});
+		return types;
 	}
 }

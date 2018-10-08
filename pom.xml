@@ -7,7 +7,34 @@
     <groupId>org.ioc</groupId>
     <artifactId>ioc</artifactId>
     <packaging>pom</packaging>
-    <version>2.0.0.RELEASE</version>
+    <version>2.0.2.STABLE</version>
+
+    <name>IoC Starter</name>
+    <description>
+        IoC Starter is lightweight dependency injection framework with
+        a additional modules (caching, threading, aspects and orm).
+    </description>
+    <inceptionYear>2018</inceptionYear>
+    <licenses>
+        <license>
+            <name>GNU GPL v3</name>
+            <url>https://www.gnu.org/licenses/gpl-3.0.txt</url>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>GenCloud</id>
+            <name>Maxim Ivanov</name>
+            <email>gencloud54@gmail.com</email>
+            <roles>
+                <role>architect</role>
+                <role>developer</role>
+                <role>founder</role>
+            </roles>
+            <timezone>+3</timezone>
+        </developer>
+    </developers>
 
     <modules>
         <module>context-factory</module>
@@ -15,6 +42,7 @@
         <module>threads-factory</module>
         <module>test</module>
         <module>orm-factory</module>
+        <module>web-factory</module>
     </modules>
 
     <properties>
@@ -101,6 +129,18 @@
                             <version>2.1</version>
                         </dependency>
                     </dependencies>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <configuration>
+                        <archive>
+                            <manifest>
+                                <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                                <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
+                            </manifest>
+                        </archive>
+                    </configuration>
                 </plugin>
             </plugins>
         </pluginManagement>

@@ -1,20 +1,20 @@
 /*
- * Copyright (c) 2018 DI (IoC) Container (Team: GC Dev, Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018 IoC Starter (Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
  *
- * This file is part of DI (IoC) Container Project.
+ * This file is part of IoC Starter Project.
  *
- * DI (IoC) Container Project is free software: you can redistribute it and/or modify
+ * IoC Starter Project is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * DI (IoC) Container Project is distributed in the hope that it will be useful,
+ * IoC Starter Project is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
+ * along with IoC Starter Project.  If not, see <http://www.gnu.org/licenses/>.
  */
 package org.ioc.utils;
 
@@ -22,6 +22,7 @@ import org.ioc.annotations.configuration.PropertyFunction;
 import org.ioc.annotations.context.IoCComponent;
 import org.ioc.annotations.context.IoCRepository;
 import org.ioc.annotations.context.Mode;
+import org.ioc.annotations.web.IoCController;
 import org.ioc.aop.advice.AfterAdvice;
 import org.ioc.aop.advice.AroundAdivice;
 import org.ioc.aop.advice.BeforeAdvice;
@@ -38,7 +39,6 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.net.JarURLConnection;
 import java.net.URL;
 import java.util.*;
@@ -46,6 +46,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.stream.Collectors;
+
+import static java.lang.reflect.Modifier.isTransient;
 
 /**
  * Static convenience methods for components.
@@ -57,9 +59,6 @@ public class ReflectionUtils {
 	private static final ClassLoader classLoader = ReflectionUtils.class.getClassLoader();
 
 	private final static Map<Method, List<Interceptor>> INTERCEPTORS = new ConcurrentHashMap<>();
-	private static final String TO_STRING_METHOD_NAME = "toString";
-	private static final String EQUALS_METHOD_NAME = "equals";
-	private static final String HASH_CODE_METHOD_NAME = "hashCode";
 
 	/**
 	 * Function of scanning a patch to find the types filtered by bag.
@@ -120,15 +119,6 @@ public class ReflectionUtils {
 		return list;
 	}
 
-	public static <T extends Annotation> T searchAnnotation(Class<?> entityClass, Class<T> clazz) {
-		final List<T> list = searchAnnotations(entityClass, clazz);
-		if (list.isEmpty()) {
-			return null;
-		}
-
-		return list.get(0);
-	}
-
 	public static <T extends Annotation> List<T> searchAnnotations(Class<?> entityClass, Class<T> clazz) {
 		final List<T> list = new ArrayList<>();
 		toClassHierarchy(entityClass).forEach(type -> {
@@ -174,7 +164,7 @@ public class ReflectionUtils {
 
 		final List<Field> list = new ArrayList<>(fields.length);
 		Arrays.stream(fields)
-				.filter(field -> !Modifier.isTransient(field.getModifiers()))
+				.filter(field -> !isTransient(field.getModifiers()))
 				.forEach(field -> annotations
 						.stream()
 						.filter(field::isAnnotationPresent)
@@ -301,8 +291,6 @@ public class ReflectionUtils {
 		return true;
 	}
 
-	//################################################# AOP #############################################
-
 	/**
 	 * Function for indicate loading type in context.
 	 *
@@ -310,14 +298,20 @@ public class ReflectionUtils {
 	 * @return name of type
 	 */
 	public static String resolveTypeName(Class<?> type) {
-		String id;
+		String name;
 		if (type.isAnnotationPresent(IoCComponent.class)
-				&& !(id = type.getAnnotation(IoCComponent.class).value()).isEmpty()) {
-			return id;
+				&& !(name = type.getAnnotation(IoCComponent.class).value()).isEmpty()) {
+			return name;
 		}
+
 		if (type.isAnnotationPresent(IoCRepository.class)
-				&& !(id = type.getAnnotation(IoCRepository.class).value()).isEmpty()) {
-			return id;
+				&& !(name = type.getAnnotation(IoCRepository.class).value()).isEmpty()) {
+			return name;
+		}
+
+		if (type.isAnnotationPresent(IoCController.class)
+				&& !(name = type.getAnnotation(IoCController.class).value()).isEmpty()) {
+			return name;
 		}
 		return type.getSimpleName();
 	}
@@ -333,6 +327,8 @@ public class ReflectionUtils {
 			return type.getAnnotation(IoCComponent.class).scope();
 		} else if (type.isAnnotationPresent(IoCRepository.class)) {
 			return type.getAnnotation(IoCRepository.class).scope();
+		} else if (type.isAnnotationPresent(IoCController.class)) {
+			return Mode.REQUEST;
 		}
 		return Mode.SINGLETON;
 	}
@@ -348,26 +344,10 @@ public class ReflectionUtils {
 		return propertyFunction.scope();
 	}
 
-	public static boolean isEqualsMethod(Method method) {
-		return EQUALS_METHOD_NAME.equals(method.getName()) && method.getParameterTypes().length == 1
-				&& Object.class.equals(method.getParameterTypes()[0]);
-	}
-
-	public static boolean isHashCodeMethod(Method method) {
-		return HASH_CODE_METHOD_NAME.equals(method.getName()) && method.getParameterTypes().length == 0;
-	}
-
-	public static boolean isToStringMethod(Method method) {
-		return TO_STRING_METHOD_NAME.equals(method.getName()) && method.getParameterCount() == 0;
-	}
+	//################################################# AOP #############################################
 
 	private static Method getPointCutMethod(Method[] methods) {
-		for (Method mh : methods) {
-			if (mh.isAnnotationPresent(PointCut.class)) {
-				return mh;
-			}
-		}
-		return null;
+		return Arrays.stream(methods).filter(mh -> mh.isAnnotationPresent(PointCut.class)).findFirst().orElse(null);
 	}
 
 	/**

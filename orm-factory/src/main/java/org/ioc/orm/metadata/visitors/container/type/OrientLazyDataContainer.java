@@ -1,27 +1,27 @@
 /*
- * Copyright (c) 2018 DI (IoC) Container (Team: GC Dev, Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018 IoC Starter (Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
  *
- * This file is part of DI (IoC) Container Project.
+ * This file is part of IoC Starter Project.
  *
- * DI (IoC) Container Project is free software: you can redistribute it and/or modify
+ * IoC Starter Project is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * DI (IoC) Container Project is distributed in the hope that it will be useful,
+ * IoC Starter Project is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
+ * along with IoC Starter Project.  If not, see <http://www.gnu.org/licenses/>.
  */
 package org.ioc.orm.metadata.visitors.container.type;
 
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import org.ioc.orm.exceptions.OrmException;
-import org.ioc.orm.factory.orient.session.OrientDatabaseSession;
+import org.ioc.orm.factory.orient.session.OrientDatabaseSessionFactory;
 import org.ioc.orm.metadata.relation.mapper.OrientBagMapper;
 import org.ioc.orm.metadata.type.ColumnMetadata;
 import org.ioc.orm.metadata.type.FacilityMetadata;
@@ -38,14 +38,14 @@ import static org.ioc.orm.util.OrientUtils.convertValue;
 public class OrientLazyDataContainer implements DataContainer {
 	private final AtomicBoolean loaded = new AtomicBoolean(false);
 
-	private final OrientDatabaseSession databaseSession;
+	private final OrientDatabaseSessionFactory databaseSession;
 	private final FacilityMetadata facilityMetadata;
 	private final ColumnMetadata columnMetadata;
 	private final Object key;
 
 	private ODocument document;
 
-	public OrientLazyDataContainer(OrientDatabaseSession databaseSession, FacilityMetadata facilityMetadata,
+	public OrientLazyDataContainer(OrientDatabaseSessionFactory databaseSession, FacilityMetadata facilityMetadata,
 								   ColumnMetadata columnMetadata, Object key) {
 		this.databaseSession = databaseSession;
 		this.facilityMetadata = facilityMetadata;

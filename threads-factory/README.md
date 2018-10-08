@@ -2,7 +2,8 @@
 
 ## Module 'threads-context'
 
-[![Build Status](https://api.travis-ci.org/GenCloud/di_container.svg?branch=master)](https://api.travis-ci.org/GenCloud/di_container)
+[![Build Status](https://travis-ci.org/GenCloud/ioc_container.svg?branch=master)](https://travis-ci.org/GenCloud/ioc_container)
+
 ### Intro
 Add threads-context module to your project. for maven projects just add this dependency:
 ```xml
@@ -21,7 +22,7 @@ Add threads-context module to your project. for maven projects just add this dep
        <dependency>
            <groupId>org.ioc</groupId>
            <artifactId>threads-factory</artifactId>
-           <version>2.0.0.RELEASE</version>
+           <version>2.0.2.STABLE</version>
        </dependency>
    </dependencies>
 ```

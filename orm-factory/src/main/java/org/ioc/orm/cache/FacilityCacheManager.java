@@ -1,29 +1,34 @@
 /*
- * Copyright (c) 2018 DI (IoC) Container (Team: GC Dev, Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018 IoC Starter (Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
  *
- * This file is part of DI (IoC) Container Project.
+ * This file is part of IoC Starter Project.
  *
- * DI (IoC) Container Project is free software: you can redistribute it and/or modify
+ * IoC Starter Project is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * DI (IoC) Container Project is distributed in the hope that it will be useful,
+ * IoC Starter Project is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
+ * along with IoC Starter Project.  If not, see <http://www.gnu.org/licenses/>.
  */
 package org.ioc.orm.cache;
 
+import org.ioc.cache.ICache;
 import org.ioc.orm.metadata.type.FacilityMetadata;
+import org.ioc.utils.Assertion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.ref.WeakReference;
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -32,19 +37,15 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author GenCloud
  * @date 10/2018
  */
-public class EntityCache {
-	private static final Logger log = LoggerFactory.getLogger(EntityCache.class);
+public class FacilityCacheManager {
+	private static final Logger log = LoggerFactory.getLogger(FacilityCacheManager.class);
 
-	private final Map<FacilityMetadata, Map<Object, WeakReference>> cache = new TreeMap<>();
+	private final ICache<FacilityMetadata, Map<Object, WeakReference>> cache;
 
-	private int purgeCount = 0;
+	public FacilityCacheManager(ICache<FacilityMetadata, Map<Object, WeakReference>> cache) {
+		Assertion.checkNotNull(cache);
 
-	/**
-	 * Unload all items from the cache.
-	 */
-	public void invalidateAll() {
-		cache.values().forEach(Map::clear);
-		cache.clear();
+		this.cache = cache;
 	}
 
 	/**
@@ -130,12 +131,7 @@ public class EntityCache {
 			return false;
 		}
 
-		if (referenceMap.remove(key) != null) {
-			purge();
-			return true;
-		} else {
-			return false;
-		}
+		return referenceMap.remove(key) != null;
 	}
 
 	/**
@@ -167,44 +163,10 @@ public class EntityCache {
 				updated = referenceMap.remove(key) != null;
 			}
 
-			if (updated) {
-				purge();
-				return true;
-			} else {
-				return false;
-			}
+			return updated;
 		} catch (Exception e) {
 			log.warn("Unable to retrieve key to getEntityCache entity [" + instance + "] of type [" + facilityMetadata + "].", e);
 			return false;
-		}
-	}
-
-	/**
-	 * Purge cache where cache size >= 1000
-	 * TODO: find best practise or rewrite to ICache (cache-factory module)
-	 */
-	private synchronized void purge() {
-		purgeCount++;
-		final int purgeDelayCount = 1000;
-		if (purgeCount >= purgeDelayCount) {
-			try {
-				new ArrayList<>(cache.entrySet()).forEach(mapEntry -> {
-					final Map<Object, WeakReference> map = mapEntry.getValue();
-					if (map != null) {
-						new ArrayList<>(map.entrySet())
-								.stream()
-								.filter(entry -> entry.getValue().get() == null)
-								.map(Map.Entry::getKey)
-								.forEachOrdered(map::remove);
-					}
-
-					if (map == null || map.isEmpty()) {
-						cache.remove(mapEntry.getKey());
-					}
-				});
-			} finally {
-				purgeCount = 0;
-			}
 		}
 	}
 }

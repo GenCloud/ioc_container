@@ -1,20 +1,20 @@
 /*
- * Copyright (c) 2018 DI (IoC) Container (Team: GC Dev, Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018 IoC Starter (Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
  *
- * This file is part of DI (IoC) Container Project.
+ * This file is part of IoC Starter Project.
  *
- * DI (IoC) Container Project is free software: you can redistribute it and/or modify
+ * IoC Starter Project is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * DI (IoC) Container Project is distributed in the hope that it will be useful,
+ * IoC Starter Project is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
+ * along with IoC Starter Project.  If not, see <http://www.gnu.org/licenses/>.
  */
 package org.ioc.orm.factory.orient.query;
 
@@ -60,21 +60,6 @@ public class AutoClosingQuery implements Iterable<ODocument>, Closeable, AutoClo
 
 	private boolean closed = false;
 
-	private AutoClosingQuery(ODatabaseDocument databaseDocument, String query, Collection<?> params) {
-		Assertion.checkNotNull(databaseDocument);
-		Assertion.checkNotNull(query);
-
-		this.databaseDocument = databaseDocument;
-		this.query = query;
-
-		parameterMap = Collections.emptyMap();
-		if (params != null && !params.isEmpty()) {
-			parameterList = new ArrayList<>(params);
-		} else {
-			parameterList = Collections.emptyList();
-		}
-	}
-
 	public AutoClosingQuery(ODatabaseDocument databaseDocument, String query, Map<String, Object> params) {
 		Assertion.checkNotNull(databaseDocument);
 		Assertion.checkNotNull(query);
@@ -91,28 +76,26 @@ public class AutoClosingQuery implements Iterable<ODocument>, Closeable, AutoClo
 	}
 
 	private static void close(Object obj) throws Exception {
-		if (obj == null) {
-			return;
-		}
-
-		if (obj instanceof Closeable) {
-			((Closeable) obj).close();
-		} else if (obj instanceof AutoCloseable) {
-			((AutoCloseable) obj).close();
+		if (obj != null) {
+			if (obj instanceof Closeable) {
+				((Closeable) obj).close();
+			} else if (obj instanceof AutoCloseable) {
+				((AutoCloseable) obj).close();
+			}
 		}
 	}
 
 	private static long timerDelay() {
 		final String prop = System.getProperty("query.nonBlocking.timeOut");
-		if (prop == null || prop.trim().isEmpty()) {
-			return -1;
+		if (prop != null && !prop.isEmpty()) {
+			try {
+				return Long.parseLong(prop);
+			} catch (Exception e) {
+				throw new OrmException("Unable to parse close delay value of [" + prop + "].", e);
+			}
 		}
 
-		try {
-			return Long.parseLong(prop);
-		} catch (Exception e) {
-			throw new OrmException("Unable to parse timeout value of [" + prop + "].", e);
-		}
+		return -1;
 	}
 
 	@Override
@@ -179,51 +162,51 @@ public class AutoClosingQuery implements Iterable<ODocument>, Closeable, AutoClo
 	@Override
 	public Iterator<ODocument> iterator() {
 		final Iterator<?> iterator = exec();
-		if (iterator == null) {
-			return Collections.emptyIterator();
+		if (iterator != null) {
+			return new Iterator<ODocument>() {
+				@Override
+				public boolean hasNext() {
+					if (isClosed()) {
+						return false;
+					}
+
+					if (!iterator.hasNext()) {
+						try {
+							close();
+						} catch (Exception e) {
+							log.warn("Unable to close results.", e);
+						}
+						return false;
+					}
+
+					return true;
+				}
+
+				@Override
+				public ODocument next() {
+					if (isClosed()) {
+						throw new OrmException("Query is closed.");
+					}
+
+					final Object obj = iterator.next();
+					if (obj == null) {
+						return null;
+					}
+
+					if (obj instanceof ODocument) {
+						return (ODocument) obj;
+					} else if (obj instanceof ORecord) {
+						return databaseDocument.load((ORecord) obj);
+					} else if (obj instanceof OIdentifiable) {
+						return databaseDocument.load(((OIdentifiable) obj).getIdentity());
+					}
+
+					throw new OrmException("Unexpected document type [" + obj.getClass() + "].");
+				}
+			};
 		}
 
-		return new Iterator<ODocument>() {
-			@Override
-			public boolean hasNext() {
-				if (isClosed()) {
-					return false;
-				}
-
-				if (!iterator.hasNext()) {
-					try {
-						close();
-					} catch (Exception e) {
-						log.warn("Unable to close results.", e);
-					}
-					return false;
-				}
-
-				return true;
-			}
-
-			@Override
-			public ODocument next() {
-				if (isClosed()) {
-					throw new OrmException("Query is closed.");
-				}
-
-				final Object obj = iterator.next();
-				if (obj == null) {
-					return null;
-				}
-
-				if (obj instanceof ODocument) {
-					return (ODocument) obj;
-				} else if (obj instanceof ORecord) {
-					return databaseDocument.load((ORecord) obj);
-				} else if (obj instanceof OIdentifiable) {
-					return databaseDocument.load(((OIdentifiable) obj).getIdentity());
-				}
-
-				throw new OrmException("Unexpected document type [" + obj.getClass() + "].");
-			}
-		};
+		return Collections.emptyIterator();
 	}
 
 	private static class EndOfServiceElement {

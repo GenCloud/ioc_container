@@ -1,4 +1,5 @@
 ---
+[![Build Status](https://travis-ci.org/GenCloud/ioc_container.svg?branch=master)](https://travis-ci.org/GenCloud/ioc_container)
 
 # IoC Starter Framework
 
@@ -35,7 +36,7 @@ Add IoC to your project. for maven projects just add this dependency:
         <dependency>
             <groupId>org.ioc</groupId>
             <artifactId>context-factory</artifactId>
-            <version>2.0.0.RELEASE</version>
+            <version>2.0.2.STABLE</version>
         </dependency>
     </dependencies>
 ```
@@ -276,7 +277,7 @@ Add threads-context module to your project. for maven projects just add this dep
        <dependency>
            <groupId>org.ioc</groupId>
            <artifactId>threads-factory</artifactId>
-           <version>2.0.0.RELEASE</version>
+           <version>2.0.2.STABLE</version>
        </dependency>
    </dependencies>
 ```
@@ -357,7 +358,7 @@ Add cache-factory module to your project. for maven projects just add this depen
        <dependency>
            <groupId>org.ioc</groupId>
            <artifactId>cache-factory</artifactId>
-           <version>2.0.0.RELEASE</version>
+           <version>2.0.2.STABLE</version>
        </dependency>
    </dependencies>
 ```
@@ -473,7 +474,7 @@ Add orm-factory module to your project. for maven projects just add this depende
         <dependency>
             <groupId>org.ioc</groupId>
             <artifactId>orm-factory</artifactId>
-            <version>2.0.0.RELEASE</version>
+            <version>2.0.2.STABLE</version>
         </dependency>
     </dependencies>
 ```

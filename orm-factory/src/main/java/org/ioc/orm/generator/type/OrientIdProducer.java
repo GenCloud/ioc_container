@@ -1,20 +1,20 @@
 /*
- * Copyright (c) 2018 DI (IoC) Container (Team: GC Dev, Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018 IoC Starter (Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
  *
- * This file is part of DI (IoC) Container Project.
+ * This file is part of IoC Starter Project.
  *
- * DI (IoC) Container Project is free software: you can redistribute it and/or modify
+ * IoC Starter Project is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * DI (IoC) Container Project is distributed in the hope that it will be useful,
+ * IoC Starter Project is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
+ * along with IoC Starter Project.  If not, see <http://www.gnu.org/licenses/>.
  */
 package org.ioc.orm.generator.type;
 
@@ -26,7 +26,7 @@ import com.orientechnologies.orient.core.record.impl.ODocument;
 import org.ioc.orm.exceptions.OrmException;
 import org.ioc.orm.factory.SessionFactory;
 import org.ioc.orm.factory.orient.OrientSchemaFactory;
-import org.ioc.orm.factory.orient.session.OrientDatabaseSession;
+import org.ioc.orm.factory.orient.session.OrientDatabaseSessionFactory;
 import org.ioc.orm.generator.IdProducer;
 import org.ioc.orm.metadata.type.FacilityMetadata;
 
@@ -57,39 +57,37 @@ public class OrientIdProducer implements IdProducer {
 	}
 
 	@Override
-	public Long create(SessionFactory sessionFactory, FacilityMetadata facilityMetadata) throws OrmException {
-		if (sessionFactory == null) {
-			return null;
-		}
-
-		if (facilityMetadata == null) {
-			return null;
-		}
-
-		synchronized (lock) {
-			try {
-				if (sessionFactory instanceof OrientDatabaseSession) {
-					final ODatabaseDocument db = ((OrientDatabaseSession) sessionFactory).getDocument();
-					return create(db);
-				} else {
-					try (ODatabaseDocument db = schemaFactory.createSchema()) {
-						return create(db);
+	public Long install(SessionFactory sessionFactory, FacilityMetadata facilityMetadata) throws OrmException {
+		if (sessionFactory != null && facilityMetadata != null) {
+			synchronized (lock) {
+				try {
+					if (sessionFactory instanceof OrientDatabaseSessionFactory) {
+						final ODatabaseDocument db = ((OrientDatabaseSessionFactory) sessionFactory).getDocument();
+						return install(db);
+					} else {
+						try (ODatabaseDocument db = schemaFactory.createSchema()) {
+							return install(db);
+						}
 					}
+				} catch (Exception e) {
+					throw new OrmException("Unable to increment counter id [" + keyValue + "] from table [" + tableName + "].", e);
 				}
-			} catch (Exception e) {
-				throw new OrmException("Unable to increment counter id [" + keyValue + "] from table [" + tableName + "].", e);
 			}
 		}
+
+		return null;
 	}
 
-	private Long create(ODatabaseDocument databaseDocument) {
+	private Long install(ODatabaseDocument databaseDocument) {
 		databaseDocument.begin();
 		for (int i = 0; i < 10; i++) {
 			final Long value = increment(databaseDocument);
-			if (value != null) {
-				databaseDocument.commit();
-				return value;
+			if (value == null) {
+				continue;
 			}
+
+			databaseDocument.commit();
+			return value;
 		}
 		databaseDocument.rollback();
 
@@ -104,12 +102,7 @@ public class OrientIdProducer implements IdProducer {
 		}
 
 		final Long current = document.field(valueColumn);
-		final Long next;
-		if (current == null) {
-			next = 1L;
-		} else {
-			next = current + 1;
-		}
+		final Long next = current != null ? current + 1 : 1;
 
 		document.field(valueColumn, next);
 		document.save();
@@ -119,24 +112,21 @@ public class OrientIdProducer implements IdProducer {
 
 	private ODocument findDocument(ODatabaseDocument databaseDocument) {
 		final OIndex index = databaseDocument.getMetadata().getIndexManager().getClassIndex(tableName, indexName);
-		if (index == null) {
-			throw new OrmException("Unable to locate database index [" + indexName + "].");
-		}
-
-		final OIdentifiable identifiable = (OIdentifiable) index.get(keyValue);
-		if (identifiable == null) {
+		if (index != null) {
+			final OIdentifiable identifiable = (OIdentifiable) index.get(keyValue);
+			if (identifiable != null) {
+				final ORID identity = identifiable.getIdentity();
+				if (identity != null) {
+					final ODocument entries = databaseDocument.load(identity);
+					if (entries != null) {
+						return entries;
+					}
+					throw new OrmException("Unable to load database record id [" + identity + "].");
+				}
+			}
 			return null;
 		}
 
-		final ORID identity = identifiable.getIdentity();
-		if (identity == null) {
-			return null;
-		}
-
-		final ODocument entries = databaseDocument.load(identity);
-		if (entries == null) {
-			throw new OrmException("Unable to load database record id [" + identity + "].");
-		}
-		return entries;
+		throw new OrmException("Unable to locate database index [" + indexName + "].");
 	}
 }

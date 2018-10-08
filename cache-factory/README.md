@@ -1,6 +1,7 @@
 ---
 
-## Module 'entityCache-factory'
+## Module 'facilityCacheManager-factory'
+[![Build Status](https://travis-ci.org/GenCloud/ioc_container.svg?branch=master)](https://travis-ci.org/GenCloud/ioc_container)
 
 ### Intro
 Add cache-factory module to your project. for maven projects just add this dependency:
@@ -20,7 +21,7 @@ Add cache-factory module to your project. for maven projects just add this depen
        <dependency>
            <groupId>org.ioc</groupId>
            <artifactId>cache-factory</artifactId>
-           <version>2.0.0.RELEASE</version>
+           <version>2.0.2.STABLE</version>
        </dependency>
    </dependencies>
 ```

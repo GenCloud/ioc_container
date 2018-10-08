@@ -15,6 +15,8 @@ public interface Factory {
 
 	String DEFAULT_DATABASE_FACTORY = "org.ioc.orm.factory.orient.OrientSchemaFactory";
 
+	String DEFAULT_WEB_FACTORY = "org.ioc.web.factory.WebInitializerFactory";
+
 	@SuppressWarnings("unchecked")
 	static Class<Factory> defaultThreadFactory() {
 		try {
@@ -39,6 +41,15 @@ public interface Factory {
 			return (Class<Factory>) Class.forName(DEFAULT_DATABASE_FACTORY);
 		} catch (ClassNotFoundException e) {
 			throw new IoCException("IoCError - can't instantiate default Database Factory", e);
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	static Class<Factory> defaultWebFactory() {
+		try {
+			return (Class<Factory>) Class.forName(DEFAULT_WEB_FACTORY);
+		} catch (ClassNotFoundException e) {
+			throw new IoCException("IoCError - can't instantiate default Web Factory", e);
 		}
 	}
 
