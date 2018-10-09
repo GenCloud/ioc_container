@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/GenCloud/ioc_container.svg?branch=master)](https://travis-ci.org/GenCloud/ioc_container)
+[![Build Status](https://travis-ci.org/GenCloud/ioc_container.svg?branch=master)](https://travis-ci.org/GenCloud/ioc_container) [![Coverage Status](https://coveralls.io/repos/github/GenCloud/ioc_container/badge.svg?branch=master)](https://coveralls.io/github/GenCloud/ioc_container?branch=master)
 
 # IoC Starter Framework
 

@@ -52,6 +52,7 @@
         <maven.compiler.target>8</maven.compiler.target>
         <github.global.server>github</github.global.server>
         <github.maven-plugin>0.12</github.maven-plugin>
+        <maven.build.timestamp.format>yyyy-MM-dd'T'HH:mm:ss</maven.build.timestamp.format>
     </properties>
 
     <build>
@@ -102,15 +103,15 @@
             <plugin>
                 <groupId>org.eluder.coveralls</groupId>
                 <artifactId>coveralls-maven-plugin</artifactId>
-                <version>4.3.0</version>
+                <version>4.1.0</version>
                 <configuration>
-                    <repoToken>W45pWURedTY7Hpvpnj8D29vEX37WWcjsuncTJ</repoToken>
+                    <timestampFormat>${maven.build.timestamp.format}</timestampFormat>
                 </configuration>
             </plugin>
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.7.6.201602180812</version>
+                <version>0.7.5.201505241946</version>
                 <executions>
                     <execution>
                         <id>prepare-agent</id>
