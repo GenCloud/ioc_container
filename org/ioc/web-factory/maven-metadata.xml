@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+  <groupId>org.ioc</groupId>
+  <artifactId>web-factory</artifactId>
+  <versioning>
+    <release>2.1.0.STABLE</release>
+    <versions>
+      <version>2.1.0.STABLE</version>
+    </versions>
+    <lastUpdated>20181014170327</lastUpdated>
+  </versioning>
+</metadata>
