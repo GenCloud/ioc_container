@@ -94,12 +94,11 @@ public class OrientSchemaFactory implements Schema, ContextSensible, DestroyProc
 	private static final Logger log = LoggerFactory.getLogger(OrientSchemaFactory.class);
 	private static final ColumnVisitorFactory columnFactory = new OrientVisitorFactory();
 
+	private final Map<String, OrientQuery> queryMap = new ConcurrentHashMap<>();
+
 	private FacilityCacheManager cacheManager;
 	private ICacheFactory cacheFactory;
 
-	private ICache<FacilityMetadata, Map<Object, WeakReference>> cache;
-
-	private final Map<String, OrientQuery> queryMap = new ConcurrentHashMap<>();
 	private ODBPool pool;
 	private DDL ddl;
 	private SchemaMetadata schemaMetadata;
@@ -142,7 +141,8 @@ public class OrientSchemaFactory implements Schema, ContextSensible, DestroyProc
 		final FacilityMetadataInspector parser = new FacilityMetadataInspector(columnFactory, types);
 		schemaMetadata = new SchemaMetadata(parser.analyze());
 
-		cache = cacheFactory.installEternal("facility-cache", 1000);
+		final ICache<FacilityMetadata, Map<Object, WeakReference>> cache =
+				cacheFactory.installEternal("facility-cache", 1000);
 		cacheManager = new FacilityCacheManager(cache);
 
 		Orient.instance().startup();
@@ -150,6 +150,7 @@ public class OrientSchemaFactory implements Schema, ContextSensible, DestroyProc
 
 		final List<Class<?>> repositories = findClassesByAnnotation(IoCRepository.class, packages);
 		facilityManager = new FacilityManagerFactory(this, getMetadata()).create();
+		context.setType(facilityManager.getClass().getSimpleName(), facilityManager);
 
 		repositories.stream().filter(CrudRepository.class::isAssignableFrom).forEach(c -> {
 			final ParameterizedType parameterizedType = (ParameterizedType) c.getGenericInterfaces()[0];

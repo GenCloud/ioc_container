@@ -33,6 +33,7 @@ logs/
 */cache/
 */database/
 */log/
+*/file/
 
 *.jar
 

@@ -38,7 +38,18 @@ A typical use of threads-factory module would be:
 ```
 * support datasource: OrientDB Schema
 * support JPA annotations
- 
+* default configurations for orm factory
+```properties
+# Datasource
+datasource.orient.database-type=LOCAL
+datasource.orient.url=./database
+datasource.orient.database=orient
+datasource.orient.username=admin
+datasource.orient.password=admin
+datasource.orient.ddl-auto=dropCreate
+datasource.orient.showSql=true
+```
+
 2. Create custom component, repositories and entity classes:
 * entity classes:
 ```java

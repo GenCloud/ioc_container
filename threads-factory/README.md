@@ -38,6 +38,17 @@ A typical use of threads-channel module would be:
         }
     }
 ```
+
+* default configurations for thread factory
+```properties
+# Threading
+ioc.threads.poolName=shared
+ioc.threads.availableProcessors=4
+ioc.threads.threadTimeout=0
+ioc.threads.threadAllowCoreTimeOut=true
+ioc.threads.threadPoolPriority=NORMAL
+```
+
 2) Mark sample component of inheritance ThreadFactorySensible
 ```java
     @IoCComponent

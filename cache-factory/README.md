@@ -1,6 +1,6 @@
 ---
 
-## Module 'facilityCacheManager-factory'
+## Module 'cache-factory'
 [![Build Status](https://travis-ci.org/GenCloud/ioc_container.svg?branch=master)](https://travis-ci.org/GenCloud/ioc_container)
 
 ### Intro
@@ -8,7 +8,7 @@ Add cache-factory module to your project. for maven projects just add this depen
 ```xml
    <repositories>
        <repository>
-           <id>ioc_cache</id>
+           <id>web</id>
            <url>https://raw.github.com/GenCloud/ioc_container/cache</url>
            <snapshots>
                <enabled>true</enabled>
@@ -26,10 +26,10 @@ Add cache-factory module to your project. for maven projects just add this depen
    </dependencies>
 ```
     
-A typical use of threads-factory module would be:
+A typical use of cache-factory module would be:
 1) Add in Main class of application marker-annotation of enabled this module
 ```java
-    @CacheModule //default cache using EhCache library
+    @CacheModule
     @ScanPackage(packages = {"org.ioc.test"})
     public class MainTest {
         public static void main(String... args){
@@ -37,7 +37,11 @@ A typical use of threads-factory module would be:
         }
     }
 ```
-* sample factories: EhFactory, GuavaFactory
+* default configurations for cache factory
+```properties
+# Cache
+cache.factory=org.ioc.cache.impl.EhFactory
+```
 
 2) Mark sample component of inheritance CacheFactorySensible
 ```java

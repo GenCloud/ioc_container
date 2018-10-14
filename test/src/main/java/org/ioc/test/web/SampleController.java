@@ -49,6 +49,7 @@ public class SampleController implements ContextSensible, DestroyProcessor {
 	private final String home = "./file/";
 	@IoCDependency
 	private DatabaseComponent databaseComponent;
+
 	private IoCContext context;
 
 	/**
