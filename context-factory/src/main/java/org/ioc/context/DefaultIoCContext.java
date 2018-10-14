@@ -86,20 +86,6 @@ public class DefaultIoCContext extends AbstractIoCContext {
 		return packages;
 	}
 
-	public FactDispatcherFactory getDispatcherFactory() {
-		if (dispatcherFactory == null) {
-			final FactDispatcherFactory dispatcher = getType(FactDispatcherFactory.class);
-			setDispatcherFactory(dispatcher);
-		}
-		return dispatcherFactory;
-	}
-
-	private void setDispatcherFactory(FactDispatcherFactory dispatcherFactory) {
-		if (this.dispatcherFactory == null) {
-			this.dispatcherFactory = dispatcherFactory;
-		}
-	}
-
 	/**
 	 * Main function of initialization {@link IoCContext}.
 	 *
@@ -171,74 +157,6 @@ public class DefaultIoCContext extends AbstractIoCContext {
 		initPostConstruction(singletonFactory.getTypes().values());
 	}
 
-	private void registerListeners(String... packages) {
-		final List<IListener> listeners = findInstancesInClassPathByInstance(IListener.class, packages);
-		listeners.forEach(l -> {
-			instantiateSensibles(l);
-			getDispatcherFactory().addListener(l);
-		});
-	}
-
-	private void initFactories() {
-		final List<TypeMetadata> metadatas = singletonFactory.getTypes()
-				.values()
-				.stream()
-				.filter(t -> Factory.class.isAssignableFrom(t.getType()))
-				.sorted((o1, o2) -> {
-					final int order_1 = getOrder(o1.getType());
-					final int order_2 = getOrder(o2.getType());
-					return order_2 - order_1;
-				}).collect(Collectors.toList());
-
-		metadatas.forEach(t -> ((Factory) t.getInstance()).initialize());
-	}
-
-	private int getOrder(Class<?> type) {
-		int order = 1;
-		if (type.isAnnotationPresent(Order.class)) {
-			order = type.getAnnotation(Order.class).value();
-		}
-
-		return order;
-	}
-
-	/**
-	 * Function of reading default property path, init configuration and bag-functions in context.
-	 *
-	 * @param list collection of configurations
-	 */
-	@SuppressWarnings("deprecation")
-	private void registerEnvironments(List<Class<?>> list) {
-		final List<TypeMetadata> types = new LinkedList<>();
-		for (Class<?> propertyClass : list) {
-			final Property property = propertyClass.getAnnotation(Property.class);
-			if (property.ignore()) {
-				continue;
-			}
-
-			final Path path = Paths.get(property.path());
-
-			try {
-				final Object instance = propertyClass.newInstance();
-				EnvironmentLoader.parse(instance, path.toFile());
-				final TypeMetadata typeMetadata = new TypeMetadata(resolveTypeName(instance.getClass()), instance, Mode.SINGLETON);
-				types.add(typeMetadata);
-
-				for (Method method : propertyClass.getDeclaredMethods()) {
-					if (method.isAnnotationPresent(PropertyFunction.class)) {
-						final Object returned = method.invoke(instance);
-						types.add(new TypeMetadata(resolveTypeName(returned.getClass()), returned, resolveLoadingMode(method)));
-					}
-				}
-
-			} catch (Exception e) {
-				throw new IoCException("IoCError - Failed to Load " + path + " Config File", e);
-			}
-		}
-
-		registerTypes(types);
-	}
-
 	@Override
 	@SuppressWarnings("unchecked")
 	public <O> O getType(String name) {
@@ -248,10 +166,6 @@ public class DefaultIoCContext extends AbstractIoCContext {
 			if (type == null) {
 				type = singletonFactory.getType(name);
 			}
-		}
-
-		if (type != null) {
-			initPostConstruction(type);
 		}
 
 		return (O) type;
@@ -271,10 +185,6 @@ public class DefaultIoCContext extends AbstractIoCContext {
 			}
 		}
 
-		if (o != null) {
-			initPostConstruction(o);
-		}
-
 		return (O) o;
 	}
 
@@ -290,6 +200,18 @@ public class DefaultIoCContext extends AbstractIoCContext {
 		} else {
 			prototypeFactory.addType(metadata);
 		}
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public Collection<TypeMetadata> getMetadatas(Mode mode) {
+		if (mode == Mode.SINGLETON) {
+			return singletonFactory.getTypes().values();
+		} else if (mode == Mode.PROTOTYPE) {
+			return prototypeFactory.getTypes().values();
+		}
+
+		return getRequestFactory().getTypes().values();
 	}
 
 	@Override
@@ -381,13 +303,102 @@ public class DefaultIoCContext extends AbstractIoCContext {
 		}
 	}
 
+	public FactDispatcherFactory getDispatcherFactory() {
+		if (dispatcherFactory == null) {
+			final FactDispatcherFactory dispatcher = getType(FactDispatcherFactory.class);
+			setDispatcherFactory(dispatcher);
+		}
+		return dispatcherFactory;
+	}
+
+	private void setDispatcherFactory(FactDispatcherFactory dispatcherFactory) {
+		if (this.dispatcherFactory == null) {
+			this.dispatcherFactory = dispatcherFactory;
+		}
+	}
+
+	private void registerListeners(String... packages) {
+		final List<IListener> listeners = findInstancesInClassPathByInstance(IListener.class, packages);
+		listeners.forEach(l -> {
+			instantiateSensibles(l);
+			getDispatcherFactory().addListener(l);
+		});
+	}
+
+	private void initFactories() {
+		final List<TypeMetadata> metadatas = singletonFactory.getTypes()
+				.values()
+				.stream()
+				.filter(t -> Factory.class.isAssignableFrom(t.getType()))
+				.sorted((o1, o2) -> {
+					final int order_1 = getOrder(o1.getType());
+					final int order_2 = getOrder(o2.getType());
+					return order_2 - order_1;
+				}).collect(Collectors.toList());
+
+		metadatas.forEach(t -> ((Factory) t.getInstance()).initialize());
+	}
+
+	private int getOrder(Class<?> type) {
+		int order = 1;
+		if (type.isAnnotationPresent(Order.class)) {
+			order = type.getAnnotation(Order.class).value();
+		}
+
+		return order;
+	}
+
+	/**
+	 * Function of reading default property path, init configuration and bag-functions in context.
+	 *
+	 * @param list collection of configurations
+	 */
+	@SuppressWarnings("deprecation")
+	private void registerEnvironments(List<Class<?>> list) {
+		final List<TypeMetadata> types = new LinkedList<>();
+		for (Class<?> propertyClass : list) {
+			final Property property = propertyClass.getAnnotation(Property.class);
+			if (property.ignore()) {
+				continue;
+			}
+
+			final Path path = Paths.get(property.path());
+
+			try {
+				final Object instance = propertyClass.newInstance();
+				EnvironmentLoader.parse(instance, path.toFile());
+				final TypeMetadata typeMetadata = new TypeMetadata(resolveTypeName(instance.getClass()), instance, Mode.SINGLETON);
+				types.add(typeMetadata);
+
+				for (Method method : propertyClass.getDeclaredMethods()) {
+					if (method.isAnnotationPresent(PropertyFunction.class)) {
+						final Object returned = method.invoke(instance);
+						types.add(new TypeMetadata(resolveTypeName(returned.getClass()), returned, resolveLoadingMode(method)));
+					}
+				}
+
+			} catch (Exception e) {
+				throw new IoCException("IoCError - Failed to Load " + path + " Config File", e);
+			}
+		}
+
+		registerTypes(types);
+	}
+
 	/**
 	 * Function of invoke class method annotated {@link PostConstruct}.
 	 *
 	 * @param values types for invoke postConstructions
 	 */
 	private void initPostConstruction(Collection<TypeMetadata> values) {
-		for (TypeMetadata type : values) {
+		List<TypeMetadata> toSort = new ArrayList<>(values);
+		toSort.sort((o1, o2) -> {
+			final int order_1 = getOrder(o1.getType());
+			final int order_2 = getOrder(o2.getType());
+			return order_2 - order_1;
+		});
+
+		for (TypeMetadata type : toSort) {
 			final Class<?> toCheck = type.getType();
 			final Method[] methods = toCheck.getDeclaredMethods();
 			for (Method method : methods) {
@@ -400,27 +411,6 @@ public class DefaultIoCContext extends AbstractIoCContext {
 
 					break;
 				}
-			}
-		}
-	}
-
-	/**
-	 * Function of invoke class method annotated {@link PostConstruct}.
-	 *
-	 * @param o bag for invoke postConstruction
-	 */
-	private void initPostConstruction(Object o) {
-		final Class<?> toCheck = o.getClass();
-		final Method[] methods = toCheck.getDeclaredMethods();
-		for (Method method : methods) {
-			if (method.isAnnotationPresent(PostConstruct.class)) {
-				try {
-					method.invoke(o);
-				} catch (IllegalAccessException | InvocationTargetException e) {
-					throw new IoCInstantiateException();
-				}
-
-				break;
 			}
 		}
 	}
@@ -552,7 +542,8 @@ public class DefaultIoCContext extends AbstractIoCContext {
 		return o;
 	}
 
-	private RequestFactory getRequestFactory() {
+	@Override
+	public RequestFactory getRequestFactory() {
 		RequestFactory requestFactory = this.requestFactory.get();
 		if (requestFactory == null) {
 			requestFactory = new RequestFactory(instanceFactory);
@@ -561,10 +552,12 @@ public class DefaultIoCContext extends AbstractIoCContext {
 		return requestFactory;
 	}
 
+	@Override
 	public SingletonFactory getSingletonFactory() {
 		return singletonFactory;
 	}
 
+	@Override
 	public PrototypeFactory getPrototypeFactory() {
 		return prototypeFactory;
 	}

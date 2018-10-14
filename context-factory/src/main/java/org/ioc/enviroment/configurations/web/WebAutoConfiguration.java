@@ -21,9 +21,9 @@ package org.ioc.enviroment.configurations.web;
 import org.ioc.annotations.configuration.Property;
 import org.ioc.annotations.configuration.PropertyFunction;
 import org.ioc.context.factories.Factory;
-import org.ioc.utils.ReflectionUtils;
 
 import static org.ioc.context.factories.Factory.defaultWebFactory;
+import static org.ioc.utils.ReflectionUtils.instantiateClass;
 
 /**
  * @author GenCloud
@@ -45,6 +45,21 @@ public class WebAutoConfiguration {
 	@Property("key-password")
 	private String keyPassword;
 
+	@Property("velocity.input.encoding")
+	private String velocityInputEncoding = "UTF-8";
+
+	@Property("velocity.output.encoding")
+	private String velocityOutputEncoding = "UTF-8";
+
+	@Property("velocity.resource.loader")
+	private String velocityResourceLoader = "file";
+
+	@Property("velocity.resource.loader.class")
+	private String velocityResourceLoaderClass = "org.apache.velocity.runtime.resource.loader.FileResourceLoader";
+
+	@Property("velocity.resource.loading.path")
+	private String velocityResourceLoadingPath = "./site";
+
 	public int getPort() {
 		return port;
 	}
@@ -65,9 +80,29 @@ public class WebAutoConfiguration {
 		return keyPassword;
 	}
 
+	public String getVelocityInputEncoding() {
+		return velocityInputEncoding;
+	}
+
+	public String getVelocityOutputEncoding() {
+		return velocityOutputEncoding;
+	}
+
+	public String getVelocityResourceLoader() {
+		return velocityResourceLoader;
+	}
+
+	public String getVelocityResourceLoaderClass() {
+		return velocityResourceLoaderClass;
+	}
+
+	public String getVelocityResourceLoadingPath() {
+		return velocityResourceLoadingPath;
+	}
+
 	@PropertyFunction
-	public Object cacheFactory() {
+	public Object webFactory() {
 		final Class<? extends Factory> factory = defaultWebFactory();
-		return ReflectionUtils.instantiateClass(factory);
+		return instantiateClass(factory);
 	}
 }

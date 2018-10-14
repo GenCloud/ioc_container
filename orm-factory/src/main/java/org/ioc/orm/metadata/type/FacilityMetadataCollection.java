@@ -107,7 +107,7 @@ public class FacilityMetadataCollection implements EntityMetadataSelector, Itera
 	}
 
 	@Override
-	public Collection<FacilityMetadata> ofValues() {
+	public Collection<FacilityMetadata> collectAll() {
 		return Collections.unmodifiableCollection(classMap.values());
 	}
 

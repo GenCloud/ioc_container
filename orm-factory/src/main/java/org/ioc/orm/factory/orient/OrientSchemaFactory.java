@@ -26,7 +26,6 @@ import com.orientechnologies.orient.core.sql.OCommandSQL;
 import net.sf.cglib.proxy.Enhancer;
 import org.apache.commons.io.FilenameUtils;
 import org.ioc.annotations.context.IoCRepository;
-import org.ioc.annotations.context.Order;
 import org.ioc.cache.ICache;
 import org.ioc.cache.ICacheFactory;
 import org.ioc.context.factories.Factory;
@@ -91,13 +90,14 @@ import static org.ioc.utils.ReflectionUtils.*;
  * @author GenCloud
  * @date 10/2018
  */
-@Order(998)
-public class OrientSchemaFactory implements Schema, ContextSensible, DestroyProcessor, Factory, CacheFactorySensible, EnvironmentSensible<OrientDatasourceAutoConfiguration> {
+public class OrientSchemaFactory implements Schema, ContextSensible, DestroyProcessor, CacheFactorySensible, Factory, EnvironmentSensible<OrientDatasourceAutoConfiguration> {
 	private static final Logger log = LoggerFactory.getLogger(OrientSchemaFactory.class);
 	private static final ColumnVisitorFactory columnFactory = new OrientVisitorFactory();
 
+	private FacilityCacheManager cacheManager;
 	private ICacheFactory cacheFactory;
-	private FacilityCacheManager cache;
+
+	private ICache<FacilityMetadata, Map<Object, WeakReference>> cache;
 
 	private final Map<String, OrientQuery> queryMap = new ConcurrentHashMap<>();
 	private ODBPool pool;
@@ -140,7 +140,10 @@ public class OrientSchemaFactory implements Schema, ContextSensible, DestroyProc
 		}
 
 		final FacilityMetadataInspector parser = new FacilityMetadataInspector(columnFactory, types);
-		schemaMetadata = new SchemaMetadata(parser.inspect());
+		schemaMetadata = new SchemaMetadata(parser.analyze());
+
+		cache = cacheFactory.installEternal("facility-cache", 1000);
+		cacheManager = new FacilityCacheManager(cache);
 
 		Orient.instance().startup();
 		createSchema();
@@ -160,23 +163,9 @@ public class OrientSchemaFactory implements Schema, ContextSensible, DestroyProc
 			}
 		});
 
-		final ICache<FacilityMetadata, Map<Object, WeakReference>> objects =
-				cacheFactory.installEternal("entity-cache", 1000);
-		cache = new FacilityCacheManager(objects);
-
 		log.info("Successful initialized [{}]", getClass().getSimpleName());
 	}
 
-	/**
-	 * Initialize user's repository to proxy class for intercept custom function's or CRUD.
-	 *
-	 * @param facilityManager entity manager
-	 * @param interfaceClass  type of repository
-	 * @param entityClass     repository controlled entity class
-	 * @param <E>             generic entity type
-	 * @param <ID>            generic primary key type
-	 * @return initialized proxy
-	 */
 	private <E, ID> Object installProxyRepository(FacilityManager facilityManager, Class<?> interfaceClass, Class<E> entityClass) {
 		final boolean logQueries = configuration.isLogQueries();
 		final FacilityMetadata facilityMetadata = schemaMetadata.getMetadata(entityClass);
@@ -208,10 +197,8 @@ public class OrientSchemaFactory implements Schema, ContextSensible, DestroyProc
 	}
 
 	@Override
-	public void factoryInform(Factory cacheFactory) throws IoCException {
-		if (ICacheFactory.class.isAssignableFrom(cacheFactory.getClass())) {
-			this.cacheFactory = (ICacheFactory) cacheFactory;
-		}
+	public void factoryInform(Factory factory) throws IoCException {
+		cacheFactory = (ICacheFactory) factory;
 	}
 
 	public ODatabaseDocument createSchema() {
@@ -225,7 +212,7 @@ public class OrientSchemaFactory implements Schema, ContextSensible, DestroyProc
 
 	@Override
 	public OrientDatabaseSessionFactory openSession() {
-		return new OrientDatabaseSessionFactory(createSchema(), queryMap, cache);
+		return new OrientDatabaseSessionFactory(createSchema(), queryMap, cacheManager);
 	}
 
 	@Override
@@ -283,8 +270,6 @@ public class OrientSchemaFactory implements Schema, ContextSensible, DestroyProc
 
 	@Override
 	public void destroy() {
-		cache = null;
-
 		if (facilityManager != null) {
 			facilityManager.close();
 			facilityManager = null;
@@ -302,7 +287,7 @@ public class OrientSchemaFactory implements Schema, ContextSensible, DestroyProc
 	private void updateProducers(FacilityMetadata facilityMetadata, ODatabaseDocument databaseDocument) {
 		facilityMetadata.getTypes().forEach(entityType -> {
 			final FacilityMetadataInspector analyzer = new FacilityMetadataInspector(new OrientVisitorFactory(), entityType);
-			analyzer.getProducers(entityType).forEach((field, producer) -> {
+			analyzer.getGenerators(entityType).forEach((field, producer) -> {
 				final String type = producer.generator();
 				String tableName = "id_producer";
 				String keyColumn = "id";
@@ -426,7 +411,7 @@ public class OrientSchemaFactory implements Schema, ContextSensible, DestroyProc
 					log.debug("Adding primary index [{}] with {}", keyIndex, names);
 				}
 
-				final String indexQuery = "install index " + keyIndex + " on " + schemaName + " (" + join(names, ",")
+				final String indexQuery = "create index " + keyIndex + " on " + schemaName + " (" + join(names, ",")
 						+ ") unique";
 
 				databaseDocument.command(new OCommandSQL(indexQuery)).execute();
@@ -446,7 +431,7 @@ public class OrientSchemaFactory implements Schema, ContextSensible, DestroyProc
 					log.debug("Adding property index [{}] with {} ({})", indexName, names, uniqueness);
 				}
 
-				final String indexQuery = "install index " + indexName + " on " + schemaName + " (" + join(names, ",")
+				final String indexQuery = "create index " + indexName + " on " + schemaName + " (" + join(names, ",")
 						+ ") " + uniqueness;
 
 				databaseDocument.command(new OCommandSQL(indexQuery)).execute();

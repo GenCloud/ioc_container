@@ -86,7 +86,7 @@ public class OrientDatasourceAutoConfiguration {
 		create, dropCreate, refresh, none
 	}
 
-	public static enum OrientType {
+	public enum OrientType {
 		REMOTE,
 		LOCAL,
 		LOCAL_SERVER

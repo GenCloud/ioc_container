@@ -20,7 +20,7 @@ Add orm-factory module to your project. for maven projects just add this depende
         <dependency>
             <groupId>org.ioc</groupId>
             <artifactId>orm-factory</artifactId>
-            <version>2.0.2.STABLE</version>
+            <version>2.1.0.STABLE</version>
         </dependency>
     </dependencies>
 ```
@@ -206,7 +206,7 @@ public class SampleEntity implements Serializable {
 
 * repository classes:
 ```java
-@IoCRepository //mandatory annotation-marker for context inspector
+@IoCRepository //mandatory annotation-marker for channel inspector
 public interface ChildEntityRepository extends CrudRepository<ChildEntity, Long> {
 }
 
@@ -308,8 +308,8 @@ Try usage component in MainClass:
     @ScanPackage(packages = {"org.ioc.test"})
     public class MainTest {
         public static void main(String... args) {
-            DefaultIoCContext context = IoCStarter.start(MainTest.class, args);
-            final DatabaseComponent databaseComponent = context.getType(DatabaseComponent.class);
+            DefaultIoCContext channel = IoCStarter.start(MainTest.class, args);
+            final DatabaseComponent databaseComponent = channel.getType(DatabaseComponent.class);
        
        		log.info("Inserting test dataContainer into Schema");
        		final SampleEntity sampleEntity = new SampleEntity();

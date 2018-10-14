@@ -29,5 +29,5 @@ import java.io.Serializable;
  * @date 10/2018
  */
 public interface IdProducer {
-	Serializable install(SessionFactory sessionFactory, FacilityMetadata facilityMetadata) throws OrmException;
+	Serializable create(SessionFactory sessionFactory, FacilityMetadata facilityMetadata) throws OrmException;
 }

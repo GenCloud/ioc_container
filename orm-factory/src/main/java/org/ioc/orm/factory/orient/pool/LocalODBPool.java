@@ -51,6 +51,19 @@ public class LocalODBPool implements ODBPool {
 		this.password = password;
 	}
 
+	private static long timerDelay() {
+		final String prop = System.getProperty("local.pool.closeDelay");
+		if (prop == null || prop.trim().isEmpty()) {
+			return 0;
+		}
+
+		try {
+			return Long.parseLong(prop);
+		} catch (Exception e) {
+			throw new OrmException("Unable to parse close delay value of [" + prop + "].", e);
+		}
+	}
+
 	@Override
 	public synchronized ODatabaseDocument acquire() {
 		if (opened.isEmpty() && timerDelay > 0) {
@@ -96,20 +109,6 @@ public class LocalODBPool implements ODBPool {
 		opened.clear();
 		Orient.instance().shutdown();
 	}
-
-	private static long timerDelay() {
-		final String prop = System.getProperty("local.pool.closeDelay");
-		if (prop != null && !prop.isEmpty()) {
-			try {
-				return Long.parseLong(prop);
-			} catch (Exception e) {
-				throw new OrmException("Unable to parse close delay value of [" + prop + "].", e);
-			}
-		}
-
-		return 0;
-	}
-
 
 	private class CloseTask extends TimerTask {
 		@Override

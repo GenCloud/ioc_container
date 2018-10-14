@@ -50,4 +50,8 @@ public interface ICache<K, V> extends Iterable<V> {
 	 * @return size of cache map
 	 */
 	int size();
+
+	default void forEach() {
+
+	}
 }

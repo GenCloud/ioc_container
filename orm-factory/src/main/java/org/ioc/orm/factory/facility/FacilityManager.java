@@ -52,6 +52,10 @@ public class FacilityManager extends AbstractTx {
 		databaseSession.close();
 	}
 
+	public void clear() {
+		databaseSession.clear();
+	}
+
 	public DatabaseSessionFactory getSession() {
 		return databaseSession;
 	}
@@ -65,38 +69,44 @@ public class FacilityManager extends AbstractTx {
 		Assertion.checkNotNull(clazz, "type");
 
 		final FacilityMetadata metadata = entityMetadataSelector.getMetadata(clazz);
-		if (metadata != null) {
-			return databaseSession.query(metadata, name, parameters);
+		if (metadata == null) {
+			return null;
 		}
 
-		return null;
+		return databaseSession.query(metadata, name, parameters);
 	}
 
 	public <T> boolean exists(Class<T> clazz, Object key) throws OrmException {
 		Assertion.checkNotNull(clazz, "type");
 
-		if (key != null) {
-			final FacilityMetadata metadata = entityMetadataSelector.getMetadata(clazz);
-			if (metadata != null) {
-				return databaseSession.exists(metadata, key);
-			}
+		if (key == null) {
+			return false;
 		}
 
-		return false;
+		final FacilityMetadata metadata = entityMetadataSelector.getMetadata(clazz);
+		if (metadata == null) {
+			return false;
+		}
+
+		return databaseSession.exists(metadata, key);
 	}
 
 	@SuppressWarnings("unchecked")
 	public <T> T fetch(Class<? extends T> clazz, Object key) throws OrmException {
 		Assertion.checkNotNull(clazz, "type");
 
-		if (key != null) {
-			final FacilityMetadata metadata = entityMetadataSelector.getMetadata(clazz);
-			if (metadata != null) {
-				final Object o = databaseSession.fetch(metadata, key);
-				if (o != null) {
-					return (T) o;
-				}
-			}
+		if (key == null) {
+			return null;
+		}
+
+		final FacilityMetadata metadata = entityMetadataSelector.getMetadata(clazz);
+		if (metadata == null) {
+			return null;
+		}
+
+		final Object o = databaseSession.fetch(metadata, key);
+		if (o != null) {
+			return (T) o;
 		}
 
 		return null;
@@ -107,11 +117,13 @@ public class FacilityManager extends AbstractTx {
 		Assertion.checkNotNull(clazz, "type");
 
 		final FacilityMetadata metadata = entityMetadataSelector.getMetadata(clazz);
-		if (metadata != null) {
-			final List<Object> result = databaseSession.fetchAll(metadata);
-			if (result != null) {
-				return (List<T>) result;
-			}
+		if (metadata == null) {
+			return null;
+		}
+
+		final List<Object> result = databaseSession.fetchAll(metadata);
+		if (result != null) {
+			return (List<T>) result;
 		}
 
 		return null;
@@ -126,7 +138,7 @@ public class FacilityManager extends AbstractTx {
 	}
 
 	private <T> FacilityMetadata findMetadata(T element) {
-		Assertion.checkNotNull(element);
+		Assertion.checkNotNull(element, "vertex");
 
 		final Class<?> clazz = element.getClass();
 		final FacilityMetadata metadata = entityMetadataSelector.getMetadata(clazz);

@@ -22,9 +22,11 @@ import org.ioc.orm.exceptions.OrmException;
 import org.ioc.orm.metadata.type.*;
 import org.ioc.orm.metadata.visitors.column.ColumnVisitor;
 import org.ioc.orm.metadata.visitors.column.ColumnVisitorFactory;
+import org.ioc.orm.metadata.visitors.column.factory.BaseColumnVisitorFactory;
 import org.ioc.orm.metadata.visitors.column.type.*;
 import org.ioc.utils.Assertion;
 import org.ioc.utils.ReflectionUtils;
+import org.ioc.utils.StringUtils;
 import org.ioc.utils.collections.ArrayListSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,10 +43,8 @@ import java.util.stream.Collectors;
 
 import static javax.persistence.DiscriminatorType.CHAR;
 import static javax.persistence.DiscriminatorType.INTEGER;
-import static javax.persistence.FetchType.LAZY;
 import static org.ioc.utils.ReflectionUtils.searchAnnotations;
 import static org.ioc.utils.ReflectionUtils.toClassHierarchy;
-import static org.ioc.utils.StringUtils.camelToSnakeCase;
 
 /**
  * @author GenCloud
@@ -81,7 +81,11 @@ public class FacilityMetadataInspector {
 		this.classList = new ArrayList<>(classList);
 	}
 
-	public Set<FacilityMetadata> inspect() {
+	private FacilityMetadataInspector(Collection<Class<?>> classList) {
+		this(new BaseColumnVisitorFactory(), classList);
+	}
+
+	public Set<FacilityMetadata> analyze() {
 		final List<Class<?>> simpleTypes = new ArrayList<>();
 		final List<Class<?>> inheritedTypes = new ArrayList<>();
 		classList.forEach(clazz -> {
@@ -94,11 +98,11 @@ public class FacilityMetadataInspector {
 		});
 
 		simpleTypes.forEach(entityClass -> {
-			final String name = getFacility(entityClass);
+			final String name = getEntity(entityClass);
 			final String table = getTable(entityClass);
 			final FacilityMetadata facilityMetadata = new FacilityMetadata(name, table, Collections.singleton(entityClass));
 			entityMetadataMap.put(entityClass, facilityMetadata);
-			firstVisit(facilityMetadata);
+			readFirstPass(facilityMetadata);
 			readIdVisit(facilityMetadata);
 		});
 
@@ -131,24 +135,24 @@ public class FacilityMetadataInspector {
 						.forEach(commonTypes::retainAll);
 
 				final Class<?> commonType = commonTypes.isEmpty() ? entityClass : commonTypes.iterator().next();
-				final String name = getFacility(commonType);
+				final String name = getEntity(commonType);
 				final String table = getTable(commonType);
 				facilityMetadata = new FacilityMetadata(name, table, relatedTypes);
 			} else {
 				final Class<?> singleType = relatedTypes.get(0);
-				final String name = getFacility(singleType);
+				final String name = getEntity(singleType);
 				final String table = getTable(singleType);
 				facilityMetadata = new FacilityMetadata(name, table, Collections.singleton(singleType));
 			}
 
 			relatedTypes.forEach((x) -> entityMetadataMap.put(x, facilityMetadata));
 
-			firstVisit(facilityMetadata);
+			readFirstPass(facilityMetadata);
 			readIdVisit(facilityMetadata);
 		}
 
 		final Set<FacilityMetadata> set = new TreeSet<>(entityMetadataMap.values());
-		set.forEach(this::secondVisit);
+		set.forEach(this::readSecondPass);
 
 		set.forEach(entity -> analyzeIndex(entity).forEach(entity::addIndex));
 
@@ -163,40 +167,40 @@ public class FacilityMetadataInspector {
 	}
 
 	private Collection<IndexMetadata> analyzeIndex(FacilityMetadata facilityMetadata) {
-		final Set<Index> indexSet = new ArrayListSet<>();
+		final Set<Index> annotations = new ArrayListSet<>();
 		facilityMetadata.getTypes().forEach(entityType -> {
 			searchAnnotations(entityType, Table.class)
 					.stream()
 					.filter(table -> table.indexes().length > 0)
 					.map(table -> Arrays.asList(table.indexes()))
-					.forEach(indexSet::addAll);
+					.forEach(annotations::addAll);
 
-			indexSet.addAll(searchAnnotations(entityType, Index.class));
+			annotations.addAll(searchAnnotations(entityType, Index.class));
 		});
 
 		final List<IndexMetadata> indices = new ArrayList<>();
-		for (Index index : indexSet) {
-			final Set<String> columnNames = new ArrayListSet<>(indexSet.size());
+		for (Index annotation : annotations) {
+			final Set<String> columnNames = new ArrayListSet<>(annotations.size());
 
-			Arrays.stream(index.columnList().split(",|;|\\s+"))
+			Arrays.stream(annotation.columnList().split(",|;|\\s+"))
 					.filter(trimmed -> !trimmed.isEmpty())
 					.forEach(columnNames::add);
 
-			final List<ColumnMetadata> columnMetadataList = columnNames.stream()
+			final List<ColumnMetadata> columns = columnNames.stream()
 					.map(facilityMetadata::findColumnMetadata)
 					.filter(Objects::nonNull)
 					.collect(Collectors.toList());
 
-			if (!columnMetadataList.isEmpty()) {
-				String defaultName = index.name();
+			if (!columns.isEmpty()) {
+				String defaultName = annotation.name();
 				if (defaultName.isEmpty()) {
-					if (columnMetadataList.size() == 1) {
-						defaultName = columnMetadataList.get(0).getName();
+					if (columns.size() == 1) {
+						defaultName = columns.get(0).getName();
 					} else {
 						defaultName = "index_" + new BigInteger(64, secureRandom).toString(32).toLowerCase();
 					}
 				}
-				indices.add(new IndexMetadata(defaultName, columnMetadataList, index.unique()));
+				indices.add(new IndexMetadata(defaultName, columns, annotation.unique()));
 			}
 		}
 		return Collections.unmodifiableCollection(indices);
@@ -208,17 +212,17 @@ public class FacilityMetadataInspector {
 			return facilityMetadata;
 		}
 
-		final Set<FacilityMetadata> facilityMetadataSet = new ArrayListSet<>();
-		entityMetadataMap.forEach((clazz, metadata) -> {
+		final Set<FacilityMetadata> metadataSet = new ArrayListSet<>();
+		entityMetadataMap.forEach((clazz, value) -> {
 			if (entityClass.isAssignableFrom(clazz)) {
-				facilityMetadataSet.add(metadata);
+				metadataSet.add(value);
 			}
 		});
 
-		if (facilityMetadataSet.isEmpty()) {
+		if (metadataSet.isEmpty()) {
 			return null;
-		} else if (facilityMetadataSet.size() == 1) {
-			return facilityMetadataSet.iterator().next();
+		} else if (metadataSet.size() == 1) {
+			return metadataSet.iterator().next();
 		} else {
 			throw new OrmException("Multiple entityMetadataMap found for [" + entityClass + "].");
 		}
@@ -228,9 +232,9 @@ public class FacilityMetadataInspector {
 		final Map<Class<?>, Entity> map = new HashMap<>();
 		toClassHierarchy(entityClass)
 				.forEach(clazz -> {
-					final Entity entity = clazz.getAnnotation(Entity.class);
-					if (entity != null) {
-						map.put(clazz, entity);
+					final Entity annotation = clazz.getAnnotation(Entity.class);
+					if (annotation != null) {
+						map.put(clazz, annotation);
 					}
 				});
 		return map;
@@ -240,7 +244,7 @@ public class FacilityMetadataInspector {
 		return findMetadata(entityClass) != null;
 	}
 
-	private String getFacility(Class<?> entityClass) {
+	private String getEntity(Class<?> entityClass) {
 		final Entity entity = entityClass.getAnnotation(Entity.class);
 		if (entity == null) {
 			return null;
@@ -256,103 +260,112 @@ public class FacilityMetadataInspector {
 	private String getTable(Class<?> clazz) {
 		return toClassHierarchy(clazz)
 				.stream()
-				.map(type -> type.getAnnotation(Table.class))
+				.map(hierarchyClass -> hierarchyClass.getAnnotation(Table.class))
 				.filter(table -> table != null && !table.name().isEmpty())
 				.findFirst()
 				.map(Table::name)
-				.orElseGet(() -> camelToSnakeCase(getFacility(clazz)));
+				.orElse(StringUtils.camelToSnakeCase(getEntity(clazz)));
 	}
 
 	private Collection<QueryMetadata> installQueries(Class<?> entityClass) {
 		final FacilityMetadata facilityMetadata = findMetadata(entityClass);
-		if (facilityMetadata != null) {
-			final Set<QueryMetadata> queryMetadataSet = new TreeSet<>();
-			toClassHierarchy(entityClass)
-					.forEach(type -> {
-						final List<NamedQuery> namedQueryList = new ArrayList<>();
-						final NamedQueries namedQueries = type.getAnnotation(NamedQueries.class);
-						if (namedQueries != null) {
-							namedQueryList.addAll(Arrays.asList(namedQueries.value()));
-						}
-
-						final NamedQuery namedQuery = type.getAnnotation(NamedQuery.class);
-						if (namedQuery != null) {
-							namedQueryList.add(namedQuery);
-						}
-
-						namedQueryList
-								.stream()
-								.map(annotation -> new QueryMetadata(type, annotation.name(), annotation.query()))
-								.forEach(queryMetadataSet::add);
-					});
-
-			return Collections.unmodifiableCollection(queryMetadataSet);
+		if (facilityMetadata == null) {
+			return Collections.emptyList();
 		}
 
-		return Collections.emptyList();
+		final Set<QueryMetadata> result = new TreeSet<>();
+		toClassHierarchy(entityClass)
+				.forEach(clazz -> {
+					final List<NamedQuery> annotations = new ArrayList<>();
+					final NamedQueries queries = clazz.getAnnotation(NamedQueries.class);
+					if (queries != null) {
+						annotations.addAll(Arrays.asList(queries.value()));
+					}
+
+					final NamedQuery query = clazz.getAnnotation(NamedQuery.class);
+					if (query != null) {
+						annotations.add(query);
+					}
+
+					annotations
+							.stream()
+							.map(annotation -> new QueryMetadata(clazz, annotation.name(), annotation.query()))
+							.forEach(result::add);
+				});
+		return Collections.unmodifiableCollection(result);
 	}
 
-	public Map<Field, GeneratedValue> getProducers(Class<?> entityClass) {
-		final Map<Field, GeneratedValue> fieldGeneratedValueMap = new LinkedHashMap<>();
+	public Map<Field, GeneratedValue> getGenerators(Class<?> entityClass) {
+		final Map<Field, GeneratedValue> map = new LinkedHashMap<>();
 		toClassHierarchy(entityClass)
 				.stream()
-				.flatMap(type -> getFields(type).stream())
+				.flatMap(clazz -> getFields(clazz).stream())
 				.forEach(field -> {
-					final GeneratedValue generatedValue = field.getAnnotation(GeneratedValue.class);
-					if (generatedValue != null) {
-						fieldGeneratedValueMap.put(field, generatedValue);
+					final GeneratedValue annotation = field.getAnnotation(GeneratedValue.class);
+					if (annotation != null) {
+						map.put(field, annotation);
 					}
 				});
-		return Collections.unmodifiableMap(fieldGeneratedValueMap);
+		return Collections.unmodifiableMap(map);
 	}
 
-	private void secondVisit(FacilityMetadata facilityMetadata) {
-		if (facilityMetadata != null) {
-			readFields(facilityMetadata, supportedAnnotations());
+	private boolean readSecondPass(FacilityMetadata entity) {
+		if (entity == null) {
+			return false;
 		}
+
+		return readFields(entity, jpaAnnotations()) > 0;
 	}
 
-	private void firstVisit(FacilityMetadata facilityMetadata) {
-		if (facilityMetadata != null) {
-			final List<Class<? extends Annotation>> list = new ArrayList<>(2);
-			list.add(EmbeddedId.class);
-			list.add(Id.class);
-			readFields(facilityMetadata, list);
-
-			facilityMetadata.getTypes().forEach(entityClazz -> {
-				final ColumnMetadata columnMetadata = getInheritColumn(entityClazz);
-				if (columnMetadata != null) {
-					facilityMetadata.addColumnMetadata(columnMetadata);
-					final InheritMetadata inheritMetadata = ofDiscriminatorValue(columnMetadata, entityClazz);
-					facilityMetadata.setInherited(entityClazz, inheritMetadata);
-				}
-			});
+	private boolean readFirstPass(FacilityMetadata entity) {
+		if (entity == null) {
+			return false;
 		}
+
+		final List<Class<? extends Annotation>> list = new ArrayList<>(2);
+		list.add(EmbeddedId.class);
+		list.add(Id.class);
+		readFields(entity, list);
+
+		entity.getTypes().forEach(entityClazz -> {
+			final ColumnMetadata columnMetadata = getInheritColumn(entityClazz);
+			if (columnMetadata != null) {
+				entity.addColumnMetadata(columnMetadata);
+				final InheritMetadata inheritMetadata = getDiscriminatorValue(columnMetadata, entityClazz);
+				entity.setInherited(entityClazz, inheritMetadata);
+			}
+		});
+		return true;
 	}
 
-	private void readFields(FacilityMetadata entity, Collection<Class<? extends Annotation>> annotations) {
-		if (entity != null) {
-			for (Class<?> entityClazz : entity.getTypes()) {
-				for (Class<?> clazz : toClassHierarchy(entityClazz)) {
-					for (Field field : ReflectionUtils.getFields(clazz, annotations)) {
-						if (inspectField(entity, field)) {
-							if (log.isDebugEnabled()) {
-								log.debug("Configured metadata for [" + field + "] in [" + entity + "].");
-							}
+	private int readFields(FacilityMetadata entity, Collection<Class<? extends Annotation>> annotations) {
+		if (entity == null) {
+			return 0;
+		}
+
+		int num = 0;
+		for (Class<?> entityClazz : entity.getTypes()) {
+			for (Class<?> clazz : toClassHierarchy(entityClazz)) {
+				for (Field field : ReflectionUtils.getFields(clazz, annotations)) {
+					if (configureField(entity, field)) {
+						if (log.isDebugEnabled()) {
+							log.debug("Configured metadata for [" + field + "] in [" + entity + "].");
 						}
+						num++;
 					}
 				}
 			}
 		}
+		return num;
 	}
 
-	private void readIdVisit(FacilityMetadata facilityMetadata) {
-		for (Class<?> entityClass : facilityMetadata.getTypes()) {
+	private void readIdVisit(FacilityMetadata entity) {
+		for (Class<?> entityClass : entity.getTypes()) {
 			final List<Field> embeddedKeys = new ArrayList<>();
 			final List<Field> regularKeys = new ArrayList<>();
 			toClassHierarchy(entityClass)
 					.stream()
-					.flatMap(type -> getFields(type).stream())
+					.flatMap(clazz -> getFields(clazz).stream())
 					.forEach(field -> {
 						if (field.getAnnotation(EmbeddedId.class) != null) {
 							embeddedKeys.add(field);
@@ -371,20 +384,20 @@ public class FacilityMetadataInspector {
 
 			if (embeddedKeys.size() > 1 || regularKeys.size() > 1) {
 				log.warn("Multiple @Id or @EmbeddedId annotations found for class [" + entityClass + "] - you may be unable to access entityMetadata by #visit api.");
-				facilityMetadata.setIdVisitor(NullIdVisitor.getInstance());
+				entity.setIdVisitor(NullIdVisitor.getInstance());
 				return;
 			}
 
 			if (embeddedKeys.size() > 0) {
 				final Field key = embeddedKeys.get(0);
-				final Map<ColumnMetadata, ColumnVisitor> visitorMap = ofPrimaryKey(key, false);
-				facilityMetadata.setIdVisitor(new CompoundIdVisitor(key, visitorMap));
+				final Map<ColumnMetadata, ColumnVisitor> map = configureId(key, false);
+				entity.setIdVisitor(new CompoundIdVisitor(key, map));
 				return;
 			} else {
 				final Field key = regularKeys.get(0);
-				final Collection<ColumnMetadata> keyColumns = ofPrimaryKey(key, false).keySet();
+				final Collection<ColumnMetadata> keyColumns = configureId(key, false).keySet();
 				if (!keyColumns.isEmpty()) {
-					facilityMetadata.setIdVisitor(new BaseIdVisitor(key, keyColumns.iterator().next()));
+					entity.setIdVisitor(new BaseIdVisitor(key, keyColumns.iterator().next()));
 					return;
 				}
 			}
@@ -392,31 +405,31 @@ public class FacilityMetadataInspector {
 
 	}
 
-	private String toSchemaColumnName(Field field) {
+	private String getColumnName(Field field) {
 		final Column column = field.getAnnotation(Column.class);
-		final JoinColumn joinColumn = field.getAnnotation(JoinColumn.class);
+		final JoinColumn join = field.getAnnotation(JoinColumn.class);
 
-		String name = camelToSnakeCase(field.getName());
+		String name = StringUtils.camelToSnakeCase(field.getName());
 		if (column != null && !column.name().isEmpty()) {
 			name = column.name();
-		} else if (joinColumn != null && !joinColumn.name().isEmpty()) {
-			name = joinColumn.name();
+		} else if (join != null && !join.name().isEmpty()) {
+			name = join.name();
 		}
 		return name;
 	}
 
-	private Map<ColumnMetadata, ColumnVisitor> ofPrimaryKey(Field field, boolean nested) {
+	private Map<ColumnMetadata, ColumnVisitor> configureId(Field field, boolean useNested) {
 		final Class<?> type = field.getType();
 		final Id id = field.getAnnotation(Id.class);
 		if (id != null) {
-			final String name = toSchemaColumnName(field);
+			final String name = getColumnName(field);
 			final String property = field.getName();
 			final ColumnMetadata columnMetadata = new ColumnMetadata(name, property, type, true,
 					false, false);
 			final ColumnVisitor visitor = columnVisitorFactory.of(field, type);
-			final Map<ColumnMetadata, ColumnVisitor> visitorMap = new HashMap<>(1);
-			visitorMap.put(columnMetadata, visitor);
-			return Collections.unmodifiableMap(visitorMap);
+			final Map<ColumnMetadata, ColumnVisitor> map = new HashMap<>(1);
+			map.put(columnMetadata, visitor);
+			return Collections.unmodifiableMap(map);
 		}
 
 		final EmbeddedId embeddedId = field.getAnnotation(EmbeddedId.class);
@@ -427,32 +440,30 @@ public class FacilityMetadataInspector {
 			}
 
 			final Map<ColumnMetadata, ColumnVisitor> visitorMap = new LinkedHashMap<>();
-			final List<Field> fields = new FacilityMetadataInspector(columnVisitorFactory, type).getFields(type);
-			fields.forEach(f -> {
-				final Class<?> embeddedClass = f.getType();
-				final String embeddedName = toSchemaColumnName(f);
-				final String property = field.getName() + "." + f.getName();
+			for (Field field1 : new FacilityMetadataInspector(columnVisitorFactory, type).getFields(type)) {
+				final Class<?> embeddedClass = field1.getType();
+				final String embeddedName = getColumnName(field1);
+				final String property = field.getName() + "." + field1.getName();
 				final ColumnMetadata columnMetadata = new ColumnMetadata(embeddedName, property, embeddedClass,
 						true, false, false);
-				final ColumnVisitor baseVisitor = columnVisitorFactory.of(f, embeddedClass);
+				final ColumnVisitor baseVisitor = columnVisitorFactory.of(field1, embeddedClass);
 				final ColumnVisitor visitor;
-				if (nested) {
+				if (useNested) {
 					visitor = new NestedColumnVisitor(field, baseVisitor);
 				} else {
 					visitor = baseVisitor;
 				}
 
 				visitorMap.put(columnMetadata, visitor);
-			});
-
+			}
 			return Collections.unmodifiableMap(visitorMap);
 		}
 
 		return Collections.emptyMap();
 	}
 
-	private boolean inspectField(FacilityMetadata facilityMetadata, Field field) {
-		final String name = toSchemaColumnName(field);
+	private boolean configureField(FacilityMetadata entity, Field field) {
+		final String name = getColumnName(field);
 		final Class<?> type = field.getType();
 
 		if (field.isAnnotationPresent(Transient.class)) {
@@ -460,11 +471,11 @@ public class FacilityMetadataInspector {
 		}
 
 		if (field.isAnnotationPresent(Id.class) || field.isAnnotationPresent(EmbeddedId.class)) {
-			return facilityMetadata.addColumns(ofPrimaryKey(field, true));
+			return entity.addColumns(configureId(field, true));
 		}
 
 		if (field.isAnnotationPresent(ElementCollection.class)) {
-			return facilityMetadata.addColumns(configureElementCollection(field, name, field.getName()));
+			return entity.addColumns(configureElementCollection(field, name, field.getName()));
 		}
 
 		if (field.isAnnotationPresent(ManyToMany.class)) {
@@ -473,34 +484,34 @@ public class FacilityMetadataInspector {
 		}
 
 		if (field.isAnnotationPresent(OneToOne.class)) {
-			return facilityMetadata.addColumns(installOTORelation(field, name, field.getName()));
+			return entity.addColumns(configureOneToOne(field, name, field.getName()));
 		} else if (field.isAnnotationPresent(ManyToOne.class)) {
-			return facilityMetadata.addColumns(installMTORelation(field, name, field.getName()));
+			return entity.addColumns(configureManyToOne(field, name, field.getName()));
 		} else if (field.isAnnotationPresent(OneToMany.class)) {
-			return installOTMRelation(facilityMetadata, field, name, field.getName());
+			return configureOneToMany(entity, field, name, field.getName());
 		}
 
 		if (field.getAnnotation(Column.class) != null || field.getAnnotation(Embedded.class) != null) {
 			if (searchAnnotations(type, Embeddable.class).isEmpty()) {
 				final ColumnVisitor visitor = columnVisitorFactory.of(field, type);
 				final ColumnMetadata column = new ColumnMetadata(name, field.getName(), type, false, false, false);
-				if (facilityMetadata.addColumnMetadata(column)) {
-					facilityMetadata.setVisitor(column, visitor);
+				if (entity.addColumnMetadata(column)) {
+					entity.setVisitor(column, visitor);
 					return true;
 				}
 			} else {
 				boolean modified = false;
 				for (Field embeddedColumn : new FacilityMetadataInspector(columnVisitorFactory, type).getFields(type)) {
 					final Class<?> embeddedClass = embeddedColumn.getType();
-					final String embeddedName = toSchemaColumnName(embeddedColumn);
+					final String embeddedName = getColumnName(embeddedColumn);
 					final String property = field.getName() + "." + embeddedColumn.getName();
 					final ColumnMetadata columnMetadata = new ColumnMetadata(embeddedName, property, embeddedClass,
 							false, false, false);
 					final ColumnVisitor baseVisitor = columnVisitorFactory.of(embeddedColumn, embeddedClass);
 					final ColumnVisitor visitor = new NestedColumnVisitor(field, baseVisitor);
-					if (facilityMetadata.addColumnMetadata(columnMetadata)) {
+					if (entity.addColumnMetadata(columnMetadata)) {
 						modified = true;
-						facilityMetadata.setVisitor(columnMetadata, visitor);
+						entity.setVisitor(columnMetadata, visitor);
 					}
 				}
 				return modified;
@@ -510,9 +521,9 @@ public class FacilityMetadataInspector {
 		return false;
 	}
 
-	private Map<ColumnMetadata, ColumnVisitor> installOTORelation(Field field, String name, String property) {
+	private Map<ColumnMetadata, ColumnVisitor> configureOneToOne(Field field, String name, String property) {
 		final OneToOne oneToOne = field.getAnnotation(OneToOne.class);
-		final boolean isLazyLoading = oneToOne.fetch() == LAZY;
+		final boolean isLazyLoading = FetchType.LAZY.equals(oneToOne.fetch());
 		final String mappedBy = oneToOne.mappedBy();
 		if (mappedBy.isEmpty()) {
 			return getColumnMetadataColumnVisitorMap(field, name, property, isLazyLoading);
@@ -521,17 +532,31 @@ public class FacilityMetadataInspector {
 		}
 	}
 
-	private Map<ColumnMetadata, ColumnVisitor> installMTORelation(Field field, String name, String property) {
+	private Map<ColumnMetadata, ColumnVisitor> configureManyToOne(Field field, String name, String property) {
 		final ManyToOne manyToOne = field.getAnnotation(ManyToOne.class);
-		final boolean isLazyLoading = manyToOne.fetch() == LAZY;
+		final boolean isLazyLoading = FetchType.LAZY.equals(manyToOne.fetch());
 		return getColumnMetadataColumnVisitorMap(field, name, property, isLazyLoading);
 	}
 
-	private boolean installOTMRelation(FacilityMetadata parentEntity, Field field, String name, String property) {
+	private Map<ColumnMetadata, ColumnVisitor> getColumnMetadataColumnVisitorMap(Field field, String name, String property, boolean isLazyLoading) {
+		final Class<?> type = field.getType();
+		final FacilityMetadata facilityMetadata = findMetadata(type);
+		if (facilityMetadata == null) {
+			throw new OrmException("Type [" + type + "] is not a registered facilityMetadata.");
+		}
+		final ColumnVisitor visitor = columnVisitorFactory.singleVisit(field, facilityMetadata, isLazyLoading);
+		final ColumnMetadata primary = facilityMetadata.getPrimaryKeys().iterator().next();
+		final ColumnMetadata columnMetadata = new JoinColumnMetadata(name, property, primary.getType(), facilityMetadata, false);
+		final Map<ColumnMetadata, ColumnVisitor> map = new HashMap<>(1);
+		map.put(columnMetadata, visitor);
+		return Collections.unmodifiableMap(map);
+	}
+
+	private boolean configureOneToMany(FacilityMetadata parentEntity, Field field, String name, String property) {
 		final OneToMany oneToMany = field.getAnnotation(OneToMany.class);
-		final boolean isLazyLoading = oneToMany.fetch() == LAZY;
+		final boolean isLazyLoading = FetchType.LAZY.equals(oneToMany.fetch());
 		final Class<?> parameterizedClass;
-		if (oneToMany.targetEntity() != void.class) {
+		if (!void.class.equals(oneToMany.targetEntity())) {
 			parameterizedClass = oneToMany.targetEntity();
 		} else {
 			final ParameterizedType parameterizedType = (ParameterizedType) field.getGenericType();
@@ -543,8 +568,8 @@ public class FacilityMetadataInspector {
 			return false;
 		}
 
-		final FacilityMetadata relationEntity = findMetadata(parameterizedClass);
-		if (relationEntity == null) {
+		final FacilityMetadata associatedEntity = findMetadata(parameterizedClass);
+		if (associatedEntity == null) {
 			throw new OrmException("Type [" + parameterizedClass + "] is not a registered entityMetadata.");
 		}
 
@@ -552,23 +577,23 @@ public class FacilityMetadataInspector {
 		if (joinTable != null) {
 			throw new OrmException("Unable to add column [" + field + "] - join table no supported.");
 		} else if (!oneToMany.mappedBy().isEmpty()) {
-			secondVisit(relationEntity);
+			readSecondPass(associatedEntity);
 
-			final ColumnMetadata mappedColumn = relationEntity.findColumnMetadata(oneToMany.mappedBy());
+			final ColumnMetadata mappedColumn = associatedEntity.findColumnMetadata(oneToMany.mappedBy());
 			if (mappedColumn == null) {
-				throw new OrmException("Unable to locate column [" + oneToMany.mappedBy() + "] within [" + relationEntity + "].");
+				throw new OrmException("Unable to locate column [" + oneToMany.mappedBy() + "] within [" + associatedEntity + "].");
 			}
 
-			final ColumnVisitor visitor = columnVisitorFactory.manyVisit(field, relationEntity, isLazyLoading);
-			final ColumnMetadata mappedColumnMetadata = new MappedColumnMetadata(relationEntity, mappedColumn, name, property, field.getType(), isLazyLoading);
+			final ColumnVisitor visitor = columnVisitorFactory.manyVisit(field, associatedEntity, isLazyLoading);
+			final ColumnMetadata mappedColumnMetadata = new MappedColumnMetadata(associatedEntity, mappedColumn, name, property, field.getType(), isLazyLoading);
 			if (parentEntity.addColumnMetadata(mappedColumnMetadata)) {
 				parentEntity.setVisitor(mappedColumnMetadata, visitor);
-				relationEntity.addIndex(new IndexMetadata(mappedColumn.getName(), Collections.singleton(mappedColumn), false));
+				associatedEntity.addIndex(new IndexMetadata(mappedColumn.getName(), Collections.singleton(mappedColumn), false));
 				return true;
 			}
 		} else {
-			final ColumnVisitor visitor = columnVisitorFactory.manyVisit(field, relationEntity, isLazyLoading);
-			final ColumnMetadata column = new JoinBagMetadata(name, property, field.getType(), relationEntity, false, isLazyLoading, true);
+			final ColumnVisitor visitor = columnVisitorFactory.manyVisit(field, associatedEntity, isLazyLoading);
+			final ColumnMetadata column = new JoinBagMetadata(name, property, field.getType(), associatedEntity, false, isLazyLoading, true);
 			if (parentEntity.addColumnMetadata(column)) {
 				parentEntity.setVisitor(column, visitor);
 				return true;
@@ -578,24 +603,9 @@ public class FacilityMetadataInspector {
 		return false;
 	}
 
-	private Map<ColumnMetadata, ColumnVisitor> getColumnMetadataColumnVisitorMap(Field field, String name, String property, boolean isLazyLoading) {
-		final Class<?> type = field.getType();
-		final FacilityMetadata facilityMetadata = findMetadata(type);
-		if (facilityMetadata == null) {
-			throw new OrmException("Type [" + type + "] is not a registered facilityMetadata.");
-		}
-
-		final ColumnVisitor visitor = columnVisitorFactory.singleVisit(field, facilityMetadata, isLazyLoading);
-		final ColumnMetadata primary = facilityMetadata.getPrimaryKeys().iterator().next();
-		final ColumnMetadata columnMetadata = new JoinColumnMetadata(name, property, primary.getType(), facilityMetadata, false);
-		final Map<ColumnMetadata, ColumnVisitor> map = new HashMap<>(1);
-		map.put(columnMetadata, visitor);
-		return Collections.unmodifiableMap(map);
-	}
-
 	private Map<ColumnMetadata, ColumnVisitor> configureElementCollection(Field field, String name, String property) {
 		final ElementCollection elementCollection = field.getAnnotation(ElementCollection.class);
-		final boolean isLazyLoading = elementCollection != null && elementCollection.fetch() == LAZY;
+		final boolean isLazyLoading = elementCollection != null && FetchType.LAZY.equals(elementCollection.fetch());
 		final Class<?> type = field.getType();
 		final ParameterizedType parameterizedType = (ParameterizedType) field.getGenericType();
 		final Type[] types = parameterizedType.getActualTypeArguments();
@@ -623,62 +633,62 @@ public class FacilityMetadataInspector {
 	}
 
 	private ColumnMetadata getInheritColumn(Class<?> entityClass) {
-		DiscriminatorColumn discriminatorColumn = null;
-		for (Class<?> type : toClassHierarchy(entityClass)) {
-			discriminatorColumn = type.getAnnotation(DiscriminatorColumn.class);
-			if (discriminatorColumn != null) {
+		DiscriminatorColumn column = null;
+		for (Class<?> clazz : toClassHierarchy(entityClass)) {
+			column = clazz.getAnnotation(DiscriminatorColumn.class);
+			if (column != null) {
 				break;
 			}
 		}
 
-		if (discriminatorColumn != null) {
-			final String property = "#DiscriminatorColumn";
-			final String name = discriminatorColumn.name();
-			final DiscriminatorType discriminatorType = discriminatorColumn.discriminatorType();
-			if (discriminatorType == CHAR) {
-				return new ColumnMetadata(name, property, Character.class, false, false, false);
-			} else if (discriminatorType == INTEGER) {
-				return new ColumnMetadata(name, property, Integer.class, false, false, false);
-			} else {
-				return new ColumnMetadata(name, property, String.class, false, false, false);
-			}
+		if (column == null) {
+			return null;
 		}
 
-		return null;
+		final String property = "#DiscriminatorColumn";
+		final String name = column.name();
+		DiscriminatorType discriminatorType = column.discriminatorType();
+		if (discriminatorType == CHAR) {
+			return new ColumnMetadata(name, property, Character.class, false, false, false);
+		} else if (discriminatorType == INTEGER) {
+			return new ColumnMetadata(name, property, Integer.class, false, false, false);
+		} else {
+			return new ColumnMetadata(name, property, String.class, false, false, false);
+		}
 	}
 
-	private InheritMetadata ofDiscriminatorValue(ColumnMetadata columnMetadata, Class<?> entityClass) {
-		final String orElse = toClassHierarchy(entityClass)
+	private InheritMetadata getDiscriminatorValue(ColumnMetadata column, Class<?> entityClass) {
+		final String discriminator = toClassHierarchy(entityClass)
 				.stream()
-				.map(type -> type.getAnnotation(DiscriminatorValue.class))
+				.map(clazz -> clazz.getAnnotation(DiscriminatorValue.class))
 				.filter(Objects::nonNull)
 				.findFirst()
 				.map(DiscriminatorValue::value)
-				.orElseGet(() -> camelToSnakeCase(entityClass.getSimpleName()));
+				.orElse(StringUtils.camelToSnakeCase(entityClass.getSimpleName()));
 
-		if (columnMetadata != null) {
-			final Class<?> type = columnMetadata.getType();
-			if (type == Character.class) {
-				return new InheritMetadata(columnMetadata, orElse.charAt(0));
-			} else if (type == Short.class) {
-				return new InheritMetadata(columnMetadata, Short.parseShort(orElse));
-			} else if (type == Integer.class) {
-				return new InheritMetadata(columnMetadata, Integer.parseInt(orElse));
-			} else if (type == Long.class) {
-				return new InheritMetadata(columnMetadata, Long.parseLong(orElse));
-			} else {
-				return new InheritMetadata(columnMetadata, orElse);
-			}
+		if (column == null) {
+			throw new OrmException("Discriminator column cannot be null.");
 		}
 
-		throw new OrmException("Discriminator column cannot be null.");
+		final Class<?> type = column.getType();
+		if (Character.class.equals(type)) {
+			return new InheritMetadata(column, discriminator.charAt(0));
+		} else if (Short.class.equals(type)) {
+			return new InheritMetadata(column, Short.parseShort(discriminator));
+		} else if (Integer.class.equals(type)) {
+			return new InheritMetadata(column, Integer.parseInt(discriminator));
+		} else if (Long.class.equals(type)) {
+			return new InheritMetadata(column, Long.parseLong(discriminator));
+		} else {
+			return new InheritMetadata(column, discriminator);
+		}
 	}
 
 	private List<Field> getFields(Class<?> clazz) {
-		return ReflectionUtils.getFields(clazz, supportedAnnotations());
+		return ReflectionUtils.getFields(clazz, jpaAnnotations());
 	}
 
-	private Collection<Class<? extends Annotation>> supportedAnnotations() {
+	private Collection<Class<? extends Annotation>> jpaAnnotations() {
 		return Arrays.asList(Column.class, Embedded.class, EmbeddedId.class, Id.class, ElementCollection.class, JoinColumn.class, OneToMany.class, ManyToOne.class, ManyToMany.class, OneToOne.class, Transient.class);
 	}
 }

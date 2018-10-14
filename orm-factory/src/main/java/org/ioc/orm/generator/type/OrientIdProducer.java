@@ -57,37 +57,39 @@ public class OrientIdProducer implements IdProducer {
 	}
 
 	@Override
-	public Long install(SessionFactory sessionFactory, FacilityMetadata facilityMetadata) throws OrmException {
-		if (sessionFactory != null && facilityMetadata != null) {
-			synchronized (lock) {
-				try {
-					if (sessionFactory instanceof OrientDatabaseSessionFactory) {
-						final ODatabaseDocument db = ((OrientDatabaseSessionFactory) sessionFactory).getDocument();
-						return install(db);
-					} else {
-						try (ODatabaseDocument db = schemaFactory.createSchema()) {
-							return install(db);
-						}
-					}
-				} catch (Exception e) {
-					throw new OrmException("Unable to increment counter id [" + keyValue + "] from table [" + tableName + "].", e);
-				}
-			}
+	public Long create(SessionFactory sessionFactory, FacilityMetadata facilityMetadata) throws OrmException {
+		if (sessionFactory == null) {
+			return null;
 		}
 
-		return null;
+		if (facilityMetadata == null) {
+			return null;
+		}
+
+		synchronized (lock) {
+			try {
+				if (sessionFactory instanceof OrientDatabaseSessionFactory) {
+					final ODatabaseDocument db = ((OrientDatabaseSessionFactory) sessionFactory).getDocument();
+					return create(db);
+				} else {
+					try (ODatabaseDocument db = schemaFactory.createSchema()) {
+						return create(db);
+					}
+				}
+			} catch (Exception e) {
+				throw new OrmException("Unable to increment counter id [" + keyValue + "] from table [" + tableName + "].", e);
+			}
+		}
 	}
 
-	private Long install(ODatabaseDocument databaseDocument) {
+	private Long create(ODatabaseDocument databaseDocument) {
 		databaseDocument.begin();
 		for (int i = 0; i < 10; i++) {
 			final Long value = increment(databaseDocument);
-			if (value == null) {
-				continue;
+			if (value != null) {
+				databaseDocument.commit();
+				return value;
 			}
-
-			databaseDocument.commit();
-			return value;
 		}
 		databaseDocument.rollback();
 
@@ -102,7 +104,12 @@ public class OrientIdProducer implements IdProducer {
 		}
 
 		final Long current = document.field(valueColumn);
-		final Long next = current != null ? current + 1 : 1;
+		final Long next;
+		if (current == null) {
+			next = 1L;
+		} else {
+			next = current + 1;
+		}
 
 		document.field(valueColumn, next);
 		document.save();
@@ -112,21 +119,24 @@ public class OrientIdProducer implements IdProducer {
 
 	private ODocument findDocument(ODatabaseDocument databaseDocument) {
 		final OIndex index = databaseDocument.getMetadata().getIndexManager().getClassIndex(tableName, indexName);
-		if (index != null) {
-			final OIdentifiable identifiable = (OIdentifiable) index.get(keyValue);
-			if (identifiable != null) {
-				final ORID identity = identifiable.getIdentity();
-				if (identity != null) {
-					final ODocument entries = databaseDocument.load(identity);
-					if (entries != null) {
-						return entries;
-					}
-					throw new OrmException("Unable to load database record id [" + identity + "].");
-				}
-			}
+		if (index == null) {
+			throw new OrmException("Unable to locate database index [" + indexName + "].");
+		}
+
+		final OIdentifiable identifiable = (OIdentifiable) index.get(keyValue);
+		if (identifiable == null) {
 			return null;
 		}
 
-		throw new OrmException("Unable to locate database index [" + indexName + "].");
+		final ORID identity = identifiable.getIdentity();
+		if (identity == null) {
+			return null;
+		}
+
+		final ODocument entries = databaseDocument.load(identity);
+		if (entries == null) {
+			throw new OrmException("Unable to load database record id [" + identity + "].");
+		}
+		return entries;
 	}
 }

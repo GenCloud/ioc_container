@@ -16,24 +16,14 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.ioc.web.handler;
+package org.ioc.web.engine;
 
-import io.netty.buffer.ByteBuf;
-import org.ioc.annotations.web.MappingMethod;
-import org.ioc.web.handler.metadata.ProtocolType;
+import org.ioc.web.model.ModelMap;
 
 /**
  * @author GenCloud
  * @date 10/2018
  */
-public interface IHttpRequest {
-	HttpRequestHeaders headers();
-
-	ProtocolType protocolType();
-
-	String path();
-
-	MappingMethod method();
-
-	ByteBuf content();
+public interface PageManager {
+	String resolveArguments(String page, ModelMap map);
 }

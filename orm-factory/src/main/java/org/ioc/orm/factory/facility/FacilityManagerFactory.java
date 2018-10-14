@@ -57,7 +57,7 @@ public class FacilityManagerFactory {
 
 		try {
 			schema.update();
-			schemaMetadata.ofValues();
+			schemaMetadata.collectAll();
 
 			for (FacilityMetadata facilityMetadata : schemaMetadata) {
 				facilityMetadata.getQueryMetadataCollection()

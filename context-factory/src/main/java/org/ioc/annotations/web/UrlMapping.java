@@ -11,7 +11,11 @@ import java.lang.annotation.*;
 @Inherited
 @Documented
 public @interface UrlMapping {
-	String value();
+	String value() default "";
 
 	MappingMethod method() default MappingMethod.GET;
+
+	String consumes() default "";
+
+	String produces() default "";
 }

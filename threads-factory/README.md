@@ -1,11 +1,11 @@
 ---
 
-## Module 'threads-context'
+## Module 'threads-channel'
 
 [![Build Status](https://travis-ci.org/GenCloud/ioc_container.svg?branch=master)](https://travis-ci.org/GenCloud/ioc_container)
 
 ### Intro
-Add threads-context module to your project. for maven projects just add this dependency:
+Add threads-channel module to your project. for maven projects just add this dependency:
 ```xml
    <repositories>
        <repository>
@@ -22,12 +22,12 @@ Add threads-context module to your project. for maven projects just add this dep
        <dependency>
            <groupId>org.ioc</groupId>
            <artifactId>threads-factory</artifactId>
-           <version>2.0.2.STABLE</version>
+           <version>2.1.0.STABLE</version>
        </dependency>
    </dependencies>
 ```
     
-A typical use of threads-context module would be:
+A typical use of threads-channel module would be:
 1) Add in Main class of application marker-annotated of enabled this module
 ```java
     @ThreadingModule
@@ -69,7 +69,7 @@ A typical use of threads-context module would be:
     }
 
 ```
-3) Default methods of context
+3) Default methods of channel
 - scheduling
 ```java
         // Executes an asynchronous tasks. Tasks scheduled here will go to an default shared thread pool.

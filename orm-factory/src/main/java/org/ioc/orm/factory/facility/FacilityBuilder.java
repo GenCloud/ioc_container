@@ -34,6 +34,7 @@ import java.util.Map;
  */
 public class FacilityBuilder {
 	private final SessionFactory sessionFactory;
+
 	private final DataContainerFactory dataContainerFactory;
 
 	public FacilityBuilder(SessionFactory sessionFactory, DataContainerFactory dataContainerFactory) {
@@ -44,71 +45,68 @@ public class FacilityBuilder {
 	public Object build(FacilityMetadata facilityMetadata, Map<ColumnMetadata, Object> objectMap) throws OrmException {
 		Assertion.checkNotNull(facilityMetadata, "entity metadata");
 
-		if (objectMap != null && !objectMap.isEmpty()) {
-			final Object instance;
-			try {
-				instance = facilityMetadata.build(objectMap);
-				if (instance != null) {
-					final boolean updated = update(facilityMetadata, instance, objectMap);
-					if (!updated) {
-						return null;
-					}
-				}
-			} catch (Exception e) {
-				throw new OrmException("Unable to construct instance for facilityMetadata [" + facilityMetadata + "].", e);
-			}
-
-			final Object o = facilityMetadata.getIdVisitor().fromObject(instance);
-			for (ColumnMetadata metadata : facilityMetadata) {
-				if (!objectMap.containsKey(metadata)) {
-					final ColumnVisitor visitor = facilityMetadata.getVisitor(metadata);
-					if (visitor == null || visitor.initialized(instance)) {
-						continue;
-					}
-
-					DataContainer container = null;
-					if (metadata instanceof JoinColumnMetadata) {
-						container = dataContainerFactory.ofJoinColumn(facilityMetadata, (JoinColumnMetadata) metadata, o);
-					} else if (metadata instanceof JoinBagMetadata) {
-						container = dataContainerFactory.ofJoinBag(facilityMetadata, (JoinBagMetadata) metadata, o);
-					} else if (metadata instanceof MappedColumnMetadata) {
-						container = dataContainerFactory.ofMappedColumn(facilityMetadata, (MappedColumnMetadata) metadata, o);
-					} else if (!metadata.isEmbedded() && !objectMap.containsKey(metadata)) {
-						container = dataContainerFactory.ofLazy(facilityMetadata, metadata, o);
-					}
-
-					if (container == null) {
-						continue;
-					}
-
-					visitor.setValue(instance, container, sessionFactory);
-				}
-			}
-			return instance;
+		if (objectMap == null || objectMap.isEmpty()) {
+			return null;
 		}
 
-		return null;
+		final Object instance;
+		try {
+			instance = facilityMetadata.build(objectMap);
+			if (instance == null) {
+				return null;
+			}
+
+			if (!update(facilityMetadata, instance, objectMap)) {
+				return null;
+			}
+		} catch (Exception e) {
+			throw new OrmException("Unable to construct instance for facilityMetadata [" + facilityMetadata + "].", e);
+		}
+
+		final Object o = facilityMetadata.getIdVisitor().fromObject(instance);
+		for (ColumnMetadata metadata : facilityMetadata) {
+			if (!objectMap.containsKey(metadata)) {
+				final ColumnVisitor visitor = facilityMetadata.getVisitor(metadata);
+				if (visitor != null && !visitor.initialized(instance)) {
+					DataContainer lazy = null;
+					if (metadata instanceof JoinColumnMetadata) {
+						lazy = dataContainerFactory.ofJoinColumn(facilityMetadata, (JoinColumnMetadata) metadata, o);
+					} else if (metadata instanceof JoinBagMetadata) {
+						lazy = dataContainerFactory.ofJoinBag(facilityMetadata, (JoinBagMetadata) metadata, o);
+					} else if (metadata instanceof MappedColumnMetadata) {
+						lazy = dataContainerFactory.ofMappedColumn(facilityMetadata, (MappedColumnMetadata) metadata, o);
+					} else if (!metadata.isEmbedded() && !objectMap.containsKey(metadata)) {
+						lazy = dataContainerFactory.ofLazy(facilityMetadata, metadata, o);
+					}
+
+					if (lazy != null) {
+						visitor.setValue(instance, lazy, sessionFactory);
+					}
+				}
+			}
+		}
+		return instance;
 	}
 
 	public boolean update(FacilityMetadata facilityMetadata, Object instance,
-						  Map<ColumnMetadata, Object> objectMap) throws OrmException {
-		if (objectMap != null && !objectMap.isEmpty()) {
-			boolean updated = false;
-			for (Map.Entry<ColumnMetadata, Object> entry : objectMap.entrySet()) {
-				final ColumnMetadata column = entry.getKey();
-				final Object value = entry.getValue();
-				final ColumnVisitor visitor = facilityMetadata.getVisitor(column);
-				if (value != null && visitor != null) {
-					final DataContainer placeholder = dataContainerFactory.createStatic(value);
-					if (placeholder != null) {
-						visitor.setValue(instance, placeholder, sessionFactory);
-						updated = true;
-					}
-				}
-			}
-			return updated;
+						  final Map<ColumnMetadata, Object> objectMap) throws OrmException {
+		if (objectMap == null || objectMap.isEmpty()) {
+			return false;
 		}
 
-		return false;
+		boolean updated = false;
+		for (Map.Entry<ColumnMetadata, Object> entry : objectMap.entrySet()) {
+			final ColumnMetadata column = entry.getKey();
+			final Object value = entry.getValue();
+			final ColumnVisitor visitor = facilityMetadata.getVisitor(column);
+			if (value != null && visitor != null) {
+				final DataContainer placeholder = dataContainerFactory.createStatic(value);
+				if (placeholder != null) {
+					visitor.setValue(instance, placeholder, sessionFactory);
+					updated = true;
+				}
+			}
+		}
+		return updated;
 	}
 }

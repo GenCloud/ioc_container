@@ -15,7 +15,7 @@ public interface Factory {
 
 	String DEFAULT_DATABASE_FACTORY = "org.ioc.orm.factory.orient.OrientSchemaFactory";
 
-	String DEFAULT_WEB_FACTORY = "org.ioc.web.factory.WebInitializerFactory";
+	String DEFAULT_WEB_FACTORY = "org.ioc.web.factory.HttpInitializerFactory";
 
 	@SuppressWarnings("unchecked")
 	static Class<Factory> defaultThreadFactory() {

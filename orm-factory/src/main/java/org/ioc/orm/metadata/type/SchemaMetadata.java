@@ -62,7 +62,7 @@ public class SchemaMetadata implements EntityMetadataSelector, Iterable<Facility
 	}
 
 	public Collection<FacilityMetadata> getFacilityMetadataCollection() {
-		return facilityMetadataCollection.ofValues();
+		return facilityMetadataCollection.collectAll();
 	}
 
 	public FacilityMetadata getEntity(String labelOrType) {
@@ -104,8 +104,8 @@ public class SchemaMetadata implements EntityMetadataSelector, Iterable<Facility
 	}
 
 	@Override
-	public Collection<FacilityMetadata> ofValues() {
-		return facilityMetadataCollection.ofValues();
+	public Collection<FacilityMetadata> collectAll() {
+		return facilityMetadataCollection.collectAll();
 	}
 
 	@Override

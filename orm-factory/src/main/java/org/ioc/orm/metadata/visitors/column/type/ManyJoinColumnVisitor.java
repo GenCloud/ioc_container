@@ -148,7 +148,7 @@ public class ManyJoinColumnVisitor extends FieldColumnVisitor implements ColumnV
 		} else {
 			final Object of = dataContainer.of();
 			if (!(of instanceof Collection)) {
-				throw new OrmException("Expect collection of primary key ofValues for [" + getRawField() + "] but found [" + of + "].");
+				throw new OrmException("Expect collection of primary key values for [" + getRawField() + "] but found [" + of + "].");
 			}
 			try {
 				final Collection keys = (Collection) of;

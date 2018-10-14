@@ -17,13 +17,14 @@
 - a module for managing cache's
 - a module for managing database (auto-generation queries, repository system, crud operation, transaction's, jpa support)
 
+
 ### Intro
 Add IoC to your project. for maven projects just add this dependency:
 ```xml
     <repositories>
         <repository>
             <id>ioc</id>
-            <url>https://raw.github.com/GenCloud/ioc_container/context/</url>
+            <url>https://raw.github.com/GenCloud/ioc_container/channel/</url>
             <snapshots>
                 <enabled>true</enabled>
                 <updatePolicy>always</updatePolicy>
@@ -35,7 +36,7 @@ Add IoC to your project. for maven projects just add this dependency:
         <dependency>
             <groupId>org.ioc</groupId>
             <artifactId>context-factory</artifactId>
-            <version>2.0.2.STABLE</version>
+            <version>2.1.0.STABLE</version>
         </dependency>
     </dependencies>
 ```
@@ -123,8 +124,8 @@ public class GlobalListener implements IListener {
 }
 ```
 Have to standards of type event:
-OnContextIsInitializedFact - informs about full context initialization
-OnContextDestroyFact - informs about context start destroying
+OnContextIsInitializedFact - informs about full channel initialization
+OnContextDestroyFact - informs about channel start destroying
 OnTypeInitFact - informs about the full initialization of any component
 
 AOP system
@@ -193,9 +194,9 @@ invoke method in MainClass:
 @ScanPackage(packages = {"org.ioc.test"})
 public class MainTest {
     public static void main(String... args) {
-        DefaultIoCContext context = IoCStarter.start(MainTest.class, args);
-        log.info("Getting TypeB from context");
-        final TypeB typeB = context.getType(TypeB.class);
+        DefaultIoCContext channel = IoCStarter.start(MainTest.class, args);
+        log.info("Getting TypeB from channel");
+        final TypeB typeB = channel.getType(TypeB.class);
         assertNotNull(typeB);
         typeB.initAspect("I'm tested Aspects"); // see console result
         log.info(typeB.toString());
@@ -249,7 +250,7 @@ public class DefaultProcessor implements TypeProcessor, ContextSensible {
 
 	@Override
 	public void contextInform(IoCContext ioCContext) throws IoCException {
-		log.info("I'm informed for context - [{}]", ioCContext);
+		log.info("I'm informed for channel - [{}]", ioCContext);
 	}
 }
 ```
@@ -259,7 +260,7 @@ public class DefaultProcessor implements TypeProcessor, ContextSensible {
 ### 1. Module 'threads-factory'
     
 ### Intro
-Add threads-context module to your project. for maven projects just add this dependency:
+Add threads-channel module to your project. for maven projects just add this dependency:
 ```xml
    <repositories>
        <repository>
@@ -276,12 +277,12 @@ Add threads-context module to your project. for maven projects just add this dep
        <dependency>
            <groupId>org.ioc</groupId>
            <artifactId>threads-factory</artifactId>
-           <version>2.0.2.STABLE</version>
+           <version>2.1.0.STABLE</version>
        </dependency>
    </dependencies>
 ```
     
-A typical use of threads-context module would be:
+A typical use of threads-channel module would be:
 1) Add in Main class of application marker-annotated of enabled this module
 ```java
     @ThreadingModule
@@ -323,7 +324,7 @@ A typical use of threads-context module would be:
     }
 
 ```
-3) Default methods of context
+3) Default methods of channel
 - scheduling
 ```java
         // Executes an asynchronous tasks. Tasks scheduled here will go to an default shared thread pool.
@@ -357,7 +358,7 @@ Add cache-factory module to your project. for maven projects just add this depen
        <dependency>
            <groupId>org.ioc</groupId>
            <artifactId>cache-factory</artifactId>
-           <version>2.0.2.STABLE</version>
+           <version>2.1.0.STABLE</version>
        </dependency>
    </dependencies>
 ```
@@ -472,7 +473,7 @@ Add orm-factory module to your project. for maven projects just add this depende
         <dependency>
             <groupId>org.ioc</groupId>
             <artifactId>orm-factory</artifactId>
-            <version>2.0.2.STABLE</version>
+            <version>2.1.0.STABLE</version>
         </dependency>
     </dependencies>
 ```
@@ -658,7 +659,7 @@ public class SampleEntity implements Serializable {
 
 * repository classes:
 ```java
-@IoCRepository //mandatory annotation-marker for context inspector
+@IoCRepository //mandatory annotation-marker for channel inspector
 public interface ChildEntityRepository extends CrudRepository<ChildEntity, Long> {
 }
 
@@ -760,8 +761,8 @@ Try usage component in MainClass:
     @ScanPackage(packages = {"org.ioc.test"})
     public class MainTest {
         public static void main(String... args) {
-            DefaultIoCContext context = IoCStarter.start(MainTest.class, args);
-            final DatabaseComponent databaseComponent = context.getType(DatabaseComponent.class);
+            DefaultIoCContext channel = IoCStarter.start(MainTest.class, args);
+            final DatabaseComponent databaseComponent = channel.getType(DatabaseComponent.class);
        
        		log.info("Inserting test dataContainer into Schema");
        		final SampleEntity sampleEntity = new SampleEntity();

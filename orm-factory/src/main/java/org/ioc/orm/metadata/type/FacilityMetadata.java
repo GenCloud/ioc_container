@@ -324,7 +324,7 @@ public class FacilityMetadata implements Iterable<ColumnMetadata>, Comparable<Fa
 		map.forEach((column, visitor) -> {
 			addColumnMetadata(column);
 			if (column.isPrimaryKey() && column.getType().equals(UUID.class)) {
-				setProducer(column, UUIDProducer.of());
+				setProducer(column, UUIDProducer.getInstance());
 			}
 			setVisitor(column, visitor);
 		});

@@ -22,6 +22,7 @@ import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.index.OIndex;
+import com.orientechnologies.orient.core.iterator.ORecordIteratorClass;
 import com.orientechnologies.orient.core.iterator.ORecordIteratorCluster;
 import com.orientechnologies.orient.core.record.ORecord;
 import com.orientechnologies.orient.core.record.impl.ODocument;
@@ -84,6 +85,12 @@ public class OrientDatabaseSessionFactory extends AbstractTx implements Database
 
 	@Override
 	public boolean pending() {
+		if (!databaseDocument.isActiveOnCurrentThread()) {
+			synchronized (databaseDocument) {
+				databaseDocument.activateOnCurrentThread();
+			}
+		}
+
 		final OTransaction transaction = databaseDocument.getTransaction();
 		if (transaction == null) {
 			if (log.isDebugEnabled()) {
@@ -97,8 +104,8 @@ public class OrientDatabaseSessionFactory extends AbstractTx implements Database
 
 	@Override
 	public void start() {
-		if (pending()) {
-			if (log.isDebugEnabled()) {
+		if (log.isDebugEnabled()) {
+			if (pending()) {
 				log.debug("Beginning transaction, but already in pending-work state.");
 			}
 		}
@@ -108,23 +115,21 @@ public class OrientDatabaseSessionFactory extends AbstractTx implements Database
 
 	@Override
 	public void commit() {
-		if (!pending()) {
-			if (log.isDebugEnabled()) {
+		if (log.isDebugEnabled()) {
+			if (!pending()) {
 				log.debug("Committing transaction, but not in pending-work state.");
 			}
 		}
-
 		databaseDocument.commit();
 	}
 
 	@Override
 	public void rollback() {
-		if (!pending()) {
-			if (log.isDebugEnabled()) {
+		if (log.isDebugEnabled()) {
+			if (!pending()) {
 				log.debug("Rolling back transaction, but not in pending-work state.");
 			}
 		}
-
 		databaseDocument.rollback();
 	}
 
@@ -132,10 +137,13 @@ public class OrientDatabaseSessionFactory extends AbstractTx implements Database
 	public void save(FacilityMetadata facilityMetadata, Object element) {
 		try (Tx tx = openTx()) {
 			final OrientFacilityAdder orientEntityAdder = new OrientFacilityAdder(this);
-			facilityMapper.save(facilityMetadata, element, orientEntityAdder);
-			tx.success();
+			final Object instance = facilityMapper.save(facilityMetadata, element, orientEntityAdder);
+			final Object key = facilityMetadata.getIdVisitor().fromObject(instance);
+			if (facilityCacheManager.add(facilityMetadata, key, instance)) {
+				tx.success();
+			}
 		} catch (Exception e) {
-			throw new OrmException("Unable to install/save new document.", e);
+			throw new OrmException("Unable to create/save new document.", e);
 		}
 	}
 
@@ -148,11 +156,9 @@ public class OrientDatabaseSessionFactory extends AbstractTx implements Database
 			for (ColumnMetadata columnMetadata : facilityMetadata.getPrimaryKeys()) {
 				final ColumnVisitor accessor = facilityMetadata.getVisitor(columnMetadata);
 				final Object o = accessor != null ? accessor.getValue(element, this) : null;
-				if (o == null) {
-					continue;
+				if (o != null) {
+					metadataObjectMap.put(columnMetadata, o);
 				}
-
-				metadataObjectMap.put(columnMetadata, o);
 			}
 
 			final OIdentifiable identifiable = findIdentifyByMap(facilityMetadata, metadataObjectMap);
@@ -160,10 +166,9 @@ public class OrientDatabaseSessionFactory extends AbstractTx implements Database
 				databaseDocument.delete(identifiable.getIdentity());
 			}
 
-			tx.success();
-
 			final Object key = facilityMetadata.getIdVisitor().fromObject(element);
 			facilityCacheManager.delete(facilityMetadata, key);
+			tx.success();
 		} catch (Exception e) {
 			throw new OrmException("Unable to delete database document.", e);
 		}
@@ -172,50 +177,55 @@ public class OrientDatabaseSessionFactory extends AbstractTx implements Database
 	@Override
 	public SchemaQuery query(FacilityMetadata facilityMetadata, String query, Map<String, Object> params) throws OrmException {
 		final OrientQuery orientQuery = queryMap.get(query);
-		return orientQuery != null ? ofNamedQuery(facilityMetadata, orientQuery, params)
-				: ofNullQuery(facilityMetadata, query, params);
+		if (orientQuery != null) {
+			return ofNamedQuery(facilityMetadata, orientQuery, params);
+		} else {
+			return ofNullQuery(facilityMetadata, query, params);
+		}
 	}
 
 	@Override
 	public boolean exists(FacilityMetadata facilityMetadata, Object key) throws OrmException {
 		Assertion.checkNotNull(facilityMetadata);
 
-		if (key != null) {
-			try {
-				return findIdentifyByKey(facilityMetadata, key) != null;
-			} catch (Exception e) {
-				throw new OrmException("Unable to query document.", e);
-			}
+		if (key == null) {
+			return false;
 		}
 
-		return false;
+		try {
+			return findIdentifyByKey(facilityMetadata, key) != null;
+		} catch (Exception e) {
+			throw new OrmException("Unable to query document.", e);
+		}
 	}
 
 	@Override
 	public Object fetch(FacilityMetadata facilityMetadata, Object key) throws OrmException {
 		Assertion.checkNotNull(facilityMetadata);
 
-		if (key != null) {
-			final Object existing = facilityCacheManager.get(facilityMetadata, key, Object.class);
-			if (existing != null) {
-				return existing;
-			}
+		if (key == null) {
+			return null;
+		}
 
-			try {
-				final OIdentifiable rid = findIdentifyByKey(facilityMetadata, key);
-				final ODocument document = findDocument(rid);
-				if (document != null) {
-					final Map<ColumnMetadata, Object> data = new LinkedHashMap<>(convertValues(facilityMetadata, document));
-					if (facilityMetadata.validate(data)) {
-						final FacilityBuilder builder = new FacilityBuilder(this, new OrientContainerFactory(this));
-						final Object instance = builder.build(facilityMetadata, data);
-						facilityCacheManager.add(facilityMetadata, key, instance);
-						return instance;
-					}
+		final Object existing = facilityCacheManager.get(facilityMetadata, key, Object.class);
+		if (existing != null) {
+			return existing;
+		}
+
+		try {
+			final OIdentifiable rid = findIdentifyByKey(facilityMetadata, key);
+			final ODocument document = findDocument(rid);
+			if (document != null) {
+				final Map<ColumnMetadata, Object> data = new LinkedHashMap<>(convertValues(facilityMetadata, document));
+				if (facilityMetadata.validate(data)) {
+					final FacilityBuilder builder = new FacilityBuilder(this, new OrientContainerFactory(this));
+					final Object instance = builder.build(facilityMetadata, data);
+					facilityCacheManager.add(facilityMetadata, key, instance);
+					return instance;
 				}
-			} catch (Exception e) {
-				throw new OrmException("Unable to fetch document by key [" + key + "].", e);
 			}
+		} catch (Exception e) {
+			throw new OrmException("Unable to fetch document by key [" + key + "].", e);
 		}
 
 		return null;
@@ -225,85 +235,72 @@ public class OrientDatabaseSessionFactory extends AbstractTx implements Database
 	public List<Object> fetch(FacilityMetadata facilityMetadata, Object... keys) throws OrmException {
 		Assertion.checkNotNull(facilityMetadata);
 
-		if (keys != null && keys.length > 0) {
-			final Set<Object> hashSet = new HashSet<>(Arrays.asList(keys));
-			final Map<Object, Object> cached = facilityCacheManager.get(facilityMetadata, Arrays.asList(keys), Object.class);
-			final List<Object> cachedElements;
-			hashSet.removeAll(cached.keySet());
-			try {
-				cachedElements = new ArrayList<>(cached.values());
-
-				if (hashSet.isEmpty()) {
-					return Collections.unmodifiableList(cachedElements);
-				}
-			} catch (Exception e) {
-				throw new OrmException("Unable to map and convert entities.", e);
-			}
-
-			final Map<Object, Map<ColumnMetadata, Object>> entityData = new HashMap<>();
-			for (OIdentifiable rid : findIdentifyByKeys(facilityMetadata, hashSet)) {
-				final ODocument document = findDocument(rid);
-				if (document == null) {
-					continue;
-				}
-
-				final Map<ColumnMetadata, Object> data = convertValues(facilityMetadata, document);
-				final Object key = facilityMetadata.getIdVisitor().ofKey(data);
-				if (key == null) {
-					continue;
-				}
-
-				final Map<ColumnMetadata, Object> objectMap = entityData.computeIfAbsent(key, k -> new LinkedHashMap<>());
-				objectMap.putAll(data);
-			}
-
-			final List<Object> result = new ArrayList<>(cachedElements);
-			entityData.forEach((o, data) -> {
-				if (facilityMetadata.validate(data)) {
-					final FacilityBuilder builder = new FacilityBuilder(this, new OrientContainerFactory(this));
-					final Object instance = builder.build(facilityMetadata, data);
-					if (instance != null) {
-						final Object key = facilityMetadata.getIdVisitor().fromObject(data);
-						facilityCacheManager.add(facilityMetadata, key, instance);
-						result.add(instance);
-					}
-				}
-			});
-
-			return Collections.unmodifiableList(result);
+		if (keys == null || keys.length <= 0) {
+			return Collections.emptyList();
 		}
 
+		final Set<Object> hashSet = new HashSet<>(Arrays.asList(keys));
+		final Map<Object, Object> cached = facilityCacheManager.get(facilityMetadata, Arrays.asList(keys), Object.class);
+		final List<Object> cachedElements;
+		hashSet.removeAll(cached.keySet());
+		try {
+			cachedElements = new ArrayList<>(cached.values());
 
-		return Collections.emptyList();
+			if (hashSet.isEmpty()) {
+				return Collections.unmodifiableList(cachedElements);
+			}
+		} catch (Exception e) {
+			throw new OrmException("Unable to map and convert entities.", e);
+		}
+
+		final Map<Object, Map<ColumnMetadata, Object>> entityData = new HashMap<>();
+		for (OIdentifiable rid : findIdentifyByKeys(facilityMetadata, hashSet)) {
+			final ODocument document = findDocument(rid);
+			if (document != null) {
+				final Map<ColumnMetadata, Object> data = convertValues(facilityMetadata, document);
+				final Object key = facilityMetadata.getIdVisitor().ofKey(data);
+				if (key != null) {
+					final Map<ColumnMetadata, Object> objectMap = entityData.computeIfAbsent(key, k -> new LinkedHashMap<>());
+					objectMap.putAll(data);
+				}
+			}
+		}
+
+		final List<Object> result = new ArrayList<>(cachedElements);
+		entityData.forEach((o, data) -> {
+			if (facilityMetadata.validate(data)) {
+				final FacilityBuilder builder = new FacilityBuilder(this, new OrientContainerFactory(this));
+				final Object instance = builder.build(facilityMetadata, data);
+				if (instance != null) {
+					final Object key = facilityMetadata.getIdVisitor().fromObject(data);
+					facilityCacheManager.add(facilityMetadata, key, instance);
+					result.add(instance);
+				}
+			}
+		});
+		return Collections.unmodifiableList(result);
 	}
 
 	@Override
 	public List<Object> fetchAll(FacilityMetadata facilityMetadata) throws OrmException {
 		Assertion.checkNotNull(facilityMetadata);
 
-		final ORecordIteratorCluster<ORecord> allDocuments = findAllDocuments(facilityMetadata.getTable());
 		final List<Object> objects = new ArrayList<>();
-		if (allDocuments != null) {
-			for (ORecord record : allDocuments) {
-				if (record != null) {
-					if (record instanceof ODocument) {
-						final Map<ColumnMetadata, Object> data = new LinkedHashMap<>(convertValues(facilityMetadata,
-								(ODocument) record));
+		final ORecordIteratorClass<ODocument> oRecords = databaseDocument.browseClass(facilityMetadata.getTable());
+		while (oRecords.hasNext()) {
+			final ODocument record = oRecords.next();
+			if (record != null) {
+				final Map<ColumnMetadata, Object> data = new LinkedHashMap<>(convertValues(facilityMetadata, record));
 
-						if (facilityMetadata.validate(data)) {
-							final Object key = facilityMetadata.getIdVisitor().fromObject(data);
-							final Object cached = facilityCacheManager.get(facilityMetadata, key, Object.class);
-							if (cached != null) {
-								objects.add(cached);
-								continue;
-							}
-
-							final FacilityBuilder builder = new FacilityBuilder(this, new OrientContainerFactory(this));
-							final Object instance = builder.build(facilityMetadata, data);
-							if (instance == null) {
-								continue;
-							}
-
+				if (facilityMetadata.validate(data)) {
+					final Object key = facilityMetadata.getIdVisitor().ofKey(data);
+					final Object cached = facilityCacheManager.get(facilityMetadata, key, Object.class);
+					if (cached != null) {
+						objects.add(cached);
+					} else {
+						final FacilityBuilder builder = new FacilityBuilder(this, new OrientContainerFactory(this));
+						final Object instance = builder.build(facilityMetadata, data);
+						if (instance != null) {
 							facilityCacheManager.add(facilityMetadata, key, instance);
 							objects.add(instance);
 						}
@@ -355,18 +352,20 @@ public class OrientDatabaseSessionFactory extends AbstractTx implements Database
 	 * @return instance schema
 	 */
 	public final ODocument findDocument(OIdentifiable item) {
-		if (item != null) {
-			if (item instanceof ODocument) {
-				return (ODocument) item;
-			}
-
-			final ORID identity = item.getIdentity();
-			if (identity != null) {
-				return databaseDocument.load(identity);
-			}
+		if (item == null) {
+			return null;
 		}
 
-		return null;
+		if (item instanceof ODocument) {
+			return (ODocument) item;
+		}
+
+		final ORID identity = item.getIdentity();
+		if (identity == null) {
+			return null;
+		}
+
+		return databaseDocument.load(identity);
 	}
 
 	/**
@@ -410,8 +409,8 @@ public class OrientDatabaseSessionFactory extends AbstractTx implements Database
 		}
 
 		final StringBuilder queryBuilder = new StringBuilder()
-				.append("select from index:").append(keyIndex(facilityMetadata)).append(" ")
-				.append("where key");
+				.append("SELECT FROM INDEX:").append(keyIndex(facilityMetadata)).append(" ")
+				.append("WHERE key");
 		queryBuilder.append(" = [");
 		for (int i = 0; i < arguments.size(); i++) {
 			if (i > 0) {
@@ -422,90 +421,101 @@ public class OrientDatabaseSessionFactory extends AbstractTx implements Database
 
 		queryBuilder.append("]");
 
-		final OSQLQuery oilSyncQuery = new OSQLSynchQuery(queryBuilder.toString());
-		final Iterable iterable = databaseDocument.query(oilSyncQuery, arguments.toArray());
-		if (iterable != null) {
-			int numMatching = 0;
-			for (Object item : iterable) {
-				if (item instanceof ODocument) {
-					return fixIdentifyRecord((ODocument) item);
-				} else if (item instanceof ORID) {
-					return databaseDocument.load((ORID) item);
-				}
+		final OSQLQuery synchQuery = new OSQLSynchQuery(queryBuilder.toString());
+		final Iterable objects = databaseDocument.query(synchQuery, arguments.toArray());
+		if (objects == null) {
+			return null;
+		}
 
-				numMatching++;
+		int numMatching = 0;
+		for (Object item : objects) {
+			if (item instanceof ODocument) {
+				return fixIdentifyRecord((ODocument) item);
+			} else if (item instanceof ORID) {
+				return databaseDocument.load((ORID) item);
 			}
 
-			if (numMatching > 0) {
-				throw new OrmException("Found matching index keys but unable to install identifiable record.");
-			}
+			numMatching++;
+		}
+
+		if (numMatching > 0) {
+			throw new OrmException("Found matching index keys but unable to install identifiable record.");
 		}
 		return null;
 	}
 
 	private Collection<OIdentifiable> findIdentifyByKeys(FacilityMetadata facilityMetadata, Set<Object> keys) {
-		if (facilityMetadata != null && keys != null && keys.isEmpty()) {
-			final Collection<OIdentifiable> docs = keys
-					.stream()
-					.map(key -> findIdentifyByKey(facilityMetadata, key))
-					.filter(Objects::nonNull)
-					.collect(Collectors.toList());
-			return Collections.unmodifiableCollection(docs);
+		if (facilityMetadata == null || keys == null || keys.isEmpty()) {
+			return Collections.emptyList();
 		}
 
-		return Collections.emptyList();
+		final Collection<OIdentifiable> docs = keys
+				.stream()
+				.map(key -> findIdentifyByKey(facilityMetadata, key))
+				.filter(Objects::nonNull)
+				.collect(Collectors.toCollection(() -> new ArrayList<>(keys.size())));
+		return Collections.unmodifiableCollection(docs);
 	}
 
 	public final OIdentifiable findIdentifyByKey(FacilityMetadata facilityMetadata, Object key) {
-		if (facilityMetadata != null && key != null) {
-			if (key instanceof OIdentifiable) {
-				return fixIdentifyRecord((OIdentifiable) key);
-			}
-
-			final OIdentifiable identifiable = findIdentifyByMap(facilityMetadata, facilityMetadata.getIdVisitor().fromKey(key));
-			if (identifiable != null) {
-				return fixIdentifyRecord(identifiable);
-			}
+		if (facilityMetadata == null || key == null) {
+			return null;
 		}
 
-		return null;
+		if (key instanceof OIdentifiable) {
+			return fixIdentifyRecord((OIdentifiable) key);
+		}
+
+		final OIdentifiable identifiable = findIdentifyByMap(facilityMetadata, facilityMetadata.getIdVisitor().fromKey(key));
+		if (identifiable != null) {
+			return fixIdentifyRecord(identifiable);
+		} else {
+			return null;
+		}
 	}
 
 	private OIdentifiable fixIdentifyRecord(OIdentifiable record) {
-		if (record != null) {
-			if (record instanceof ODocument) {
-				final ODocument document = (ODocument) record;
-				if (document.fields() <= 1) {
-					final Object value = document.fieldValues()[0];
-					if (value instanceof OIdentifiable) {
-						return findDocument((OIdentifiable) value);
-					}
-				}
+		if (record == null) {
+			return null;
+		}
 
-				final Object field = document.field("rid");
-				if (field instanceof OIdentifiable) {
-					return findDocument((OIdentifiable) field);
+		if (record instanceof ODocument) {
+			final ODocument document = (ODocument) record;
+			if (document.fields() <= 1) {
+				final Object value = document.fieldValues()[0];
+				if (value instanceof OIdentifiable) {
+					return findDocument((OIdentifiable) value);
 				}
+			}
+
+			final Object field = document.field("rid");
+			if (field instanceof OIdentifiable) {
+				return findDocument((OIdentifiable) field);
 			}
 		}
 
-		return null;
+		return record;
 	}
 
 	@SuppressWarnings("unchecked")
 	public final <T> T install(FacilityMetadata facilityMetadata, ODocument document) throws OrmException {
-		if (document != null) {
-			final Map<ColumnMetadata, Object> objectMap = convertValues(facilityMetadata, document);
-			if (objectMap != null && !objectMap.isEmpty()) {
-				final OrientContainerFactory containerFactory = new OrientContainerFactory(this);
-				final T element = (T) new FacilityBuilder(this, containerFactory).build(facilityMetadata, objectMap);
-				if (element != null) {
-					final Object key = facilityMetadata.getIdVisitor().fromObject(element);
-					facilityCacheManager.add(facilityMetadata, key, element);
-					return element;
-				}
-			}
+		if (document == null) {
+			return null;
 		}
-		return null;
+
+		final Map<ColumnMetadata, Object> objectMap = convertValues(facilityMetadata, document);
+		if (objectMap == null || objectMap.isEmpty()) {
+			return null;
+		}
+
+		final OrientContainerFactory containerFactory = new OrientContainerFactory(this);
+		final T element = (T) new FacilityBuilder(this, containerFactory).build(facilityMetadata, objectMap);
+		if (element == null) {
+			return null;
+		}
+
+		final Object key = facilityMetadata.getIdVisitor().fromObject(element);
+		facilityCacheManager.add(facilityMetadata, key, element);
+		return element;
 	}
 }

@@ -54,12 +54,12 @@ public class FacilityMapper {
 	 * @param facilityAdder    utility class for save entity instance
 	 * @throws OrmException if entity not iserted to database
 	 */
-	public void save(FacilityMetadata facilityMetadata, Object instance, FacilityAdder facilityAdder) throws OrmException {
+	public Object save(FacilityMetadata facilityMetadata, Object instance, FacilityAdder facilityAdder) throws OrmException {
 		facilityMetadata.getColumnMetadataCollection().forEach(column -> {
 			final ColumnVisitor visitor = facilityMetadata.getVisitor(column);
 			final IdProducer generator = facilityMetadata.getProducer(column);
 			if (generator != null && visitor != null && visitor.empty(instance)) {
-				final Object generated = generator.install(sessionFactory, facilityMetadata);
+				final Object generated = generator.create(sessionFactory, facilityMetadata);
 				final DataContainer container = new BaseDataContainer(generated);
 				visitor.setValue(instance, container, sessionFactory);
 			}
@@ -70,6 +70,8 @@ public class FacilityMapper {
 		if (!facilityAdder.add(facilityMetadata, filtered)) {
 			throw new OrmException("Unable to add instance, unknown error.");
 		}
+
+		return instance;
 	}
 
 

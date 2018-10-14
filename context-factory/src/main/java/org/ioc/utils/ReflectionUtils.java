@@ -136,6 +136,17 @@ public class ReflectionUtils {
 		return Collections.unmodifiableList(list);
 	}
 
+	@SuppressWarnings("unchecked")
+	public static <T extends Annotation> T searchAnnotationInParameters(Method method, Class<T> type) {
+		return (T) Arrays
+				.stream(method.getParameterAnnotations())
+				.flatMap(Arrays::stream)
+				.filter(annotation -> type.isAssignableFrom(annotation.getClass()))
+				.findFirst()
+				.orElse(null);
+
+	}
+
 	public static List<Class<?>> toClassHierarchy(Class<?> entityClass) {
 		if (entityClass == null || Object.class.equals(entityClass)) {
 			return Collections.emptyList();

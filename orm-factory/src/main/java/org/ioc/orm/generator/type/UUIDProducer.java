@@ -29,14 +29,14 @@ import java.util.UUID;
  * @date 10/2018
  */
 public class UUIDProducer implements IdProducer {
-	private static final UUIDProducer UUID_PRODUCER = new UUIDProducer();
+	private static final UUIDProducer instance = new UUIDProducer();
 
-	public static IdProducer of() {
-		return UUID_PRODUCER;
+	public static IdProducer getInstance() {
+		return UUIDProducer.instance;
 	}
 
 	@Override
-	public UUID install(SessionFactory sessionFactory, FacilityMetadata facilityMetadata) {
+	public UUID create(SessionFactory sessionFactory, FacilityMetadata facilityMetadata) {
 		return UUID.randomUUID();
 	}
 }

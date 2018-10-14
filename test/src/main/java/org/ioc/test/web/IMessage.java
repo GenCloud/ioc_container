@@ -16,48 +16,36 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.ioc.web.handler.metadata.request;
-
-import io.netty.buffer.ByteBuf;
-import io.netty.handler.codec.http.HttpRequest;
-import org.ioc.annotations.web.MappingMethod;
-import org.ioc.web.handler.HttpRequestHeaders;
-import org.ioc.web.handler.IHttpRequest;
-import org.ioc.web.handler.metadata.ProtocolType;
+package org.ioc.test.web;
 
 /**
  * @author GenCloud
- * @date 10/2018
+ * @date 13.10.2018
  */
-public class NettyHttpRequest implements IHttpRequest {
-	private final HttpRequest nettyRequest;
+public class IMessage {
+	private final String message;
+	private final Type type;
 
-	public NettyHttpRequest(HttpRequest nettyRequest) {
-		this.nettyRequest = nettyRequest;
+	public IMessage(String message) {
+		this.message = message;
+		type = Type.OK;
 	}
 
-	@Override
-	public HttpRequestHeaders headers() {
-		return null;
+	public IMessage(Type type, String message) {
+		this.message = message;
+		this.type = type;
 	}
 
-	@Override
-	public ProtocolType protocolType() {
-		return null;
+	public String getMessage() {
+		return message;
 	}
 
-	@Override
-	public String path() {
-		return null;
+	public Type getType() {
+		return type;
 	}
 
-	@Override
-	public MappingMethod method() {
-		return null;
-	}
-
-	@Override
-	public ByteBuf content() {
-		return null;
+	enum Type {
+		OK,
+		ERROR
 	}
 }

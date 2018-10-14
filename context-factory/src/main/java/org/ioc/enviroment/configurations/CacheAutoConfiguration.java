@@ -31,19 +31,13 @@ import static org.ioc.context.factories.Factory.defaultCacheFactory;
  */
 @Property(prefix = "cache.")
 public class CacheAutoConfiguration {
-	private Class<? extends Factory> factoryClass = defaultCacheFactory();
-
-	public Class<? extends Factory> getFactoryClass() {
-		return factoryClass;
-	}
-
-	public void setFactoryClass(Class<? extends Factory> factoryClass) {
-		this.factoryClass = factoryClass;
-	}
+	@Property("factory")
+	private String factoryClass = "org.ioc.cache.impl.EhFactory";
 
 	@PropertyFunction
 	public Object cacheFactory() {
-		final Class<? extends Factory> factory = factoryClass;
+		final Class<? extends Factory> factory = factoryClass == null ? defaultCacheFactory()
+				: (Class<? extends Factory>) ReflectionUtils.loadClass(factoryClass);
 		return ReflectionUtils.instantiateClass(factory);
 	}
 }

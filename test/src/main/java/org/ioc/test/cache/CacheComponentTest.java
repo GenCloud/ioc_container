@@ -19,7 +19,6 @@
 package org.ioc.test.cache;
 
 import org.ioc.annotations.context.IoCComponent;
-import org.ioc.annotations.context.PostConstruct;
 import org.ioc.cache.ICache;
 import org.ioc.cache.impl.EhFactory;
 import org.ioc.context.factories.Factory;
@@ -40,7 +39,6 @@ public class CacheComponentTest implements CacheFactorySensible {
 
 	private ICache<String, String> sampleCache;
 
-	@PostConstruct
 	public void initializeCache() {
 		sampleCache = factory.installEternal("sample-test-getEntityCache", 200);
 

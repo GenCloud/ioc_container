@@ -52,11 +52,10 @@ public class OrientSchemaQuery<T> implements SchemaQuery<T> {
 			return first;
 		}
 
-		while (iterator().hasNext()) {
-			T elem = iterator().next();
-			if (elem != null) {
-				first = elem;
-				return elem;
+		for (T item : this) {
+			if (item != null) {
+				first = item;
+				return item;
 			}
 		}
 
@@ -66,13 +65,11 @@ public class OrientSchemaQuery<T> implements SchemaQuery<T> {
 	@Override
 	public List<T> list() {
 		final List<T> list = new ArrayList<>();
-		while (iterator().hasNext()) {
-			T elem = iterator().next();
-			if (elem != null) {
-				list.add(elem);
+		for (T item : this) {
+			if (item != null) {
+				list.add(item);
 			}
 		}
-
 		return Collections.unmodifiableList(list);
 	}
 
@@ -93,15 +90,15 @@ public class OrientSchemaQuery<T> implements SchemaQuery<T> {
 			@Override
 			public T next() {
 				final ODocument next = iterator.next();
-				if (next != null) {
-					try {
-						return databaseSession.install(facilityMetadata, next);
-					} catch (Exception e) {
-						throw new OrmException("Unable to fetch next entity [" + facilityMetadata + "] from document [" + next.getIdentity() + "].", e);
-					}
+				if (next == null) {
+					return null;
 				}
 
-				return null;
+				try {
+					return databaseSession.install(facilityMetadata, next);
+				} catch (Exception e) {
+					throw new OrmException("Unable to fetch next entity [" + facilityMetadata + "] from document [" + next.getIdentity() + "].", e);
+				}
 			}
 		};
 	}

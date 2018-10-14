@@ -1,7 +1,12 @@
 package org.ioc.context.type;
 
+import org.ioc.annotations.context.Mode;
+import org.ioc.context.factories.core.PrototypeFactory;
+import org.ioc.context.factories.core.SingletonFactory;
+import org.ioc.context.factories.web.RequestFactory;
 import org.ioc.context.model.TypeMetadata;
 
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -36,6 +41,8 @@ public interface IoCContext {
 	 */
 	void setType(String name, Object instance);
 
+	Collection<TypeMetadata> getMetadatas(Mode mode);
+
 	/**
 	 * Function of objects instantiation in factories.
 	 *
@@ -56,4 +63,10 @@ public interface IoCContext {
 	 * Calling function of destroying components, if any.
 	 */
 	void destroy();
+
+	RequestFactory getRequestFactory();
+
+	SingletonFactory getSingletonFactory();
+
+	PrototypeFactory getPrototypeFactory();
 }

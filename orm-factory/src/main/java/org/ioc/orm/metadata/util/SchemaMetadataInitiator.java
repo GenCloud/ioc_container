@@ -39,7 +39,7 @@ public class SchemaMetadataInitiator {
 
 	public SchemaMetadata install() {
 		final FacilityMetadataInspector analyzer = new FacilityMetadataInspector(columnVisitorFactory, classes);
-		return new SchemaMetadata(analyzer.inspect());
+		return new SchemaMetadata(analyzer.analyze());
 	}
 
 	public SchemaMetadataInitiator withColumnFactory(ColumnVisitorFactory factory) {

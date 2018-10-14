@@ -1,0 +1,86 @@
+buildscript {
+    ext {
+        apacheMathVersion = '3.6.1'
+        springBootVersion = '1.4.0.RELEASE'
+        springJavaDslVersion = '1.2.0.M1'
+        springIntegrationVersion = '4.3.1.RELEASE'
+        nettyVersion = '4.0.39.Final' //'4.1.3.Final'
+        hibernateVersion = '5.2.1.Final'
+        reactorVersion = '+' //2.5.0.M4, 2.0.8.RELEASE
+        commonsPoolVersion = '2.4.2'
+        artemisJmsServerVersion = '1.3.0'
+        guavaVersion = '19.0'
+    }
+    repositories {
+        maven { url "https://repo.spring.io/plugins-release" }
+        maven { url "https://repo.spring.io/snapshot" }
+        maven { url "https://repo.spring.io/milestone" }
+        mavenCentral()
+    }
+    dependencies {
+//        optional("org.springframework.boot:spring-boot-configuration-processor")
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+        classpath("org.springframework.build.gradle:propdeps-plugin:+")
+        classpath("org.kt3k.gradle.plugin:coveralls-gradle-plugin:+")
+        classpath("org.junit.platform:junit-platform-gradle-plugin:1.0.0-M2")
+    }
+
+//    compileJava.dependsOn(processResources)
+}
+
+allprojects {
+    apply plugin: 'eclipse'
+    apply plugin: 'idea'
+    apply plugin: 'jacoco'
+    apply plugin: 'java'
+
+    version = '0.0.2-SNAPSHOT'
+
+    repositories {
+        mavenCentral()
+        maven { url "https://repo.spring.io/snapshot" }
+        maven { url "https://repo.spring.io/milestone" }
+    }
+
+    jacocoTestReport {
+        dependsOn test
+        sourceDirectories = project.files(sourceSets.main.allSource.srcDirs)
+        classDirectories =  project.files(sourceSets.main.output)
+        reports {
+            xml.enabled true
+        }
+    }
+}
+
+subprojects {
+    apply plugin: 'org.junit.platform.gradle.plugin'
+}
+
+apply plugin: 'com.github.kt3k.coveralls'
+
+coveralls {
+    sourceDirs = files(subprojects.sourceSets.main.allSource.srcDirs).files.absolutePath
+}
+
+task jacocoRootReport(type: JacocoReport) {
+    dependsOn = subprojects.jacocoTestReport
+    sourceDirectories = files(subprojects.sourceSets.main.allSource.srcDirs)
+    classDirectories = files(subprojects.sourceSets.main.output)
+    executionData = files(subprojects.jacocoTestReport.executionData)
+    reports {
+        xml.enabled = true
+        xml.destination = "${buildDir}/reports/jacoco/test/jacocoTestReport.xml"
+    }
+    setOnlyIf { true }
+}
+
+eclipse {
+    classpath {
+        containers.remove('org.eclipse.jdt.launching.JRE_CONTAINER')
+        containers 'org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8'
+    }
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.9'
+}

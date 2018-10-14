@@ -85,7 +85,7 @@ public class LazyRelationHandler implements InvocationHandler {
 		}
 
 		if (log.isDebugEnabled()) {
-			log.debug("Lazy relation fetched, copying facilityMetadata ofValues from instance [{}].", value);
+			log.debug("Lazy relation fetched, copying facilityMetadata values from instance [{}].", value);
 		}
 
 		for (Map.Entry<ColumnMetadata, ColumnVisitor> entry : facilityMetadata.getColumnVisitorMap()) {

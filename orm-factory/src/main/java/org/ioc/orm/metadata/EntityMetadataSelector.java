@@ -35,7 +35,7 @@ public interface EntityMetadataSelector {
 
 	boolean contains(FacilityMetadata facilityMetadata);
 
-	Collection<FacilityMetadata> ofValues();
+	Collection<FacilityMetadata> collectAll();
 
 	int size();
 }

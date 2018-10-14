@@ -16,34 +16,20 @@
  * You should have received a copy of the GNU General Public License
  * along with DI (IoC) Container Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.ioc.web.handler;
+package org.ioc.web.model;
 
 /**
  * @author GenCloud
  * @date 10/2018
  */
-public interface HttpRequestHeaders {
-	String ACCEPT = "Accept";
+public class ModelAndView extends ModelMap {
+	private String view;
 
-	String ACCEPT_CHARSET = "Accept-Charset";
+	public String getView() {
+		return view;
+	}
 
-	String ACCEPT_ENCODING = "Accept-Encoding";
-
-	String ACCEPT_LANGUAGE = "Accept-Language";
-
-	String AUTHORIZATION = "Authorization";
-
-	String CACHE_CONTROL = "Cache-Control";
-
-	String COOKIE = "Cookie";
-
-	String CONTENT_LENGTH = "Content-Length";
-
-	String CONTENT_TYPE = "Content-Type";
-
-	String PROTOCOL = "X-FORWARDED-PROTO";
-
-	String REMOTE_IP_HEADER = "X-FORWARDED-FOR";
-
-	String USER_AGENT = "User-Agent";
+	public void setView(String pathToPage) {
+		this.view = pathToPage;
+	}
 }

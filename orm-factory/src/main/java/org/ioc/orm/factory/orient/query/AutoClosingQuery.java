@@ -60,6 +60,21 @@ public class AutoClosingQuery implements Iterable<ODocument>, Closeable, AutoClo
 
 	private boolean closed = false;
 
+	private AutoClosingQuery(ODatabaseDocument databaseDocument, String query, Collection<?> params) {
+		Assertion.checkNotNull(databaseDocument);
+		Assertion.checkNotNull(query);
+
+		this.databaseDocument = databaseDocument;
+		this.query = query;
+
+		parameterMap = Collections.emptyMap();
+		if (params != null && !params.isEmpty()) {
+			parameterList = new ArrayList<>(params);
+		} else {
+			parameterList = Collections.emptyList();
+		}
+	}
+
 	public AutoClosingQuery(ODatabaseDocument databaseDocument, String query, Map<String, Object> params) {
 		Assertion.checkNotNull(databaseDocument);
 		Assertion.checkNotNull(query);
@@ -76,26 +91,28 @@ public class AutoClosingQuery implements Iterable<ODocument>, Closeable, AutoClo
 	}
 
 	private static void close(Object obj) throws Exception {
-		if (obj != null) {
-			if (obj instanceof Closeable) {
-				((Closeable) obj).close();
-			} else if (obj instanceof AutoCloseable) {
-				((AutoCloseable) obj).close();
-			}
+		if (obj == null) {
+			return;
+		}
+
+		if (obj instanceof Closeable) {
+			((Closeable) obj).close();
+		} else if (obj instanceof AutoCloseable) {
+			((AutoCloseable) obj).close();
 		}
 	}
 
 	private static long timerDelay() {
 		final String prop = System.getProperty("query.nonBlocking.timeOut");
-		if (prop != null && !prop.isEmpty()) {
-			try {
-				return Long.parseLong(prop);
-			} catch (Exception e) {
-				throw new OrmException("Unable to parse close delay value of [" + prop + "].", e);
-			}
+		if (prop == null || prop.trim().isEmpty()) {
+			return -1;
 		}
 
-		return -1;
+		try {
+			return Long.parseLong(prop);
+		} catch (Exception e) {
+			throw new OrmException("Unable to parse timeout value of [" + prop + "].", e);
+		}
 	}
 
 	@Override
@@ -162,51 +179,51 @@ public class AutoClosingQuery implements Iterable<ODocument>, Closeable, AutoClo
 	@Override
 	public Iterator<ODocument> iterator() {
 		final Iterator<?> iterator = exec();
-		if (iterator != null) {
-			return new Iterator<ODocument>() {
-				@Override
-				public boolean hasNext() {
-					if (isClosed()) {
-						return false;
-					}
-
-					if (!iterator.hasNext()) {
-						try {
-							close();
-						} catch (Exception e) {
-							log.warn("Unable to close results.", e);
-						}
-						return false;
-					}
-
-					return true;
-				}
-
-				@Override
-				public ODocument next() {
-					if (isClosed()) {
-						throw new OrmException("Query is closed.");
-					}
-
-					final Object obj = iterator.next();
-					if (obj == null) {
-						return null;
-					}
-
-					if (obj instanceof ODocument) {
-						return (ODocument) obj;
-					} else if (obj instanceof ORecord) {
-						return databaseDocument.load((ORecord) obj);
-					} else if (obj instanceof OIdentifiable) {
-						return databaseDocument.load(((OIdentifiable) obj).getIdentity());
-					}
-
-					throw new OrmException("Unexpected document type [" + obj.getClass() + "].");
-				}
-			};
+		if (iterator == null) {
+			return Collections.emptyIterator();
 		}
 
-		return Collections.emptyIterator();
+		return new Iterator<ODocument>() {
+			@Override
+			public boolean hasNext() {
+				if (isClosed()) {
+					return false;
+				}
+
+				if (!iterator.hasNext()) {
+					try {
+						close();
+					} catch (Exception e) {
+						log.warn("Unable to close results.", e);
+					}
+					return false;
+				}
+
+				return true;
+			}
+
+			@Override
+			public ODocument next() {
+				if (isClosed()) {
+					throw new OrmException("Query is closed.");
+				}
+
+				final Object obj = iterator.next();
+				if (obj == null) {
+					return null;
+				}
+
+				if (obj instanceof ODocument) {
+					return (ODocument) obj;
+				} else if (obj instanceof ORecord) {
+					return databaseDocument.load((ORecord) obj);
+				} else if (obj instanceof OIdentifiable) {
+					return databaseDocument.load(((OIdentifiable) obj).getIdentity());
+				}
+
+				throw new OrmException("Unexpected document type [" + obj.getClass() + "].");
+			}
+		};
 	}
 
 	private static class EndOfServiceElement {
