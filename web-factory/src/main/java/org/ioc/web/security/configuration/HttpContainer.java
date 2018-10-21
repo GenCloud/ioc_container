@@ -53,7 +53,7 @@ public class HttpContainer {
 		return configuredRequests;
 	}
 
-	public AuthenticationRequestConfigurer configureAuthRequest() {
+	public AuthenticationRequestConfigurer configureSession() {
 		if (configuredAuthRequest == null) {
 			configuredAuthRequest = new AuthenticationRequestConfigurer(this);
 		}
@@ -64,36 +64,14 @@ public class HttpContainer {
 	public static class AuthenticationRequestConfigurer {
 		private final HttpContainer container;
 
-		private String authRequest;
-		private String redirectPath;
 		private String expiredPath;
 
 		AuthenticationRequestConfigurer(HttpContainer container) {
 			this.container = container;
 		}
 
-		public String getAuthRequest() {
-			return authRequest;
-		}
-
-		public String getExpiredPath() {
+		String getExpiredPath() {
 			return expiredPath;
-		}
-
-		String getRedirectPath() {
-			return redirectPath;
-		}
-
-
-		public AuthenticationRequestConfigurer authRequest(String authRequest) {
-			this.authRequest = authRequest;
-			container.configureRequests().anonymousRequests(authRequest);
-			return this;
-		}
-
-		public AuthenticationRequestConfigurer successRedirectPath(String redirectPath) {
-			this.redirectPath = redirectPath;
-			return this;
 		}
 
 		public AuthenticationRequestConfigurer expiredPath(String expiredPath) {
@@ -176,17 +154,12 @@ public class HttpContainer {
 			}
 		}
 
-		public HttpAuthorizeRequest authorizeRequestsWithAuthCheck(String request, String... roles) {
-			Arrays.stream(roles).forEach(r -> addRolePermit(request, r, true));
-			return this;
-		}
-
 		public HttpAuthorizeRequest authorizeRequests(String request, String... roles) {
-			Arrays.stream(roles).forEach(r -> addRolePermit(request, r, false));
+			Arrays.stream(roles).forEach(r -> addRolePermit(request, r));
 			return this;
 		}
 
-		void addRolePermit(String request, String roleName, boolean isAuthenticated) {
+		void addRolePermit(String request, String roleName) {
 			final Optional<RequestSettings> optional = includeRolePermits.keySet()
 					.stream()
 					.filter(r -> Objects.equals(r.getUrlPattern(), request))
@@ -198,13 +171,13 @@ public class HttpContainer {
 				if (roles == null) {
 					roles = new ArrayList<>();
 					roles.add(roleName);
-					includeRolePermits.put(new RequestSettings(request, isAuthenticated, false), roles);
+					includeRolePermits.put(new RequestSettings(request, true, false), roles);
 					return;
 				}
 
 				roles.add(roleName);
 			} else {
-				includeRolePermits.put(new RequestSettings(request, isAuthenticated, false),
+				includeRolePermits.put(new RequestSettings(request, true, false),
 						new ArrayList<>(Collections.singletonList(roleName)));
 			}
 		}

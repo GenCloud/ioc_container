@@ -90,11 +90,7 @@ public class DefaultRequestHandler extends SimpleChannelInboundHandler<FullHttpR
 		Mapping mapping;
 		try {
 			final String uri = httpRequest.uri();
-			final String authRequest = securityConfigureAdapter.getContainer().configureAuthRequest().getAuthRequest();
-			final boolean isAuthProvider = authRequest != null && !authRequest.isEmpty()
-					&& uri.equalsIgnoreCase(authRequest);
-
-			mapping = mappingContainer.findMapping(request, isAuthProvider);
+			mapping = mappingContainer.findMapping(request);
 
 			if (mapping != null && mapping.getConsumes() != null && !mapping.getConsumes().isEmpty()) {
 				if (Arrays.asList(httpRequest.headers().get("Accept").split(","))
@@ -163,19 +159,17 @@ public class DefaultRequestHandler extends SimpleChannelInboundHandler<FullHttpR
 			tryMergeModel(intercepted, model);
 
 			preparedResponse.setViewPage(templateResolver.resolveArguments(model.getView(), model));
-			preparedResponse.setResponseStatus(OK);
 			preparedResponse.addHeader(CONTENT_TYPE, produces);
 		} else if (mapping.isView()) {
 			final ModelAndView model = preparedResponse.getModel();
 			tryMergeModel(intercepted, model);
 
 			preparedResponse.setViewPage(templateResolver.resolveArguments(invoked.toString(), model));
-			preparedResponse.setResponseStatus(OK);
 			preparedResponse.addHeader(CONTENT_TYPE, produces);
 		} else {
 			preparedResponse.setBody(invoked);
 			preparedResponse.setResponseStatus(OK);
-			preparedResponse.addHeader(CONTENT_TYPE, produces);
+			preparedResponse.addHeader(CONTENT_TYPE, "application/json;charset=utf-8");
 		}
 
 		HttpResponse httpResponse;

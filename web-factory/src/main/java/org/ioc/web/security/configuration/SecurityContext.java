@@ -49,7 +49,7 @@ public class SecurityContext {
 	public UserDetails authenticate(String username, String password, Encoder encoder) {
 		UserDetails currentUserDetails;
 		for (UserDetailsProcessor roleDetails : userDetailsProcessors) {
-			currentUserDetails = roleDetails.loadUser(username);
+			currentUserDetails = roleDetails.loadUserByUsername(username);
 			if (currentUserDetails != null) {
 				if (!encoder.match(password, currentUserDetails.getPassword())) {
 					throw new EncodeException("Password's does not match! Check password encryption.");
@@ -60,6 +60,14 @@ public class SecurityContext {
 		}
 
 		return null;
+	}
+
+	public void authenticate(Request request, UserDetails userDetails) {
+		final HttpSession session = findSession(request);
+		if (session != null) {
+			session.setUserDetails(userDetails);
+			session.setAuthenticated(true);
+		}
 	}
 
 	public UserDetails findCredentials(Request request) {
@@ -83,5 +91,16 @@ public class SecurityContext {
 		}
 
 		return null;
+	}
+
+	public boolean removeAuthInformation(Request request) {
+		final HttpSession session = findSession(request);
+		if (session != null && session.isAuthenticated()) {
+			session.setUserDetails(null);
+			session.setAuthenticated(false);
+			return true;
+		}
+
+		return false;
 	}
 }

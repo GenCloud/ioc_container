@@ -72,7 +72,7 @@ public class MappingContainer {
 		}
 	}
 
-	public Mapping findMapping(Request request, boolean isAuthProvider) {
+	public Mapping findMapping(Request request) {
 		final String path = request.getPath();
 		final HttpMethod method = request.getHttpMethod();
 
@@ -92,13 +92,7 @@ public class MappingContainer {
 				final Mapping mapping = mappingMap.get(pattern);
 				if (mapping.getHttpMethod().equals(method)) {
 					final TypeMetadata metadata = mapping.getMetadata();
-					Object instance;
-					if (isAuthProvider) {
-						instance = metadata.getInstance();
-					} else {
-						instance = context.getType(metadata.getType());
-					}
-
+					Object instance = context.getType(metadata.getType());
 					mapping.setInstance(instance);
 					return mapping;
 				}

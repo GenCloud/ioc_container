@@ -16,12 +16,14 @@
  * You should have received a copy of the GNU General Public License
  * along with IoC Starter Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.ioc.test.web;
+package org.examples.webapp.config;
 
 import org.ioc.annotations.configuration.Property;
 import org.ioc.annotations.configuration.PropertyFunction;
 import org.ioc.web.security.configuration.HttpContainer;
 import org.ioc.web.security.configuration.SecurityConfigureProcessor;
+import org.ioc.web.security.encoder.Encoder;
+import org.ioc.web.security.encoder.bcrypt.BCryptEncoder;
 import org.ioc.web.security.filter.CorsFilter;
 import org.ioc.web.security.filter.CsrfFilter;
 
@@ -35,9 +37,10 @@ public class SecurityConfig implements SecurityConfigureProcessor {
 	public void configure(HttpContainer httpContainer) {
 		httpContainer.
 				configureRequests().
-				anonymousRequests("/", "/date", "/upload", "/download/**", "/remove", "/clear").
-				authorizeRequests("/authorize", "ROLE_USER").
+				anonymousRequests("/", "/signup", "/signin").
 				resourceRequests("/static/**").
+				authorizeRequests("/loginPage", "ROLE_USER").
+				authorizeRequests("/signout", "ROLE_USER").
 				and().
 				configureSession().
 				expiredPath("/");
@@ -51,5 +54,10 @@ public class SecurityConfig implements SecurityConfigureProcessor {
 	@PropertyFunction
 	public CorsFilter corsFilter() {
 		return new CorsFilter();
+	}
+
+	@PropertyFunction
+	public Encoder encoder() {
+		return new BCryptEncoder();
 	}
 }

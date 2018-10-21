@@ -1,0 +1,27 @@
+body {
+    background: #efefef;
+}
+
+table {
+    background: white;
+    border-radius: 5px;
+}
+
+.container h1 {
+    display: inline-block;
+}
+
+.btn-info {
+    display: inline-block;
+    margin: -18px 0 0 20px;
+}
+
+.btn-success {
+    display: inline-block;
+    margin: -18px 0 0 10px;
+}
+
+.btn-danger {
+    display: inline-block;
+    margin: -18px 0 0 10px;
+}

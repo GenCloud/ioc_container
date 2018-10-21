@@ -1,25 +1,53 @@
 $(function () {
-    $(".btn-info").click(function () {
-        $(this).next().click();
+    $(".btn-create").click(function () {
+        var cooki = cookie();
+        document.cookie = 'CSRF-TOKEN=' + cooki;
+
+        $.ajax({
+            url: "/signup",
+            data: $('#creation').serialize(),
+            headers: {'X-CSRF-TOKEN': cooki},
+            crossDomain: true,
+            xhrFields: {
+                withCredentials: true
+            },
+            type: "POST"
+        }).done(function (data) {
+            switch (data.type) {
+                case 'OK':
+                    new PNotify({
+                        title: 'Success',
+                        text: data.message,
+                        type: 'success',
+                        hide: false
+                    });
+                    break;
+                case 'ERROR':
+                    new PNotify({
+                        title: 'Error',
+                        text: data.message,
+                        type: 'error',
+                        hide: false
+                    });
+                    break;
+            }
+        });
     });
 
-    $("input[type='file']").change(function () {
-        $.ajax({
-            type: "POST",
-            url: "/upload",
-            contentType: false,
-            processData: false,
-            data: new FormData($("form")[0]),
-            cache: false,
+    $(".btn-auth").click(function () {
+        var cooki = cookie();
+        document.cookie = 'CSRF-TOKEN=' + cooki;
 
-            error: function () {
-                new PNotify({
-                    title: 'Error',
-                    text: 'Unknown host error',
-                    type: 'error',
-                    hide: false
-                });
-            }
+        $.ajax({
+            url: "/signin",
+            data: $('#auth').serialize(),
+            headers: {'X-CSRF-TOKEN': cooki},
+            crossDomain: true,
+            xhrFields: {
+                withCredentials: true
+            },
+            type: "POST"
+
         }).done(function (data) {
             switch (data.type) {
                 case 'OK':
@@ -31,7 +59,7 @@ $(function () {
                     });
 
                     setTimeout(function () {
-                        window.location.reload();
+                        window.location = "/loginPage";
                     }, 5000);
                     break;
                 case 'ERROR':
@@ -46,101 +74,27 @@ $(function () {
         });
     });
 
-    $(".btn-warning").click(function () {
+    $(".btn-logout").click(function () {
         $.ajax({
-            type: "GET",
-            url: "/remove",
-            data: {name: this.name},
-
-            error: function () {
-                new PNotify({
-                    title: 'Error',
-                    text: 'Unknown host error',
-                    type: 'error',
-                    hide: false
-                });
-            }
+            url: "/signout",
+            crossDomain: true,
+            xhrFields: {
+                withCredentials: true
+            },
+            type: "GET"
         }).done(function (data) {
             switch (data.type) {
                 case 'OK':
                     new PNotify({
                         title: 'Success',
-                        text: data.message,
+                        text: 'Logouting...',
                         type: 'success',
                         hide: false
                     });
 
                     setTimeout(function () {
-                        window.location.reload();
+                        window.location = data.message;
                     }, 5000);
-                    break;
-                case 'ERROR':
-                    new PNotify({
-                        title: 'Error',
-                        text: data.message,
-                        type: 'error',
-                        hide: false
-                    });
-                    break;
-            }
-        });
-    });
-
-    $(".btn-clear").click(function () {
-        $.ajax({
-            type: "GET",
-            url: "/clear",
-
-            error: function () {
-                new PNotify({
-                    title: 'Error',
-                    text: 'Unknown host error',
-                    type: 'error',
-                    hide: false
-                });
-            }
-        }).done(function (data) {
-            switch (data.type) {
-                case 'OK':
-                    new PNotify({
-                        title: 'Success',
-                        text: data.message,
-                        type: 'success',
-                        hide: false
-                    });
-
-                    setTimeout(function () {
-                        window.location.reload();
-                    }, 5000);
-                    break;
-                case 'ERROR':
-                    new PNotify({
-                        title: 'Error',
-                        text: data.message,
-                        type: 'error',
-                        hide: false
-                    });
-                    break;
-            }
-        });
-    });
-
-    $(".btn-danger").click(function () {
-        var data = $("#form").serialize();
-
-        $.ajax({
-            type: "POST",
-            url: "/date",
-            data: data
-        }).done(function (data) {
-            switch (data.type) {
-                case 'OK':
-                    new PNotify({
-                        title: 'Success',
-                        text: data.message,
-                        type: 'success',
-                        hide: false
-                    });
                     break;
                 case 'ERROR':
                     new PNotify({

@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2018 IoC Starter (Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
  *
- * This addView is part of IoC Starter Project.
+ * This file is part of IoC Starter Project.
  *
  * IoC Starter Project is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,25 +16,26 @@
  * You should have received a copy of the GNU General Public License
  * along with IoC Starter Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.ioc.test.web;
+package org.examples.webapp;
 
-import org.ioc.annotations.context.IoCComponent;
-import org.ioc.annotations.context.IoCDependency;
-import org.ioc.test.database.repository.UserRepository;
-import org.ioc.web.security.user.UserDetails;
-import org.ioc.web.security.user.UserDetailsProcessor;
+import org.ioc.annotations.context.ScanPackage;
+import org.ioc.annotations.modules.CacheModule;
+import org.ioc.annotations.modules.DatabaseModule;
+import org.ioc.annotations.modules.ThreadingModule;
+import org.ioc.annotations.modules.WebModule;
+import org.ioc.context.starter.IoCStarter;
 
 /**
  * @author GenCloud
  * @date 10/2018
  */
-@IoCComponent
-public class UserDetailsComponent implements UserDetailsProcessor {
-	@IoCDependency
-	private UserRepository userRepository;
-
-	@Override
-	public UserDetails loadUserByUsername(String username) {
-		return userRepository.findByUsernameEq(username);
+@WebModule
+@CacheModule
+@ThreadingModule
+@DatabaseModule
+@ScanPackage(packages = {"org.examples.webapp"})
+public class AppMain {
+	public static void main(String[] args) {
+		IoCStarter.start(AppMain.class);
 	}
 }

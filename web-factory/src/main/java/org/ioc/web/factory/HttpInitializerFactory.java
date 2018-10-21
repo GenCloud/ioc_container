@@ -26,12 +26,12 @@ import io.netty.channel.epoll.EpollServerSocketChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.ServerSocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.util.internal.PlatformDependent;
 import org.ioc.annotations.context.Mode;
 import org.ioc.annotations.context.Order;
+import org.ioc.annotations.context.PostConstruct;
 import org.ioc.context.factories.Factory;
 import org.ioc.context.model.TypeMetadata;
 import org.ioc.context.sensible.ContextSensible;
@@ -43,14 +43,12 @@ import org.ioc.exceptions.IoCException;
 import org.ioc.threads.factory.DefaultThreadPoolFactory;
 import org.ioc.utils.ReflectionUtils;
 import org.ioc.web.annotations.UrlMapping;
-import org.ioc.web.model.http.Response;
 import org.ioc.web.model.mapping.Mapping;
 import org.ioc.web.model.mapping.MappingContainer;
 import org.ioc.web.model.resolvers.ArgumentResolver;
 import org.ioc.web.model.session.SessionManager;
 import org.ioc.web.model.view.TemplateResolver;
 import org.ioc.web.model.view.VelocityResolver;
-import org.ioc.web.security.AuthenticationProvider;
 import org.ioc.web.security.configuration.SecurityConfigureAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -125,6 +123,7 @@ public class HttpInitializerFactory implements Factory, ContextSensible, Environ
 	}
 
 	@SuppressWarnings("unchecked")
+	@PostConstruct
 	public void start() throws InterruptedException {
 		final Collection<TypeMetadata> types = context.getMetadatas(Mode.REQUEST);
 
@@ -154,29 +153,17 @@ public class HttpInitializerFactory implements Factory, ContextSensible, Environ
 	}
 
 	private void registerMapping(Collection<TypeMetadata> collection) {
-		loop:
 		for (TypeMetadata metadata : collection) {
 			for (Method method : metadata.getType().getDeclaredMethods()) {
-				if (AuthenticationProvider.class.isAssignableFrom(metadata.getType())) {
-					if (!Response.class.isAssignableFrom(method.getReturnType())) {
-						continue;
-					}
-
-					method.setAccessible(true);
-
-					final AuthenticationProvider authenticationProvider = (AuthenticationProvider) metadata.getInstance();
-					final String path = authenticationProvider.getPath();
-					final Mapping mapping = new Mapping(authenticationProvider, method, HttpMethod.POST, path);
-					mapping.setMetadata(metadata);
-					mapping.setParameters(new Object[method.getParameterCount()]);
-					mappingContainer.addMapping(context, path, method, mapping);
-					continue loop;
-				}
-
 				method.setAccessible(true);
+				final UrlMapping urlMappingMainType = metadata.getType().getAnnotation(UrlMapping.class);
 				final UrlMapping urlMapping = method.getAnnotation(UrlMapping.class);
 				if (urlMapping != null) {
-					final String path = urlMapping.value();
+					String path = urlMapping.value();
+					if (urlMappingMainType != null && !urlMappingMainType.value().isEmpty()) {
+						path = urlMappingMainType.value() + urlMapping.value();
+					}
+
 					final Mapping mapping = new Mapping(metadata.getInstance(), method,
 							toHttpMethod(urlMapping.method()), path);
 

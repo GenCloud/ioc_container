@@ -52,7 +52,7 @@ public class HttpServerUtil {
 
 	private static final SimpleDateFormat FMT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss zzz", Locale.getDefault());
 
-	public static Response mergeResponse(Response responseFrom, Response responseTo) {
+	public static Response mergeResponse(Response responseTo, Response responseFrom) {
 		responseTo.setBody(responseFrom.getBody());
 		responseTo.setResponseStatus(responseFrom.getResponseStatus());
 		responseTo.setViewPage(responseFrom.getViewPage());
@@ -99,8 +99,10 @@ public class HttpServerUtil {
 		from.getHeaders().keySet().forEach(s -> fullHttpResponse.headers().add(s, from.getHeaders().get(s)));
 
 		if (!fullHttpResponse.headers().contains("Content-type")) {
-			if (from.getBody() instanceof String) {
-				fullHttpResponse.headers().set(CONTENT_TYPE, "text/plain");
+			if (from.getBody() != null) {
+				if (from.getBody() instanceof String) {
+					fullHttpResponse.headers().set(CONTENT_TYPE, "text/plain");
+				}
 			} else {
 				fullHttpResponse.headers().set(CONTENT_TYPE, "application/json;charset=utf-8");
 			}
@@ -112,9 +114,13 @@ public class HttpServerUtil {
 					.collect(Collectors.toList()));
 		}
 
+		final long contentLength = length + from.getFileLength();
 		fullHttpResponse.headers().set(CONNECTION, "keep-alive");
-		fullHttpResponse.headers().set(CONTENT_LENGTH, length + from.getFileLength());
-		fullHttpResponse.headers().set(SERVER, "127.0.0.1");
+		if (contentLength > 0) {
+			fullHttpResponse.headers().set(CONTENT_LENGTH, contentLength);
+		}
+
+		fullHttpResponse.headers().set(SERVER, "127.0.0.1:8081");
 		return fullHttpResponse;
 	}
 

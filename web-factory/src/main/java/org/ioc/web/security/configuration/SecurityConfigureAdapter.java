@@ -21,7 +21,6 @@ package org.ioc.web.security.configuration;
 import org.ioc.annotations.context.Mode;
 import org.ioc.context.model.TypeMetadata;
 import org.ioc.context.type.IoCContext;
-import org.ioc.utils.ReflectionUtils;
 import org.ioc.web.exception.NoFoundAuthenticatedUserException;
 import org.ioc.web.exception.SessionNotFoundException;
 import org.ioc.web.exception.WrongMatchException;
@@ -31,12 +30,9 @@ import org.ioc.web.model.http.Response;
 import org.ioc.web.model.mapping.Mapping;
 import org.ioc.web.model.session.HttpSession;
 import org.ioc.web.model.session.SessionManager;
-import org.ioc.web.security.AuthenticationProvider;
 import org.ioc.web.security.CheckResult;
 import org.ioc.web.security.configuration.HttpContainer.AuthenticationRequestConfigurer;
 import org.ioc.web.security.configuration.HttpContainer.HttpAuthorizeRequest;
-import org.ioc.web.security.encoder.Encoder;
-import org.ioc.web.security.encoder.NullEncoder;
 import org.ioc.web.security.filter.Filter;
 import org.ioc.web.security.interceptors.HttpRequestInterceptor;
 import org.ioc.web.security.user.UserDetails;
@@ -45,7 +41,10 @@ import org.ioc.web.util.PathUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.ioc.web.security.configuration.HttpContainer.HttpAuthorizeRequest.ROLE_ANONYMOUS;
@@ -122,41 +121,6 @@ public class SecurityConfigureAdapter {
 		if (expiredPath != null && !expiredPath.isEmpty()) {
 			sessionManager.setExpiredUri(expiredPath);
 		}
-
-		postConfigureAuthManager();
-	}
-
-	private void postConfigureAuthManager() {
-		final AuthenticationRequestConfigurer configuredAuthRequest = container.getConfiguredAuthRequest();
-		if (configuredAuthRequest != null) {
-			final String authPage = configuredAuthRequest.getAuthRequest();
-			if (authPage != null && !authPage.isEmpty()) {
-				final Collection<TypeMetadata> metadatas = context.getMetadatas(Mode.SINGLETON);
-				final Optional<Object> optional = metadatas
-						.stream()
-						.filter(m -> Encoder.class.isAssignableFrom(m.getType()))
-						.map(TypeMetadata::getInstance)
-						.findFirst();
-
-				final AuthenticationProvider authenticationRoutes = new AuthenticationProvider();
-				authenticationRoutes.setSecurityConfigureAdapter(this);
-				authenticationRoutes.setPath(authPage);
-				if (optional.isPresent()) {
-					authenticationRoutes.setEncoder((Encoder) optional.get());
-				} else {
-					authenticationRoutes.setEncoder(new NullEncoder());
-				}
-
-				final String redirectPath = configuredAuthRequest.getRedirectPath();
-				if (redirectPath != null && !redirectPath.isEmpty()) {
-					authenticationRoutes.setRedirectPath(redirectPath);
-				}
-
-				final TypeMetadata metadata = new TypeMetadata(ReflectionUtils.resolveTypeName(authenticationRoutes.getClass()),
-						authenticationRoutes, Mode.REQUEST);
-				context.registerTypes(Collections.singletonList(metadata));
-			}
-		}
 	}
 
 	public CheckResult secureRequest(Request request, Response response, ModelAndView modelAndView, Mapping mapping) {
@@ -194,43 +158,38 @@ public class SecurityConfigureAdapter {
 		CheckResult result;
 		for (RequestSettings settings : rolePermits.keySet()) {
 			final String pattern = settings.getUrlPattern();
-			if (pathUtil.match(pattern, url) || pathUtil.match(pattern + "?**", url)) {
+			if (pathUtil.match(pattern, url)) {
 				if (!settings.isResource() && mapping != null) {
 					final HttpSession session = getContext().findSession(request);
 
 					if (session != null) {
-						final UserDetails user = session.getUserDetails();
-						if (!session.isAuthenticated()) {
-							if (authorizeRequest.containsRole(pattern, ROLE_ANONYMOUS)) {
-								return new CheckResult(true);
-							}
-
-							result = new CheckResult(false);
-							log.warn("Can't authorize request - no authenticated user in session!");
-							result.setThrowable(new NoFoundAuthenticatedUserException("Can't authorize request - no authenticated user in session!"));
-							return result;
-						}
-
-						if (settings.isAuthenticated() && session.isAuthenticated()) {
-							if (authorizeRequest.containsRoles(pattern, user.getRoles())) {
-								return new CheckResult(true);
-							}
-						} else if (session.isAuthenticated()) {
-							if (authorizeRequest.containsRole(pattern, ROLE_ANONYMOUS)) {
-								return new CheckResult(true);
+						if (settings.isAuthenticated()) {
+							final UserDetails user = session.getUserDetails();
+							if (user != null) {
+								if (authorizeRequest.containsRoles(pattern, user.getRoles())) {
+									return new CheckResult(true);
+								}
+							} else {
+								result = new CheckResult(false);
+								log.warn("Can't authorize request - no authenticated user in session!");
+								result.setThrowable(new NoFoundAuthenticatedUserException("Can't authorize request - no authenticated user in session!"));
+								return result;
 							}
 						} else {
-							result = new CheckResult(false);
-							log.warn("Can't authorize request - wrong match!");
-							result.setThrowable(new WrongMatchException("Can't authorize request - wrong match!"));
-							return result;
+							if (authorizeRequest.containsRole(pattern, ROLE_ANONYMOUS)) {
+								return new CheckResult(true);
+							} else {
+								result = new CheckResult(false);
+								log.warn("Can't authorize request - wrong match!");
+								result.setThrowable(new WrongMatchException("Can't authorize request - wrong match!"));
+								return result;
+							}
 						}
 					} else {
 						result = new CheckResult(false);
 						log.warn("Can't authorize request - wrong session!");
 						result.setThrowable(new SessionNotFoundException("Can't authorize request - wrong session!"));
 						return result;
-
 					}
 				} else {
 					return new CheckResult(true, true);

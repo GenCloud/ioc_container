@@ -36,7 +36,7 @@ Add IoC to your project. for maven projects just add this dependency:
         <dependency>
             <groupId>org.ioc</groupId>
             <artifactId>context-factory</artifactId>
-            <version>2.2.3.STABLE</version>
+            <version>2.2.4.STABLE</version>
         </dependency>
     </dependencies>
 ```
@@ -277,7 +277,7 @@ Add threads-channel module to your project. for maven projects just add this dep
        <dependency>
            <groupId>org.ioc</groupId>
            <artifactId>threads-factory</artifactId>
-           <version>2.2.3.STABLE</version>
+           <version>2.2.4.STABLE</version>
        </dependency>
    </dependencies>
 ```
@@ -358,7 +358,7 @@ Add cache-factory module to your project. for maven projects just add this depen
        <dependency>
            <groupId>org.ioc</groupId>
            <artifactId>cache-factory</artifactId>
-           <version>2.2.3.STABLE</version>
+           <version>2.2.4.STABLE</version>
        </dependency>
    </dependencies>
 ```
@@ -473,7 +473,7 @@ Add orm-factory module to your project. for maven projects just add this depende
         <dependency>
             <groupId>org.ioc</groupId>
             <artifactId>orm-factory</artifactId>
-            <version>2.2.3.STABLE</version>
+            <version>2.2.4.STABLE</version>
         </dependency>
     </dependencies>
 ```
@@ -844,7 +844,7 @@ Add web-factory module to your project. for maven projects just add this depende
        <dependency>
            <groupId>org.ioc</groupId>
            <artifactId>web-factory</artifactId>
-           <version>2.2.3.STABLE</version>
+           <version>2.2.4.STABLE</version>
        </dependency>
    </dependencies>
 ```

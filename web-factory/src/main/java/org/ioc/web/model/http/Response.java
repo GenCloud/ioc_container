@@ -87,7 +87,7 @@ public class Response {
 		return status(HttpResponseStatus.BAD_REQUEST);
 	}
 
-	private static Builder status(HttpResponseStatus status) {
+	public static Builder status(HttpResponseStatus status) {
 		return new Builder(status);
 	}
 
@@ -146,6 +146,7 @@ public class Response {
 	public static class Builder {
 		private final Map<String, String> headers = new HashMap<>();
 		private final Set<Cookie> cookies = new HashSet<>();
+
 		private HttpResponseStatus status;
 		private Object body;
 		private String view;

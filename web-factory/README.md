@@ -20,7 +20,7 @@ Add web-factory module to your project. for maven projects just add this depende
        <dependency>
            <groupId>org.ioc</groupId>
            <artifactId>web-factory</artifactId>
-           <version>2.2.3.STABLE</version>
+           <version>2.2.4.STABLE</version>
        </dependency>
    </dependencies>
 ```
