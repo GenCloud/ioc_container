@@ -29,14 +29,6 @@ import org.ioc.web.annotations.RequestParam;
 import org.ioc.web.annotations.UrlMapping;
 import org.ioc.web.model.ModelAndView;
 import org.ioc.web.model.http.Request;
-import org.ioc.web.security.configuration.SecurityConfigureAdapter;
-import org.ioc.web.security.encoder.bcrypt.BCryptEncoder;
-import org.ioc.web.security.user.UserDetails;
-
-import java.util.Objects;
-
-import static org.examples.webapp.responces.IMessage.Type.ERROR;
-import static org.examples.webapp.responces.IMessage.Type.OK;
 
 /**
  * @author GenCloud
@@ -44,15 +36,9 @@ import static org.examples.webapp.responces.IMessage.Type.OK;
  */
 @IoCController
 @UrlMapping("/")
-public class MainController {
+public class MainMapping {
 	@IoCDependency
 	private AccountService accountService;
-
-	@IoCDependency
-	private BCryptEncoder bCryptEncoder;
-
-	@IoCDependency
-	private SecurityConfigureAdapter securityConfigureAdapter;
 
 	@UrlMapping
 	public ModelAndView index() {
@@ -65,55 +51,19 @@ public class MainController {
 	public IMessage createUser(@RequestParam("username") String username,
 							   @RequestParam("password") String password,
 							   @RequestParam("repeatedPassword") String repeatedPassword) {
-		if (username == null || username.isEmpty() || password == null || password.isEmpty()
-				|| repeatedPassword == null || repeatedPassword.isEmpty()) {
-			return new IMessage(ERROR, "Invalid request parameters!");
-		}
-
-		if (!Objects.equals(password, repeatedPassword)) {
-			return new IMessage(ERROR, "Repeated password doesn't match!");
-		}
-
-		final UserDetails userDetails = accountService.loadUserByUsername(username);
-		if (userDetails != null) {
-			return new IMessage(ERROR, "Account already exists!");
-		}
-
-		final TblAccount account = new TblAccount();
-		account.setUsername(username);
-		account.setPassword(bCryptEncoder.encode(password));
-
-		accountService.save(account);
-		return new IMessage(OK, "Successfully created!");
+		return accountService.tryCreateUser(username, password, repeatedPassword);
 	}
 
 	@UrlMapping(value = "signin", method = MappingMethod.POST)
-	public IMessage auth(Request request, @RequestParam("username") String username,
+	public IMessage auth(Request request,
+						 @RequestParam("username") String username,
 						 @RequestParam("password") String password) {
-		if (username == null || username.isEmpty() || password == null || password.isEmpty()) {
-			return new IMessage(ERROR, "Invalid request parameters!");
-		}
-
-		final UserDetails userDetails = accountService.loadUserByUsername(username);
-		if (userDetails == null) {
-			return new IMessage(ERROR, "Account not found!");
-		}
-
-		if (!bCryptEncoder.match(password, userDetails.getPassword())) {
-			return new IMessage(ERROR, "Password does not match!");
-		}
-
-		securityConfigureAdapter.getContext().authenticate(request, userDetails);
-		return new IMessage(OK, "Successfully authenticated");
+		return accountService.tryAuthenticateUser(request, username, password);
 	}
 
 	@UrlMapping("signout")
 	public IMessage signout(Request request) {
-		if (securityConfigureAdapter.getContext().removeAuthInformation(request)) {
-			return new IMessage(OK, "/");
-		}
-
-		return new IMessage(ERROR, "Credentials not found or not authenticated!");
+		return accountService.logout(request);
 	}
 
 	@UrlMapping("loginPage")
