@@ -45,6 +45,9 @@ public class WebAutoConfiguration {
 	@Property("key-password")
 	private String keyPassword;
 
+	@Property("security.session.timeout")
+	private int sessionTimeout = 7200;
+
 	@Property("velocity.input.encoding")
 	private String velocityInputEncoding = "UTF-8";
 
@@ -66,6 +69,10 @@ public class WebAutoConfiguration {
 
 	public boolean isSslEnabled() {
 		return sslEnabled;
+	}
+
+	public int getSessionTimeout() {
+		return sessionTimeout;
 	}
 
 	public String getKeyCertChainFile() {

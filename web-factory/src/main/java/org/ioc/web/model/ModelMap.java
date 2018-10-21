@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2018 DI (IoC) Container (Team: GC Dev, Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
  *
- * This file is part of DI (IoC) Container Project.
+ * This addView is part of DI (IoC) Container Project.
  *
  * DI (IoC) Container Project is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@ import java.util.Map;
  * @author GenCloud
  * @date 10/2018
  */
-public class ModelMap extends LinkedHashMap<String, Object> {
+class ModelMap extends LinkedHashMap<String, Object> {
 	public ModelMap() {
 	}
 
@@ -58,9 +58,7 @@ public class ModelMap extends LinkedHashMap<String, Object> {
 
 	public ModelMap addAllAttributes(Collection<?> attributeValues) {
 		if (attributeValues != null) {
-			for (Object attributeValue : attributeValues) {
-				addAttribute(attributeValue);
-			}
+			attributeValues.forEach(this::addAttribute);
 		}
 		return this;
 	}

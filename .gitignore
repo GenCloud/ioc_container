@@ -17,10 +17,10 @@ bin/
 */build/
 gradle.properties
 
-
 .DS_Store
 .directory
 *.log
+*.log.*
 
 # Locally stored "Eclipse launch configurations"
 *.launch

@@ -21,7 +21,6 @@ package org.ioc.context.model;
 import org.ioc.annotations.context.Mode;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
 
 /**
  * {@link org.ioc.context.type.IoCContext} internal bag storage structure.
@@ -33,12 +32,12 @@ public class TypeMetadata {
 	/**
 	 * Name of bag.
 	 */
-	private String name;
+	private final String name;
 
 	/**
 	 * Types of bag.
 	 */
-	private Class<?> type;
+	private final Class<?> type;
 
 	/**
 	 * Unified constructor metadata.
@@ -60,21 +59,22 @@ public class TypeMetadata {
 	public TypeMetadata(String name, Constructor constructor, Mode mode) {
 		this.name = name;
 		this.constructor = new ConstructorMetadata(constructor);
-		this.type = constructor.getDeclaringClass();
-		this.mode = mode;
-	}
 
-	public TypeMetadata(String name, Object o, Method method, Mode mode) {
-		this.name = name;
-		this.constructor = new ConstructorMetadata(o, method);
-		this.type = method.getReturnType();
+		type = constructor.getDeclaringClass();
 		this.mode = mode;
 	}
 
 	public TypeMetadata(String name, Object instance, Mode mode) {
 		this.name = name;
 		this.instance = instance;
-		this.type = instance.getClass();
+
+		try {
+			constructor = new ConstructorMetadata(instance.getClass().getDeclaredConstructor());
+		} catch (NoSuchMethodException e) {
+			constructor = null;
+		}
+
+		type = instance.getClass();
 		this.mode = mode;
 	}
 
@@ -82,24 +82,12 @@ public class TypeMetadata {
 		return name;
 	}
 
-	public void setName(String name) {
-		this.name = name;
-	}
-
 	public Class<?> getType() {
 		return type;
 	}
 
-	public void setType(Class<?> type) {
-		this.type = type;
-	}
-
 	public ConstructorMetadata getConstructor() {
 		return constructor;
-	}
-
-	public void setConstructor(ConstructorMetadata constructor) {
-		this.constructor = constructor;
 	}
 
 	public Object getInstance() {

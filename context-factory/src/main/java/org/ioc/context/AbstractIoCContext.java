@@ -20,8 +20,6 @@ package org.ioc.context;
 
 import org.ioc.annotations.context.IoCComponent;
 import org.ioc.annotations.web.IoCController;
-import org.ioc.annotations.web.MappingMethod;
-import org.ioc.annotations.web.UrlMapping;
 import org.ioc.aop.annotation.IoCAspect;
 import org.ioc.context.model.ControllerMetadata;
 import org.ioc.context.model.TypeMetadata;
@@ -87,15 +85,7 @@ public abstract class AbstractIoCContext implements IoCContext, IoCScanner {
 				.forEach(typeClass -> {
 					if (checkType(typeClass)) {
 						if (typeClass.isAnnotationPresent(IoCController.class)) {
-							final UrlMapping annotation = typeClass.getAnnotation(UrlMapping.class);
-							String mappedPath = "";
-							MappingMethod method = MappingMethod.GET;
-							if (annotation != null) {
-								mappedPath = annotation.value();
-								method = annotation.method();
-							}
-
-							types.add(new ControllerMetadata(resolveTypeName(typeClass), typeClass.getConstructors()[0], method, mappedPath));
+							types.add(new ControllerMetadata(resolveTypeName(typeClass), typeClass.getConstructors()[0]));
 						} else {
 							types.add(new TypeMetadata(resolveTypeName(typeClass), typeClass.getConstructors()[0],
 									resolveLoadingMode(typeClass)));

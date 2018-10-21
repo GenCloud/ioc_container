@@ -72,6 +72,8 @@ public class PointcutTokenizer {
 		final String expName = builder.toString().toLowerCase();
 		final String exp = expression.substring(position, end);
 		switch (expName) {
+			case "*":
+				return new AnyMatcher();
 			case "this":
 				return new DeclaringClassPointcut(exp);
 			case "args":

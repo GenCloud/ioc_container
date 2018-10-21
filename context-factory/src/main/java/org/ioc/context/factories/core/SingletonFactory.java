@@ -24,6 +24,7 @@ import org.ioc.context.factories.AbstractFactory;
 import org.ioc.context.model.TypeMetadata;
 import org.ioc.exceptions.IoCInstantiateException;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -86,7 +87,7 @@ public class SingletonFactory extends AbstractFactory {
 
 	@Override
 	public Object getType(String name) {
-		final TypeMetadata typeMetadata = typeMap.get(name);
+		final TypeMetadata typeMetadata = getTypes().get(name);
 		if (typeMetadata == null) {
 			return null;
 		}
@@ -96,6 +97,6 @@ public class SingletonFactory extends AbstractFactory {
 
 	@Override
 	public Map<String, TypeMetadata> getTypes() {
-		return typeMap;
+		return Collections.unmodifiableMap(typeMap);
 	}
 }

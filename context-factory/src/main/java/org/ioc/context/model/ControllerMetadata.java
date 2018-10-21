@@ -18,8 +18,6 @@
  */
 package org.ioc.context.model;
 
-import org.ioc.annotations.web.MappingMethod;
-
 import java.lang.reflect.Constructor;
 
 import static org.ioc.annotations.context.Mode.REQUEST;
@@ -29,34 +27,12 @@ import static org.ioc.annotations.context.Mode.REQUEST;
  * @date 10/2018
  */
 public class ControllerMetadata extends TypeMetadata {
-	private final MappingMethod mappingMethod;
-	private final String mappingPath;
-
 	public ControllerMetadata(String name, Constructor constructor) {
 		super(name, constructor, REQUEST);
-		mappingMethod = MappingMethod.GET;
-		mappingPath = "";
-	}
-
-	public ControllerMetadata(String name, Constructor constructor, MappingMethod mappingMethod, String mappingPath) {
-		super(name, constructor, REQUEST);
-		this.mappingMethod = mappingMethod;
-		this.mappingPath = mappingPath;
-	}
-
-	public MappingMethod getMappingMethod() {
-		return mappingMethod;
-	}
-
-	public String getMappingPath() {
-		return mappingPath;
 	}
 
 	@Override
 	public String toString() {
-		return "ControllerMetadata{" + super.toString() +
-				", mappingPath=" + mappingPath +
-				", mappingMethod=" + mappingMethod +
-				'}';
+		return "ControllerMetadata{" + super.toString() + '}';
 	}
 }

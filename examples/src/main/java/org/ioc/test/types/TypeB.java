@@ -1,0 +1,61 @@
+/*
+ * Copyright (c) 2018 IoC Starter (Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
+ *
+ * This addView is part of IoC Starter Project.
+ *
+ * IoC Starter Project is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * IoC Starter Project is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with IoC Starter Project.  If not, see <http://www.gnu.org/licenses/>.
+ */
+package org.ioc.test.types;
+
+import org.ioc.annotations.context.IoCComponent;
+import org.ioc.annotations.context.IoCDependency;
+import org.ioc.context.processors.DestroyProcessor;
+import org.ioc.test.environments.ExampleEnvironment;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * @author GenCloud
+ * @date 09/2018
+ */
+@IoCComponent
+public class TypeB implements DestroyProcessor {
+	private static final Logger log = LoggerFactory.getLogger(TypeB.class);
+
+	@IoCDependency
+	private TypeA typeA;
+
+	@IoCDependency
+	private ExampleEnvironment exampleEnvironment;
+
+	public void init() {
+		log.info("Just trigger method");
+	}
+
+	public void init2(String s) {
+		log.info(s);
+	}
+
+	@Override
+	public String toString() {
+		return "TypeB{hash=" + Integer.toString(hashCode()) +
+				" ,typeA=" + typeA +
+				'}';
+	}
+
+	@Override
+	public void destroy() {
+		log.info("I'm destroyed");
+	}
+}

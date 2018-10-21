@@ -23,7 +23,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import static java.lang.annotation.ElementType.*;
+import static java.lang.annotation.ElementType.FIELD;
 
 /**
  * Adding in constructor, field, setter method or config method as to be autowired by dependency injection facilities.
@@ -32,7 +32,7 @@ import static java.lang.annotation.ElementType.*;
  * @date 09/2018
  */
 @Documented
-@Target({TYPE, CONSTRUCTOR, FIELD, METHOD})
+@Target({FIELD})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface IoCDependency {
 }

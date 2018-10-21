@@ -18,15 +18,55 @@
  */
 package org.ioc.context.factories.web;
 
+import org.ioc.context.factories.AbstractFactory;
 import org.ioc.context.factories.core.InstanceFactory;
-import org.ioc.context.factories.core.SingletonFactory;
+import org.ioc.context.model.TypeMetadata;
+import org.ioc.exceptions.IoCInstantiateException;
+
+import java.util.Collections;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+
+import static org.ioc.utils.ReflectionUtils.resolveTypeName;
 
 /**
  * @author GenCloud
  * @date 10/2018
  */
-public class RequestFactory extends SingletonFactory {
+public class RequestFactory extends AbstractFactory {
+	private Map<String, TypeMetadata> typeMap = new ConcurrentHashMap<>();
+
 	public RequestFactory(InstanceFactory instanceFactory) {
 		super(instanceFactory);
+	}
+
+	public void addType(TypeMetadata type) {
+		if (typeMap.containsKey(type.getName())) {
+			throw new IoCInstantiateException();
+		}
+
+		typeMap.put(type.getName(), type);
+	}
+
+	@Override
+	public Object getType(Class<?> type) {
+		final Optional<Object> any = Optional.ofNullable(getType(resolveTypeName(type)));
+		return any.orElse(null);
+	}
+
+	@Override
+	public Object getType(String name) {
+		final TypeMetadata typeMetadata = getTypes().get(name);
+		if (typeMetadata == null) {
+			return null;
+		}
+
+		return instanceFactory.instantiate(typeMetadata.getConstructor());
+	}
+
+	@Override
+	public Map<String, TypeMetadata> getTypes() {
+		return Collections.unmodifiableMap(typeMap);
 	}
 }

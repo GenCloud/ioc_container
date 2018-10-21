@@ -15,12 +15,12 @@
   ~ limitations under the License.
   -->
 
-<!DOCTYPE log4j:configuration SYSTEM "C:\workspace\JTS\loginserver\src\main\resources\log4j.dtd">
+<!DOCTYPE log4j:configuration SYSTEM "log4j.dtd">
 <log4j:configuration xmlns:log4j="http://jakarta.apache.org/log4j/"
                      debug="false">
     <appender name="CONSOLE" class="org.apache.log4j.ConsoleAppender">
         <layout class="org.apache.log4j.EnhancedPatternLayout">
-            <param name="ConversionPattern" value="[%d{HH:mm:ss}] %5p %m%n"/>
+            <param name="ConversionPattern" value="[%d{dd.MM.yy HH:mm:ss:SSS}] %5p %c{4}: %m%n"/>
         </layout>
     </appender>
     <appender name="FILE" class="org.apache.log4j.FileAppender">
@@ -34,7 +34,7 @@
         <level value="warn"/>
     </logger>
     <root>
-        <level value="debug"/>
+        <level value="info"/>
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="FILE"/>
     </root>

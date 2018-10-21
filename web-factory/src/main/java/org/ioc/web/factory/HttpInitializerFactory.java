@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2018 DI (IoC) Container (Team: GC Dev, Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
  *
- * This file is part of DI (IoC) Container Project.
+ * This addView is part of DI (IoC) Container Project.
  *
  * DI (IoC) Container Project is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,74 +19,77 @@
 package org.ioc.web.factory;
 
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.buffer.PooledByteBufAllocator;
-import io.netty.channel.*;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.epoll.Epoll;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.epoll.EpollServerSocketChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.ServerSocketChannel;
-import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.http.FullHttpRequest;
-import io.netty.handler.codec.http.HttpObjectAggregator;
-import io.netty.handler.codec.http.HttpServerCodec;
-import io.netty.handler.codec.string.StringDecoder;
-import io.netty.handler.codec.string.StringEncoder;
+import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
-import io.netty.handler.stream.ChunkedWriteHandler;
-import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.util.internal.PlatformDependent;
 import org.ioc.annotations.context.Mode;
 import org.ioc.annotations.context.Order;
-import org.ioc.annotations.web.MappingMethod;
-import org.ioc.annotations.web.UrlMapping;
-import org.ioc.cache.ICache;
-import org.ioc.cache.ICacheFactory;
 import org.ioc.context.factories.Factory;
-import org.ioc.context.model.ControllerMetadata;
 import org.ioc.context.model.TypeMetadata;
 import org.ioc.context.sensible.ContextSensible;
 import org.ioc.context.sensible.EnvironmentSensible;
-import org.ioc.context.sensible.factories.CacheFactorySensible;
+import org.ioc.context.sensible.factories.ThreadFactorySensible;
 import org.ioc.context.type.IoCContext;
 import org.ioc.enviroment.configurations.web.WebAutoConfiguration;
 import org.ioc.exceptions.IoCException;
-import org.ioc.web.HttpServerInspector;
-import org.ioc.web.HttpServerMapper;
-import org.ioc.web.HttpServerUtil;
-import org.ioc.web.engine.PageManager;
-import org.ioc.web.engine.VelocityManager;
-import org.ioc.web.model.ModelMap;
+import org.ioc.threads.factory.DefaultThreadPoolFactory;
+import org.ioc.utils.ReflectionUtils;
+import org.ioc.web.annotations.UrlMapping;
+import org.ioc.web.model.http.Response;
+import org.ioc.web.model.mapping.Mapping;
+import org.ioc.web.model.mapping.MappingContainer;
+import org.ioc.web.model.resolvers.ArgumentResolver;
+import org.ioc.web.model.session.SessionManager;
+import org.ioc.web.model.view.TemplateResolver;
+import org.ioc.web.model.view.VelocityResolver;
+import org.ioc.web.security.AuthenticationProvider;
+import org.ioc.web.security.configuration.SecurityConfigureAdapter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLException;
 import java.io.File;
 import java.lang.reflect.Method;
-import java.nio.charset.Charset;
 import java.nio.file.Paths;
 import java.util.Collection;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.List;
+import java.util.stream.Collectors;
 
-import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
-import static java.util.concurrent.TimeUnit.MINUTES;
+import static org.ioc.utils.ReflectionUtils.findClassesByInstance;
+import static org.ioc.utils.ReflectionUtils.resolveTypeName;
+import static org.ioc.web.util.HttpServerUtil.toHttpMethod;
 
 /**
  * @author GenCloud
  * @date 10/2018
  */
 @Order(997)
-public class HttpInitializerFactory implements Factory, ContextSensible, CacheFactorySensible,
-		EnvironmentSensible<WebAutoConfiguration> {
+public class HttpInitializerFactory implements Factory, ContextSensible, EnvironmentSensible<WebAutoConfiguration>, ThreadFactorySensible {
+	private static final Logger log = LoggerFactory.getLogger(HttpInitializerFactory.class);
+
+	private static final boolean isEpollType = !PlatformDependent.isWindows() && Epoll.isAvailable();
+
+	private final MappingContainer mappingContainer = new MappingContainer();
+	private SessionManager sessionManager;
+
 	private IoCContext context;
 
 	private WebAutoConfiguration webAutoConfiguration;
 
-	private static final boolean isEpollType = !PlatformDependent.isWindows() && Epoll.isAvailable();
-	private ICacheFactory cacheFactory;
-	private ICache<MappingMethod, Map<String, HttpServerMapper>> mappingRequests;
+	private DefaultThreadPoolFactory threadPoolFactory;
+
 	private ServerBootstrap bootstrap;
+	private EventLoopGroup eventLoopGroup;
+	private Class<? extends ServerSocketChannel> serverSocketChannel;
+	private SslContext sslContext;
 
 	/**
 	 * Default function for initialize installed object factories.
@@ -95,12 +98,9 @@ public class HttpInitializerFactory implements Factory, ContextSensible, CacheFa
 	 */
 	@Override
 	public void initialize() throws IoCException {
-		mappingRequests = cacheFactory.installEternal("mapping-request-cache", 200);
-
 		bootstrap = new ServerBootstrap();
 
-		EventLoopGroup eventLoopGroup;
-		Class<? extends ServerSocketChannel> serverSocketChannel;
+		sessionManager = new SessionManager(webAutoConfiguration, threadPoolFactory);
 
 		final int coreSize = Runtime.getRuntime().availableProcessors();
 		if (isEpollType) {
@@ -111,7 +111,6 @@ public class HttpInitializerFactory implements Factory, ContextSensible, CacheFa
 			serverSocketChannel = NioServerSocketChannel.class;
 		}
 
-		SslContext sslContext = null;
 		if (webAutoConfiguration.isSslEnabled()) {
 			final File keyCertChainFile = Paths.get(webAutoConfiguration.getKeyCertChainFile()).toFile();
 			final File keyFile = Paths.get(webAutoConfiguration.getKeyFile()).toFile();
@@ -123,62 +122,76 @@ public class HttpInitializerFactory implements Factory, ContextSensible, CacheFa
 				e.printStackTrace();
 			}
 		}
-
-		bootstrap
-				.option(ChannelOption.SO_KEEPALIVE, true)
-				.childOption(ChannelOption.SO_KEEPALIVE, true)
-				.childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
-				.group(eventLoopGroup)
-				.channel(serverSocketChannel)
-				.childHandler(new HttpChannelInitializer(sslContext, new VelocityManager(webAutoConfiguration)));
 	}
 
-	//	@PostConstruct for
+	@SuppressWarnings("unchecked")
 	public void start() throws InterruptedException {
 		final Collection<TypeMetadata> types = context.getMetadatas(Mode.REQUEST);
-		instantiateToCache(types);
 
+		final List<Class<?>> findedResolvers = findClassesByInstance(ArgumentResolver.class, context.getPackages());
+
+		final List<Object> initiatedResolvers = findedResolvers
+				.stream()
+				.map(ReflectionUtils::instantiateClass)
+				.collect(Collectors.toList());
+
+		final SecurityConfigureAdapter securityConfigureAdapter = new SecurityConfigureAdapter(context, sessionManager);
+		final TemplateResolver templateResolver = new VelocityResolver(webAutoConfiguration);
+
+		context.setType(resolveTypeName(templateResolver.getClass()), templateResolver);
+		context.setType(resolveTypeName(sessionManager.getClass()), sessionManager);
+		context.setType(resolveTypeName(securityConfigureAdapter.getClass()), securityConfigureAdapter);
+
+		registerMapping(types);
+
+		bootstrap
+				.group(eventLoopGroup)
+				.channel(serverSocketChannel)
+				.childHandler(new HttpChannelInitializer(sslContext, sessionManager, securityConfigureAdapter, mappingContainer, initiatedResolvers, templateResolver));
+
+		log.info("Http server started on port(s): {} (http)", webAutoConfiguration.getPort());
 		bootstrap.bind(webAutoConfiguration.getPort()).sync().channel().closeFuture().sync();
 	}
 
-	private void instantiateToCache(Collection<TypeMetadata> types) {
-		types.stream().filter(t -> t instanceof ControllerMetadata).forEach(this::resolveMetadata);
-	}
+	private void registerMapping(Collection<TypeMetadata> collection) {
+		loop:
+		for (TypeMetadata metadata : collection) {
+			for (Method method : metadata.getType().getDeclaredMethods()) {
+				if (AuthenticationProvider.class.isAssignableFrom(metadata.getType())) {
+					if (!Response.class.isAssignableFrom(method.getReturnType())) {
+						continue;
+					}
 
-	private void resolveMetadata(TypeMetadata metadata) {
-		final ControllerMetadata controllerMetadata = (ControllerMetadata) metadata;
-		final Class<?> type = controllerMetadata.getType();
-		final String controllerPath = controllerMetadata.getMappingPath();
+					method.setAccessible(true);
 
-		Method[] methods = type.getDeclaredMethods();
+					final AuthenticationProvider authenticationProvider = (AuthenticationProvider) metadata.getInstance();
+					final String path = authenticationProvider.getPath();
+					final Mapping mapping = new Mapping(authenticationProvider, method, HttpMethod.POST, path);
+					mapping.setMetadata(metadata);
+					mapping.setParameters(new Object[method.getParameterCount()]);
+					mappingContainer.addMapping(context, path, method, mapping);
+					continue loop;
+				}
 
-		for (Method method : methods) {
-			UrlMapping urlMapping = method.getAnnotation(UrlMapping.class);
+				method.setAccessible(true);
+				final UrlMapping urlMapping = method.getAnnotation(UrlMapping.class);
+				if (urlMapping != null) {
+					final String path = urlMapping.value();
+					final Mapping mapping = new Mapping(metadata.getInstance(), method,
+							toHttpMethod(urlMapping.method()), path);
 
-			if (urlMapping == null) {
-				continue;
+					mapping.setConsumes(urlMapping.consumes());
+					mapping.setProduces(urlMapping.produces());
+
+					if (String.class.isAssignableFrom(method.getReturnType())) {
+						mapping.setIsView();
+					}
+
+					mapping.setMetadata(metadata);
+					mapping.setParameters(new Object[method.getParameterCount()]);
+					mappingContainer.addMapping(context, path, method, mapping);
+				}
 			}
-
-			method.setAccessible(true);
-
-			HttpServerMapper mapping = new HttpServerMapper(controllerMetadata.getInstance(), method);
-
-			String firstPath = "";
-			if (controllerPath != null && !controllerPath.isEmpty()) {
-				firstPath = controllerPath;
-			}
-
-			String match = firstPath + urlMapping.value();
-
-			Map<String, HttpServerMapper> map = mappingRequests.get(urlMapping.method());
-			if (map == null) {
-				map = new ConcurrentHashMap<>();
-				map.put(match, mapping);
-				mappingRequests.put(urlMapping.method(), map);
-				continue;
-			}
-
-			map.put(match, mapping);
 		}
 	}
 
@@ -200,73 +213,6 @@ public class HttpInitializerFactory implements Factory, ContextSensible, CacheFa
 
 	@Override
 	public void factoryInform(Factory factory) throws IoCException {
-		if (ICacheFactory.class.isAssignableFrom(factory.getClass())) {
-			cacheFactory = (ICacheFactory) factory;
-		}
-	}
-
-	class HttpChannelInitializer extends ChannelInitializer<SocketChannel> {
-		private final SslContext sslContext;
-		private final PageManager pageManager;
-
-		HttpChannelInitializer(SslContext sslContext, PageManager pageManager) {
-			this.sslContext = sslContext;
-			this.pageManager = pageManager;
-		}
-
-		/**
-		 * This method will be called once the {@link Channel} was registered. After the method returns this instance
-		 * will be removed from the {@link ChannelPipeline} of the {@link Channel}.
-		 *
-		 * @param ch the {@link Channel} which was registered.
-		 */
-		@Override
-		protected void initChannel(SocketChannel ch) {
-			final ChannelPipeline pipeline = ch.pipeline();
-			pipeline.addLast(new HttpServerCodec())
-					.addLast(new HttpObjectAggregator(Integer.MAX_VALUE))
-					.addLast(new ChunkedWriteHandler())
-					.addLast(new WebServerHandler(pageManager))
-					.addLast(new ReadTimeoutHandler(15, MINUTES))
-					.addLast(new StringEncoder(Charset.forName("UTF-8")))
-					.addLast(new StringDecoder(Charset.forName("UTF-8")));
-
-			if (sslContext != null) {
-				pipeline.addLast(sslContext.newHandler(ch.alloc()));
-			}
-		}
-	}
-
-	class WebServerHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
-
-		private final PageManager pageManager;
-
-		WebServerHandler(PageManager pageManager) {
-			this.pageManager = pageManager;
-		}
-
-		@Override
-		protected void channelRead0(final ChannelHandlerContext ctx, final FullHttpRequest request) throws Exception {
-			if (!request.decoderResult().isSuccess()) {
-				HttpServerUtil.sendError(ctx, BAD_REQUEST);
-				return;
-			}
-
-			final ModelMap attribute = new ModelMap();
-
-			HttpServerInspector analysis = HttpServerInspector.inspectRequest(ctx, request, mappingRequests);
-			if (analysis == null) {
-				return;
-			}
-
-			final Object result = analysis.invokeControllerMethod(attribute);
-
-			analysis.writeResponse(attribute, result, pageManager);
-		}
-
-		@Override
-		public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-			cause.printStackTrace();
-		}
+		this.threadPoolFactory = (DefaultThreadPoolFactory) factory;
 	}
 }

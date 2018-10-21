@@ -56,6 +56,7 @@ import java.lang.reflect.Type;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static org.ioc.utils.ReflectionUtils.*;
@@ -71,9 +72,9 @@ public class DefaultIoCContext extends AbstractIoCContext {
 
 	private final List<TypeProcessor> typeProcessors = new ArrayList<>();
 
-	private final SingletonFactory singletonFactory = new SingletonFactory(instanceFactory);
-	private final PrototypeFactory prototypeFactory = new PrototypeFactory(instanceFactory);
-	private final ThreadLocal<RequestFactory> requestFactory = new ThreadLocal<>();
+	private final AtomicReference<SingletonFactory> singletonFactory = new AtomicReference<>();
+	private final AtomicReference<PrototypeFactory> prototypeFactory = new AtomicReference<>();
+	private final AtomicReference<RequestFactory> requestFactory = new AtomicReference<>();
 
 	private List<Class<?>> aspects;
 
@@ -105,7 +106,7 @@ public class DefaultIoCContext extends AbstractIoCContext {
 				.filter(t -> t.getType().isAnnotationPresent(Lazy.class) && t.getMode() == Mode.SINGLETON)
 				.collect(Collectors.toList());
 
-		lazyTypes.forEach(singletonFactory::addType);
+		lazyTypes.forEach(getSingletonFactory()::addType);
 
 		final List<TypeProcessor> processors = findInstancesInClassPathByInstance(TypeProcessor.class, packages);
 
@@ -144,6 +145,12 @@ public class DefaultIoCContext extends AbstractIoCContext {
 			configurations = configurations.stream().filter(c -> !Arrays.asList(excluded).contains(c)).collect(Collectors.toList());
 		}
 
+		configurations.sort((o1, o2) -> {
+			final int order_1 = getOrder(o1);
+			final int order_2 = getOrder(o2);
+			return order_2 - order_1;
+		});
+
 		registerEnvironments(configurations);
 
 		registerTypeProcessor(processors);
@@ -154,17 +161,19 @@ public class DefaultIoCContext extends AbstractIoCContext {
 
 		registerTypes(types);
 
-		initPostConstruction(singletonFactory.getTypes().values());
+		initPostConstruction(getSingletonFactory().getTypes().values());
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
 	public <O> O getType(String name) {
-		Object type = prototypeFactory.getType(name);
+		Object type = getPrototypeFactory().getType(name);
 		if (type == null) {
 			type = getRequestFactory().getType(name);
 			if (type == null) {
-				type = singletonFactory.getType(name);
+				type = getSingletonFactory().getType(name);
+			} else {
+				instantiateSensibles(type);
 			}
 		}
 
@@ -174,13 +183,15 @@ public class DefaultIoCContext extends AbstractIoCContext {
 	@Override
 	@SuppressWarnings("unchecked")
 	public <O> O getType(Class<O> type) {
-		Object o = getType(type.getTypeName());
+		Object o = getType(type.getSimpleName());
 		if (o == null) {
-			o = prototypeFactory.getType(type);
+			o = getPrototypeFactory().getType(type);
 			if (o == null) {
 				o = getRequestFactory().getType(type);
 				if (o == null) {
-					o = singletonFactory.getType(type);
+					o = getSingletonFactory().getType(type);
+				} else {
+					instantiateSensibles(o);
 				}
 			}
 		}
@@ -194,11 +205,11 @@ public class DefaultIoCContext extends AbstractIoCContext {
 		final Mode mode = resolveLoadingMode(type);
 		final TypeMetadata metadata = new TypeMetadata(name, instance, mode);
 		if (mode == Mode.SINGLETON) {
-			singletonFactory.addType(metadata);
+			getSingletonFactory().addType(metadata);
 		} else if (mode == Mode.REQUEST) {
 			getRequestFactory().addType(metadata);
 		} else {
-			prototypeFactory.addType(metadata);
+			getPrototypeFactory().addType(metadata);
 		}
 	}
 
@@ -206,9 +217,9 @@ public class DefaultIoCContext extends AbstractIoCContext {
 	@SuppressWarnings("unchecked")
 	public Collection<TypeMetadata> getMetadatas(Mode mode) {
 		if (mode == Mode.SINGLETON) {
-			return singletonFactory.getTypes().values();
+			return getSingletonFactory().getTypes().values();
 		} else if (mode == Mode.PROTOTYPE) {
-			return prototypeFactory.getTypes().values();
+			return getPrototypeFactory().getTypes().values();
 		}
 
 		return getRequestFactory().getTypes().values();
@@ -238,11 +249,11 @@ public class DefaultIoCContext extends AbstractIoCContext {
 			}
 
 			if (type.getMode() == Mode.PROTOTYPE) {
-				prototypeFactory.addType(type);
+				getPrototypeFactory().addType(type);
 			} else if (type.getMode() == Mode.REQUEST) {
 				getRequestFactory().addType(type);
 			} else {
-				singletonFactory.addType(type);
+				getSingletonFactory().addType(type);
 			}
 		});
 
@@ -268,7 +279,7 @@ public class DefaultIoCContext extends AbstractIoCContext {
 
 			getDispatcherFactory().fireEvent(new OnTypeInitFact(type.getName(), instance));
 
-			singletonFactory.addType(type);
+			getSingletonFactory().addType(type);
 		});
 
 		return types;
@@ -278,9 +289,7 @@ public class DefaultIoCContext extends AbstractIoCContext {
 	public void destroy() {
 		getDispatcherFactory().fireEvent(new OnContextDestroyFact(this));
 
-		prototypeFactory.getTypes().values().forEach(this::destroy);
-		getRequestFactory().getTypes().values().forEach(this::destroy);
-		singletonFactory.getTypes().values().forEach(this::destroy);
+		getSingletonFactory().getTypes().values().forEach(this::destroy);
 	}
 
 	/**
@@ -326,7 +335,7 @@ public class DefaultIoCContext extends AbstractIoCContext {
 	}
 
 	private void initFactories() {
-		final List<TypeMetadata> metadatas = singletonFactory.getTypes()
+		final List<TypeMetadata> metadatas = getSingletonFactory().getTypes()
 				.values()
 				.stream()
 				.filter(t -> Factory.class.isAssignableFrom(t.getType()))
@@ -554,11 +563,21 @@ public class DefaultIoCContext extends AbstractIoCContext {
 
 	@Override
 	public SingletonFactory getSingletonFactory() {
+		SingletonFactory singletonFactory = this.singletonFactory.get();
+		if (singletonFactory == null) {
+			singletonFactory = new SingletonFactory(instanceFactory);
+			this.singletonFactory.set(singletonFactory);
+		}
 		return singletonFactory;
 	}
 
 	@Override
 	public PrototypeFactory getPrototypeFactory() {
+		PrototypeFactory prototypeFactory = this.prototypeFactory.get();
+		if (prototypeFactory == null) {
+			prototypeFactory = new PrototypeFactory(instanceFactory);
+			this.prototypeFactory.set(prototypeFactory);
+		}
 		return prototypeFactory;
 	}
 }

@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2018 DI (IoC) Container (Team: GC Dev, Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
  *
- * This file is part of DI (IoC) Container Project.
+ * This addView is part of DI (IoC) Container Project.
  *
  * DI (IoC) Container Project is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

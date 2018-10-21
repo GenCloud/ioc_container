@@ -55,6 +55,7 @@ public abstract class AbstractMatcher {
 		if (value != null && value.equals("*")) {
 			return true;
 		}
+
 		return isMatch(method);
 	}
 

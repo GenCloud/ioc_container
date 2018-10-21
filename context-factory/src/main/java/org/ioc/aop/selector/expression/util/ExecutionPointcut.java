@@ -34,12 +34,6 @@ public class ExecutionPointcut extends AbstractMatcher {
 	@Override
 	protected boolean isMatch(Method method) {
 		readValue();
-
-		for (AbstractMatcher exp : getMatchers()) {
-			if (!exp.match(method)) {
-				return false;
-			}
-		}
-		return true;
+		return getMatchers().stream().allMatch(exp -> exp.match(method));
 	}
 }
