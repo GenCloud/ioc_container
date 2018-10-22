@@ -9,9 +9,9 @@ import org.ioc.exceptions.IoCException;
  * @date 09/2018
  */
 public interface Factory {
-	String DEFAULT_THREAD_FACTORY = "org.ioc.threads.factory.DefaultThreadPoolFactory";
+	String DEFAULT_THREAD_FACTORY = "org.ioc.context.factories.DefaultThreadPoolFactory";
 
-	String DEFAULT_CACHE_FACTORY = "org.ioc.cache.impl.EhFactory";
+	String DEFAULT_CACHE_FACTORY = "org.ioc.context.factories.cache.EhFactory";
 
 	String DEFAULT_DATABASE_FACTORY = "org.ioc.orm.factory.orient.OrientSchemaFactory";
 

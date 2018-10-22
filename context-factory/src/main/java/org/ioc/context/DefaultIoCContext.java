@@ -21,9 +21,7 @@ package org.ioc.context;
 import org.ioc.annotations.configuration.Property;
 import org.ioc.annotations.configuration.PropertyFunction;
 import org.ioc.annotations.context.*;
-import org.ioc.annotations.modules.CacheModule;
 import org.ioc.annotations.modules.DatabaseModule;
-import org.ioc.annotations.modules.ThreadingModule;
 import org.ioc.annotations.modules.WebModule;
 import org.ioc.aop.DynamicProxy;
 import org.ioc.context.factories.FactDispatcherFactory;
@@ -38,13 +36,16 @@ import org.ioc.context.listeners.facts.OnTypeInitFact;
 import org.ioc.context.model.TypeMetadata;
 import org.ioc.context.processors.DestroyProcessor;
 import org.ioc.context.processors.TypeProcessor;
+import org.ioc.context.processors.impl.ThreadConfigureProcessor;
 import org.ioc.context.sensible.ContextSensible;
 import org.ioc.context.sensible.EnvironmentSensible;
 import org.ioc.context.sensible.Sensible;
 import org.ioc.context.sensible.factories.CacheFactorySensible;
 import org.ioc.context.sensible.factories.ThreadFactorySensible;
 import org.ioc.context.type.IoCContext;
+import org.ioc.enviroment.configurations.CacheAutoConfiguration;
 import org.ioc.enviroment.configurations.FactDispatcherAutoConfiguration;
+import org.ioc.enviroment.configurations.ThreadingAutoConfiguration;
 import org.ioc.enviroment.loader.EnvironmentLoader;
 import org.ioc.exceptions.IoCException;
 import org.ioc.exceptions.IoCInstantiateException;
@@ -118,17 +119,10 @@ public class DefaultIoCContext extends AbstractIoCContext {
 		aspects = extractAspect(packages);
 
 		configurations.add(FactDispatcherAutoConfiguration.class);
+		configurations.add(CacheAutoConfiguration.class);
+		configurations.add(ThreadingAutoConfiguration.class);
 
-		if (mainSource.isAnnotationPresent(ThreadingModule.class)) {
-			final ThreadingModule annotation = mainSource.getAnnotation(ThreadingModule.class);
-			configurations.add(annotation.autoConfigurationClass());
-			processors.add((TypeProcessor) instantiateClass(loadClass("org.ioc.threads.processors.ThreadConfigureProcessor")));
-		}
-
-		if (mainSource.isAnnotationPresent(CacheModule.class)) {
-			final CacheModule annotation = mainSource.getAnnotation(CacheModule.class);
-			configurations.add(annotation.autoConfigurationClass());
-		}
+		processors.add((TypeProcessor) instantiateClass(ThreadConfigureProcessor.class));
 
 		if (mainSource.isAnnotationPresent(DatabaseModule.class)) {
 			final DatabaseModule annotation = mainSource.getAnnotation(DatabaseModule.class);
@@ -345,7 +339,12 @@ public class DefaultIoCContext extends AbstractIoCContext {
 					return order_2 - order_1;
 				}).collect(Collectors.toList());
 
-		metadatas.forEach(t -> ((Factory) t.getInstance()).initialize());
+		metadatas.forEach(this::installFactories);
+	}
+
+	@SuppressWarnings("unchecked")
+	private void installFactories(TypeMetadata metadata) {
+		((Factory) metadata.getInstance()).initialize();
 	}
 
 	private int getOrder(Class<?> type) {

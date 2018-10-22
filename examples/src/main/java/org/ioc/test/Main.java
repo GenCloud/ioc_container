@@ -19,9 +19,7 @@
 package org.ioc.test;
 
 import org.ioc.annotations.context.ScanPackage;
-import org.ioc.annotations.modules.CacheModule;
 import org.ioc.annotations.modules.DatabaseModule;
-import org.ioc.annotations.modules.ThreadingModule;
 import org.ioc.annotations.modules.WebModule;
 import org.ioc.context.DefaultIoCContext;
 import org.ioc.context.model.TypeMetadata;
@@ -46,8 +44,6 @@ import java.util.List;
  */
 @WebModule
 @DatabaseModule
-@ThreadingModule
-@CacheModule
 @ScanPackage(packages = {"org.ioc.test"})
 public class Main extends Assert {
 	private static final Logger log = LoggerFactory.getLogger(Main.class);

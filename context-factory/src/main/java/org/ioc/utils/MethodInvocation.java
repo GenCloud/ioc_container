@@ -16,28 +16,44 @@
  * You should have received a copy of the GNU General Public License
  * along with IoC Starter Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.ioc.enviroment.configurations;
+package org.ioc.utils;
 
-import org.ioc.annotations.configuration.Property;
-import org.ioc.annotations.configuration.PropertyFunction;
-import org.ioc.context.factories.Factory;
-import org.ioc.utils.ReflectionUtils;
-
-import static org.ioc.context.factories.Factory.defaultCacheFactory;
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.Objects;
 
 /**
+ * Simple class used to store method invocations for the proxied cache.
+ *
  * @author GenCloud
  * @date 09/2018
  */
-@Property(prefix = "cache.")
-public class CacheAutoConfiguration {
-	@Property("factory")
-	private String factoryClass = "org.ioc.context.factories.cache.EhFactory";
+public class MethodInvocation {
+	private final Method method;
+	private final Object[] args;
 
-	@PropertyFunction
-	public Object cacheFactory() {
-		final Class<? extends Factory> factory = factoryClass == null ? defaultCacheFactory()
-				: (Class<? extends Factory>) ReflectionUtils.loadClass(factoryClass);
-		return ReflectionUtils.instantiateClass(factory);
+	public MethodInvocation(Method method, Object[] args) {
+		this.method = method;
+		this.args = args;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) {
+			return true;
+		}
+		if (!(o instanceof MethodInvocation)) {
+			return false;
+		}
+		MethodInvocation that = (MethodInvocation) o;
+		return Objects.equals(method, that.method) &&
+				Arrays.equals(args, that.args);
+	}
+
+	@Override
+	public int hashCode() {
+		int result = Objects.hash(method);
+		result = 31 * result + Arrays.hashCode(args);
+		return result;
 	}
 }

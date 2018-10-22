@@ -36,7 +36,7 @@ Add IoC to your project. for maven projects just add this dependency:
         <dependency>
             <groupId>org.ioc</groupId>
             <artifactId>context-factory</artifactId>
-            <version>2.2.4.STABLE</version>
+            <version>2.3.0.RELEASE</version>
         </dependency>
     </dependencies>
 ```
@@ -254,46 +254,8 @@ public class DefaultProcessor implements TypeProcessor, ContextSensible {
 	}
 }
 ```
-
----
-# Modules
-### 1. Module 'threads-factory'
-    
-### Intro
-Add threads-channel module to your project. for maven projects just add this dependency:
-```xml
-   <repositories>
-       <repository>
-           <id>ioc_threading</id>
-           <url>https://raw.github.com/GenCloud/ioc_container/threading/</url>
-           <snapshots>
-               <enabled>true</enabled>
-               <updatePolicy>always</updatePolicy>
-           </snapshots>
-       </repository>
-   </repositories>
-    
-   <dependencies>
-       <dependency>
-           <groupId>org.ioc</groupId>
-           <artifactId>threads-factory</artifactId>
-           <version>2.2.4.STABLE</version>
-       </dependency>
-   </dependencies>
-```
-    
-A typical use of threads-channel module would be:
-1) Add in Main class of application marker-annotated of enabled this module
-```java
-    @ThreadingModule
-    @ScanPackage(packages = {"org.ioc.test"})
-    public class MainTest {
-        public static void main(String... parameters){
-          IoCStarter.start(MainTest.class, parameters);
-        }
-    }
-```
-2) Mark sample component of inheritance ThreadFactorySensible
+Threading
+1) Mark sample component of inheritance ThreadFactorySensible
 ```java
     @IoCComponent
     public class ComponentThreads implements ThreadFactorySensible {
@@ -324,7 +286,7 @@ A typical use of threads-channel module would be:
     }
 
 ```
-3) Default methods of channel
+2) Default methods of channel
 - scheduling
 ```java
         // Executes an asynchronous tasks. Tasks scheduled here will go to an default shared thread pool.
@@ -337,46 +299,10 @@ A typical use of threads-channel module would be:
         ScheduledTaskFuture async(long delay, TimeUnit unit, long repeat, Runnable task)
 ```
 
----    
-### 2. Module 'cache-factory'
-
-### Intro
-Add cache-factory module to your project. for maven projects just add this dependency:
-```xml
-   <repositories>
-       <repository>
-           <id>ioc_cache</id>
-           <url>https://raw.github.com/GenCloud/ioc_container/cache</url>
-           <snapshots>
-               <enabled>true</enabled>
-               <updatePolicy>always</updatePolicy>
-           </snapshots>
-       </repository>
-   </repositories>
-    
-   <dependencies>
-       <dependency>
-           <groupId>org.ioc</groupId>
-           <artifactId>cache-factory</artifactId>
-           <version>2.2.4.STABLE</version>
-       </dependency>
-   </dependencies>
-```
-    
-A typical use of threads-factory module would be:
-1) Add in Main class of application marker-annotation of enabled this module
-```java
-    @CacheModule //default cache using EhCache library
-    @ScanPackage(packages = {"org.ioc.test"})
-    public class MainTest {
-        public static void main(String... args){
-          IoCStarter.start(MainTest.class, args);
-        }
-    }
-```
+Cache
 * sample factories: EhFactory, GuavaFactory
 
-2) Mark sample component of inheritance CacheFactorySensible
+1) Mark sample component of inheritance CacheFactorySensible
 ```java
     @IoCComponent
     public class CacheComponentTest implements CacheFactorySensible {
@@ -430,7 +356,8 @@ A typical use of threads-factory module would be:
         }
     }
 ```
-3) Default methods of factory
+
+2) Default methods of factory
 - cache management
 ```java
             //Add pair <K, V> to cache. Notice: if there is already a value with given id in map,
@@ -453,7 +380,7 @@ A typical use of threads-factory module would be:
            int size();
 ```
     
-### 3. Module 'orm-factory'
+### 1. Module 'orm-factory'
 
 ### Intro
 Add orm-factory module to your project. for maven projects just add this dependency:   
@@ -473,7 +400,7 @@ Add orm-factory module to your project. for maven projects just add this depende
         <dependency>
             <groupId>org.ioc</groupId>
             <artifactId>orm-factory</artifactId>
-            <version>2.2.4.STABLE</version>
+            <version>2.3.0.RELEASE</version>
         </dependency>
     </dependencies>
 ```
@@ -824,7 +751,7 @@ Try usage component in MainClass:
     }
 ```
 
-## 4. Module 'web-factory'
+## 2. Module 'web-factory'
 
 ### Intro
 Add web-factory module to your project. for maven projects just add this dependency:
@@ -844,7 +771,7 @@ Add web-factory module to your project. for maven projects just add this depende
        <dependency>
            <groupId>org.ioc</groupId>
            <artifactId>web-factory</artifactId>
-           <version>2.2.4.STABLE</version>
+           <version>2.3.0.RELEASE</version>
        </dependency>
    </dependencies>
 ```

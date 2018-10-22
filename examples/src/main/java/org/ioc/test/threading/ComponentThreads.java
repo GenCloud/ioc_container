@@ -20,13 +20,13 @@ package org.ioc.test.threading;
 
 import org.ioc.annotations.context.IoCComponent;
 import org.ioc.annotations.context.PostConstruct;
+import org.ioc.annotations.threading.SimpleTask;
+import org.ioc.context.factories.DefaultThreadPoolFactory;
 import org.ioc.context.factories.Factory;
+import org.ioc.context.model.tasks.AbstractTask;
+import org.ioc.context.model.tasks.interfaces.Task;
 import org.ioc.context.sensible.factories.ThreadFactorySensible;
 import org.ioc.exceptions.IoCException;
-import org.ioc.threads.annotation.SimpleTask;
-import org.ioc.threads.factory.DefaultThreadPoolFactory;
-import org.ioc.threads.factory.model.AbstractTask;
-import org.ioc.threads.factory.model.interfaces.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

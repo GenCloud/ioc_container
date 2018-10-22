@@ -19,9 +19,7 @@
 package org.examples.webapp;
 
 import org.ioc.annotations.context.ScanPackage;
-import org.ioc.annotations.modules.CacheModule;
 import org.ioc.annotations.modules.DatabaseModule;
-import org.ioc.annotations.modules.ThreadingModule;
 import org.ioc.annotations.modules.WebModule;
 import org.ioc.context.starter.IoCStarter;
 
@@ -30,8 +28,6 @@ import org.ioc.context.starter.IoCStarter;
  * @date 10/2018
  */
 @WebModule
-@CacheModule
-@ThreadingModule
 @DatabaseModule
 @ScanPackage(packages = {"org.examples.webapp"})
 public class AppMain {

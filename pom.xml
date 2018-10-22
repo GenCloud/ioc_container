@@ -7,7 +7,7 @@
     <groupId>org.ioc</groupId>
     <artifactId>ioc</artifactId>
     <packaging>pom</packaging>
-    <version>2.2.4.STABLE</version>
+    <version>2.3.0.RELEASE</version>
 
     <name>IoC Starter</name>
     <description>
@@ -38,11 +38,9 @@
 
     <modules>
         <module>context-factory</module>
-        <module>cache-factory</module>
-        <module>threads-factory</module>
-        <module>examples</module>
         <module>orm-factory</module>
         <module>web-factory</module>
+        <module>examples</module>
         <module>example-webapp</module>
     </modules>
 

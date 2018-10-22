@@ -16,28 +16,52 @@
  * You should have received a copy of the GNU General Public License
  * along with IoC Starter Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.ioc.enviroment.configurations;
+package org.ioc.utils;
 
-import org.ioc.annotations.configuration.Property;
-import org.ioc.annotations.configuration.PropertyFunction;
-import org.ioc.context.factories.Factory;
-import org.ioc.utils.ReflectionUtils;
+import org.ioc.context.model.tasks.AbstractTask;
 
-import static org.ioc.context.factories.Factory.defaultCacheFactory;
+import java.lang.reflect.Method;
 
 /**
  * @author GenCloud
  * @date 09/2018
  */
-@Property(prefix = "cache.")
-public class CacheAutoConfiguration {
-	@Property("factory")
-	private String factoryClass = "org.ioc.context.factories.cache.EhFactory";
+public class GeneralTask extends AbstractTask<Void> implements Runnable {
+	private final Object o;
+	private final Method method;
+	private final TaskProperties taskProperties;
 
-	@PropertyFunction
-	public Object cacheFactory() {
-		final Class<? extends Factory> factory = factoryClass == null ? defaultCacheFactory()
-				: (Class<? extends Factory>) ReflectionUtils.loadClass(factoryClass);
-		return ReflectionUtils.instantiateClass(factory);
+	public GeneralTask(Object o, Method method, TaskProperties taskProperties) {
+		this.o = o;
+		this.method = method;
+		this.taskProperties = taskProperties;
+	}
+
+	public TaskProperties getTaskProperties() {
+		return taskProperties;
+	}
+
+	public Object getObject() {
+		return o;
+	}
+
+	public Method getMethod() {
+		return method;
+	}
+
+	@Override
+	public Void call() throws Exception {
+		method.setAccessible(true);
+		method.invoke(o);
+		method.setAccessible(false);
+		return null;
+	}
+
+	@Override
+	public void run() {
+		try {
+			call();
+		} catch (Exception ignored) {
+		}
 	}
 }

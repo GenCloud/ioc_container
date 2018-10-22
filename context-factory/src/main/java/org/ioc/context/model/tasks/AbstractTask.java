@@ -16,28 +16,14 @@
  * You should have received a copy of the GNU General Public License
  * along with IoC Starter Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.ioc.enviroment.configurations;
+package org.ioc.context.model.tasks;
 
-import org.ioc.annotations.configuration.Property;
-import org.ioc.annotations.configuration.PropertyFunction;
-import org.ioc.context.factories.Factory;
-import org.ioc.utils.ReflectionUtils;
-
-import static org.ioc.context.factories.Factory.defaultCacheFactory;
+import org.ioc.context.model.tasks.interfaces.Task;
 
 /**
+ * @param <T> task return bag
  * @author GenCloud
  * @date 09/2018
  */
-@Property(prefix = "cache.")
-public class CacheAutoConfiguration {
-	@Property("factory")
-	private String factoryClass = "org.ioc.context.factories.cache.EhFactory";
-
-	@PropertyFunction
-	public Object cacheFactory() {
-		final Class<? extends Factory> factory = factoryClass == null ? defaultCacheFactory()
-				: (Class<? extends Factory>) ReflectionUtils.loadClass(factoryClass);
-		return ReflectionUtils.instantiateClass(factory);
-	}
+public abstract class AbstractTask<T> implements Task<T> {
 }
