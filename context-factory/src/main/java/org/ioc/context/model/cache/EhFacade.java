@@ -19,7 +19,6 @@
 package org.ioc.context.model.cache;
 
 import net.sf.ehcache.Element;
-import org.ioc.context.factories.ICache;
 
 import java.util.Iterator;
 import java.util.Map;

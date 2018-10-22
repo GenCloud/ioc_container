@@ -22,9 +22,9 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import org.ioc.annotations.context.Order;
-import org.ioc.context.factories.ICache;
 import org.ioc.context.factories.ICacheFactory;
 import org.ioc.context.model.cache.GuavaFacade;
+import org.ioc.context.model.cache.ICache;
 import org.ioc.exceptions.IoCException;
 import org.ioc.utils.MethodInvocation;
 

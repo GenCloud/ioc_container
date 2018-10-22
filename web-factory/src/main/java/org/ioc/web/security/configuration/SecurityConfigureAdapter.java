@@ -25,13 +25,12 @@ import org.ioc.web.exception.NoFoundAuthenticatedUserException;
 import org.ioc.web.exception.SessionNotFoundException;
 import org.ioc.web.exception.WrongMatchException;
 import org.ioc.web.model.ModelAndView;
-import org.ioc.web.model.http.Request;
-import org.ioc.web.model.http.Response;
+import org.ioc.web.model.http.RequestEntry;
+import org.ioc.web.model.http.ResponseEntry;
 import org.ioc.web.model.mapping.Mapping;
 import org.ioc.web.model.session.HttpSession;
 import org.ioc.web.model.session.SessionManager;
 import org.ioc.web.security.CheckResult;
-import org.ioc.web.security.configuration.HttpContainer.AuthenticationRequestConfigurer;
 import org.ioc.web.security.configuration.HttpContainer.HttpAuthorizeRequest;
 import org.ioc.web.security.filter.Filter;
 import org.ioc.web.security.interceptors.HttpRequestInterceptor;
@@ -115,30 +114,24 @@ public class SecurityConfigureAdapter {
 				configuredUser = true;
 			}
 		});
-
-		final AuthenticationRequestConfigurer configurer = container.getConfiguredAuthRequest();
-		final String expiredPath = configurer.getExpiredPath();
-		if (expiredPath != null && !expiredPath.isEmpty()) {
-			sessionManager.setExpiredUri(expiredPath);
-		}
 	}
 
-	public CheckResult secureRequest(Request request, Response response, ModelAndView modelAndView, Mapping mapping) {
-		final CheckResult result = checkRequest(request, mapping);
+	public CheckResult secureRequest(RequestEntry requestEntry, ResponseEntry responseEntry, ModelAndView modelAndView, Mapping mapping) {
+		final CheckResult result = checkRequest(requestEntry, mapping);
 
 		if (!result.isOk()) {
 			return result;
 		}
 
 		if (log.isDebugEnabled()) {
-			log.debug("Start filtering request - [{}]", request.getPath());
+			log.debug("Start filtering request - [{}]", requestEntry.getPath());
 		}
 
 		final boolean ok = filters
 				.stream()
-				.allMatch(filter -> filter.doFilter(request, response)) && requestInterceptors
+				.allMatch(filter -> filter.doFilter(requestEntry, responseEntry)) && requestInterceptors
 				.stream()
-				.allMatch(interceptor -> interceptor.preHandle(request, response, modelAndView, mapping));
+				.allMatch(interceptor -> interceptor.preHandle(requestEntry, responseEntry, modelAndView, mapping));
 		result.setOk(ok);
 		return result;
 	}
@@ -151,8 +144,8 @@ public class SecurityConfigureAdapter {
 		return container;
 	}
 
-	private CheckResult checkRequest(Request request, Mapping mapping) {
-		final String url = request.getPath();
+	private CheckResult checkRequest(RequestEntry requestEntry, Mapping mapping) {
+		final String url = requestEntry.getPath();
 		final HttpAuthorizeRequest authorizeRequest = container.getConfiguredRequests();
 		final Map<RequestSettings, List<String>> rolePermits = authorizeRequest.getIncludeRolePermits();
 		CheckResult result;
@@ -160,7 +153,7 @@ public class SecurityConfigureAdapter {
 			final String pattern = settings.getUrlPattern();
 			if (pathUtil.match(pattern, url)) {
 				if (!settings.isResource() && mapping != null) {
-					final HttpSession session = getContext().findSession(request);
+					final HttpSession session = getContext().findSession(requestEntry);
 
 					if (session != null) {
 						if (settings.isAuthenticated()) {
@@ -187,7 +180,10 @@ public class SecurityConfigureAdapter {
 						}
 					} else {
 						result = new CheckResult(false);
-						log.warn("Can't authorize request - wrong session!");
+						if (log.isDebugEnabled()) {
+							log.debug("Can't authorize request - wrong session!");
+						}
+
 						result.setThrowable(new SessionNotFoundException("Can't authorize request - wrong session!"));
 						return result;
 					}

@@ -27,7 +27,7 @@ import io.netty.handler.codec.http.multipart.InterfaceHttpData.HttpDataType;
 import io.netty.util.CharsetUtil;
 import org.ioc.web.annotations.*;
 import org.ioc.web.model.ModelAndView;
-import org.ioc.web.model.http.Request;
+import org.ioc.web.model.http.RequestEntry;
 import org.ioc.web.model.mapping.Mapping;
 import org.ioc.web.security.configuration.SecurityConfigureAdapter;
 import org.ioc.web.security.user.UserDetails;
@@ -93,14 +93,14 @@ public class WebArgumentResolver implements ArgumentResolver {
 	}
 
 	@Override
-	public void resolve(SecurityConfigureAdapter securityConfigureAdapter, Mapping mapping, Request request) {
-		final String path = request.getPath();
+	public void resolve(SecurityConfigureAdapter securityConfigureAdapter, Mapping mapping, RequestEntry requestEntry) {
+		final String path = requestEntry.getPath();
 
-		requestArgumentResolver(request, mapping);
+		requestArgumentResolver(requestEntry, mapping);
 
 		pathArgumentResolve(path, mapping);
 
-		final FullHttpRequest httpRequest = request.getHttpRequest();
+		final FullHttpRequest httpRequest = requestEntry.getHttpRequest();
 
 		requestMethodArgumentResolver(mapping.getHttpMethod(), httpRequest, path, mapping);
 
@@ -117,12 +117,12 @@ public class WebArgumentResolver implements ArgumentResolver {
 
 		modelArgumentResolve(mapping);
 
-		userDetailsArgumentResolve(request, securityConfigureAdapter, mapping);
+		userDetailsArgumentResolve(requestEntry, securityConfigureAdapter, mapping);
 	}
 
-	private void userDetailsArgumentResolve(Request request, SecurityConfigureAdapter securityConfigureAdapter,
+	private void userDetailsArgumentResolve(RequestEntry requestEntry, SecurityConfigureAdapter securityConfigureAdapter,
 											Mapping mapping) {
-		final UserDetails userDetails = securityConfigureAdapter.getContext().findCredentials(request);
+		final UserDetails userDetails = securityConfigureAdapter.getContext().findCredentials(requestEntry);
 		final Parameter[] parameters = mapping.getMethod().getParameters();
 		IntStream.range(0, parameters.length).forEach(i -> {
 			final Credentials credentials = parameters[i].getAnnotation(Credentials.class);
@@ -200,11 +200,11 @@ public class WebArgumentResolver implements ArgumentResolver {
 		}
 	}
 
-	private void requestArgumentResolver(Request request, Mapping mapping) {
+	private void requestArgumentResolver(RequestEntry requestEntry, Mapping mapping) {
 		final Parameter[] parameters = mapping.getMethod().getParameters();
 		IntStream.range(0, parameters.length).forEach(i -> {
-			if (Request.class.isAssignableFrom(parameters[i].getType())) {
-				mapping.setParameter(request, i);
+			if (RequestEntry.class.isAssignableFrom(parameters[i].getType())) {
+				mapping.setParameter(requestEntry, i);
 			}
 		});
 	}

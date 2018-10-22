@@ -19,8 +19,8 @@
 package org.ioc.web.security.interceptors;
 
 import org.ioc.web.model.ModelAndView;
-import org.ioc.web.model.http.Request;
-import org.ioc.web.model.http.Response;
+import org.ioc.web.model.http.RequestEntry;
+import org.ioc.web.model.http.ResponseEntry;
 import org.ioc.web.model.mapping.Mapping;
 
 /**
@@ -28,7 +28,7 @@ import org.ioc.web.model.mapping.Mapping;
  * @date 10/2018
  */
 public interface HttpRequestInterceptor {
-	boolean preHandle(Request request, Response response, ModelAndView modelAndView, Mapping mapping);
+	boolean preHandle(RequestEntry requestEntry, ResponseEntry responseEntry, ModelAndView modelAndView, Mapping mapping);
 
-	void postHandle(Request request, Response response, ModelAndView modelAndView, Mapping mapping);
+	void postHandle(RequestEntry requestEntry, ResponseEntry responseEntry, ModelAndView modelAndView, Mapping mapping);
 }

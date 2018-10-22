@@ -18,7 +18,7 @@
  */
 package org.ioc.context.model.tasks.impl;
 
-import org.ioc.context.factories.DefaultThreadPoolFactory;
+import org.ioc.context.factories.threading.DefaultThreadPoolFactory;
 import org.ioc.context.model.tasks.interfaces.PoolTasks;
 import org.ioc.context.model.tasks.interfaces.ScheduledTaskFuture;
 import org.ioc.context.model.tasks.interfaces.Task;

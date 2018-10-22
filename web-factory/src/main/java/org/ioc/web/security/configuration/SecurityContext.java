@@ -20,7 +20,7 @@ package org.ioc.web.security.configuration;
 
 import org.ioc.web.exception.EncodeException;
 import org.ioc.web.model.http.Cookie;
-import org.ioc.web.model.http.Request;
+import org.ioc.web.model.http.RequestEntry;
 import org.ioc.web.model.session.HttpSession;
 import org.ioc.web.model.session.SessionManager;
 import org.ioc.web.security.encoder.Encoder;
@@ -62,16 +62,16 @@ public class SecurityContext {
 		return null;
 	}
 
-	public void authenticate(Request request, UserDetails userDetails) {
-		final HttpSession session = findSession(request);
+	public void authenticate(RequestEntry requestEntry, UserDetails userDetails) {
+		final HttpSession session = findSession(requestEntry);
 		if (session != null) {
 			session.setUserDetails(userDetails);
 			session.setAuthenticated(true);
 		}
 	}
 
-	public UserDetails findCredentials(Request request) {
-		final HttpSession session = findSession(request);
+	public UserDetails findCredentials(RequestEntry requestEntry) {
+		final HttpSession session = findSession(requestEntry);
 		if (session != null) {
 			return session.getUserDetails();
 		}
@@ -79,9 +79,9 @@ public class SecurityContext {
 		return null;
 	}
 
-	public HttpSession findSession(Request request) {
-		if (request.getCookies() != null) {
-			final Cookie sessionId = request.getCookie("SESSIONID");
+	public HttpSession findSession(RequestEntry requestEntry) {
+		if (requestEntry.getCookies() != null) {
+			final Cookie sessionId = requestEntry.getCookie("SESSIONID");
 
 			if (sessionId == null) {
 				return null;
@@ -93,8 +93,8 @@ public class SecurityContext {
 		return null;
 	}
 
-	public boolean removeAuthInformation(Request request) {
-		final HttpSession session = findSession(request);
+	public boolean removeAuthInformation(RequestEntry requestEntry) {
+		final HttpSession session = findSession(requestEntry);
 		if (session != null && session.isAuthenticated()) {
 			session.setUserDetails(null);
 			session.setAuthenticated(false);

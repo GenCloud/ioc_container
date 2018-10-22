@@ -24,11 +24,12 @@ import org.ioc.annotations.context.*;
 import org.ioc.annotations.modules.DatabaseModule;
 import org.ioc.annotations.modules.WebModule;
 import org.ioc.aop.DynamicProxy;
-import org.ioc.context.factories.FactDispatcherFactory;
 import org.ioc.context.factories.Factory;
+import org.ioc.context.factories.ICacheFactory;
 import org.ioc.context.factories.core.InstanceFactory;
 import org.ioc.context.factories.core.PrototypeFactory;
 import org.ioc.context.factories.core.SingletonFactory;
+import org.ioc.context.factories.facts.FactDispatcherFactory;
 import org.ioc.context.factories.web.RequestFactory;
 import org.ioc.context.listeners.IListener;
 import org.ioc.context.listeners.facts.OnContextDestroyFact;
@@ -41,6 +42,7 @@ import org.ioc.context.sensible.ContextSensible;
 import org.ioc.context.sensible.EnvironmentSensible;
 import org.ioc.context.sensible.Sensible;
 import org.ioc.context.sensible.factories.CacheFactorySensible;
+import org.ioc.context.sensible.factories.DatabaseFactorySensible;
 import org.ioc.context.sensible.factories.ThreadFactorySensible;
 import org.ioc.context.type.IoCContext;
 import org.ioc.enviroment.configurations.CacheAutoConfiguration;
@@ -118,9 +120,9 @@ public class DefaultIoCContext extends AbstractIoCContext {
 
 		aspects = extractAspect(packages);
 
-		configurations.add(FactDispatcherAutoConfiguration.class);
 		configurations.add(CacheAutoConfiguration.class);
 		configurations.add(ThreadingAutoConfiguration.class);
+		configurations.add(FactDispatcherAutoConfiguration.class);
 
 		processors.add((TypeProcessor) instantiateClass(ThreadConfigureProcessor.class));
 
@@ -333,17 +335,18 @@ public class DefaultIoCContext extends AbstractIoCContext {
 				.values()
 				.stream()
 				.filter(t -> Factory.class.isAssignableFrom(t.getType()))
+				.filter(t -> !t.isInitialized())
 				.sorted((o1, o2) -> {
 					final int order_1 = getOrder(o1.getType());
 					final int order_2 = getOrder(o2.getType());
 					return order_2 - order_1;
 				}).collect(Collectors.toList());
 
-		metadatas.forEach(this::installFactories);
+		metadatas.forEach(this::installFactory);
 	}
 
 	@SuppressWarnings("unchecked")
-	private void installFactories(TypeMetadata metadata) {
+	private void installFactory(TypeMetadata metadata) {
 		((Factory) metadata.getInstance()).initialize();
 	}
 
@@ -457,11 +460,51 @@ public class DefaultIoCContext extends AbstractIoCContext {
 		}
 
 		if (ThreadFactorySensible.class.isAssignableFrom(cls)) {
-			((ThreadFactorySensible) instance).factoryInform(getType(Factory.defaultThreadFactory()));
+			getSingletonFactory().getTypes().values()
+					.stream()
+					.filter(t -> Factory.defaultThreadFactory().isAssignableFrom(t.getType()))
+					.findFirst()
+					.ifPresent(t -> {
+						if (!t.isInitialized()) {
+							t.setInitialized(true);
+							installFactory(t);
+							((ThreadFactorySensible) instance).factoryInform((Factory) t.getInstance());
+						} else {
+							((ThreadFactorySensible) instance).factoryInform((Factory) t.getInstance());
+						}
+					});
 		}
 
 		if (CacheFactorySensible.class.isAssignableFrom(cls)) {
-			((CacheFactorySensible) instance).factoryInform(getType(Factory.defaultCacheFactory()));
+			getSingletonFactory().getTypes().values()
+					.stream()
+					.filter(t -> ICacheFactory.class.isAssignableFrom(t.getType()))
+					.findFirst()
+					.ifPresent(t -> {
+						if (!t.isInitialized()) {
+							t.setInitialized(true);
+							installFactory(t);
+							((CacheFactorySensible) instance).factoryInform((Factory) t.getInstance());
+						} else {
+							((CacheFactorySensible) instance).factoryInform((Factory) t.getInstance());
+						}
+					});
+		}
+
+		if (DatabaseFactorySensible.class.isAssignableFrom(cls)) {
+			getSingletonFactory().getTypes().values()
+					.stream()
+					.filter(t -> Factory.defaultDatabaseFactory().isAssignableFrom(t.getType()))
+					.findFirst()
+					.ifPresent(t -> {
+						if (!t.isInitialized()) {
+							t.setInitialized(true);
+							installFactory(t);
+							((DatabaseFactorySensible) instance).factoryInform((Factory) t.getInstance());
+						} else {
+							((DatabaseFactorySensible) instance).factoryInform((Factory) t.getInstance());
+						}
+					});
 		}
 
 		if (EnvironmentSensible.class.isAssignableFrom(cls)) {

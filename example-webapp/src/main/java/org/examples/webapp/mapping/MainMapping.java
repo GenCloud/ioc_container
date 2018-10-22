@@ -28,7 +28,7 @@ import org.ioc.web.annotations.MappingMethod;
 import org.ioc.web.annotations.RequestParam;
 import org.ioc.web.annotations.UrlMapping;
 import org.ioc.web.model.ModelAndView;
-import org.ioc.web.model.http.Request;
+import org.ioc.web.model.http.RequestEntry;
 
 /**
  * @author GenCloud
@@ -47,26 +47,26 @@ public class MainMapping {
 		return modelAndView;
 	}
 
-	@UrlMapping(value = "signup", method = MappingMethod.POST)
+	@UrlMapping(value = "/signup", method = MappingMethod.POST)
 	public IMessage createUser(@RequestParam("username") String username,
 							   @RequestParam("password") String password,
 							   @RequestParam("repeatedPassword") String repeatedPassword) {
 		return accountService.tryCreateUser(username, password, repeatedPassword);
 	}
 
-	@UrlMapping(value = "signin", method = MappingMethod.POST)
-	public IMessage auth(Request request,
+	@UrlMapping(value = "/signin", method = MappingMethod.POST)
+	public IMessage auth(RequestEntry requestEntry,
 						 @RequestParam("username") String username,
 						 @RequestParam("password") String password) {
-		return accountService.tryAuthenticateUser(request, username, password);
+		return accountService.tryAuthenticateUser(requestEntry, username, password);
 	}
 
-	@UrlMapping("signout")
-	public IMessage signout(Request request) {
-		return accountService.logout(request);
+	@UrlMapping("/signout")
+	public IMessage signout(RequestEntry requestEntry) {
+		return accountService.logout(requestEntry);
 	}
 
-	@UrlMapping("loginPage")
+	@UrlMapping("/loginPage")
 	public ModelAndView authenticated(@Credentials TblAccount account) {
 		final ModelAndView modelAndView = new ModelAndView();
 		modelAndView.setView("auth");

@@ -23,7 +23,7 @@ import org.examples.webapp.domain.repository.TblAccountRepository;
 import org.examples.webapp.responces.IMessage;
 import org.ioc.annotations.context.IoCComponent;
 import org.ioc.annotations.context.IoCDependency;
-import org.ioc.web.model.http.Request;
+import org.ioc.web.model.http.RequestEntry;
 import org.ioc.web.security.configuration.SecurityConfigureAdapter;
 import org.ioc.web.security.encoder.bcrypt.BCryptEncoder;
 import org.ioc.web.security.user.UserDetails;
@@ -85,7 +85,7 @@ public class AccountService implements UserDetailsProcessor {
 		return new IMessage(OK, "Successfully created!");
 	}
 
-	public IMessage tryAuthenticateUser(Request request, String username, String password) {
+	public IMessage tryAuthenticateUser(RequestEntry requestEntry, String username, String password) {
 		if (username == null || username.isEmpty() || password == null || password.isEmpty()) {
 			return new IMessage(ERROR, "Invalid request parameters!");
 		}
@@ -99,12 +99,12 @@ public class AccountService implements UserDetailsProcessor {
 			return new IMessage(ERROR, "Password does not match!");
 		}
 
-		securityConfigureAdapter.getContext().authenticate(request, userDetails);
+		securityConfigureAdapter.getContext().authenticate(requestEntry, userDetails);
 		return new IMessage(OK, "Successfully authenticated");
 	}
 
-	public IMessage logout(Request request) {
-		if (securityConfigureAdapter.getContext().removeAuthInformation(request)) {
+	public IMessage logout(RequestEntry requestEntry) {
+		if (securityConfigureAdapter.getContext().removeAuthInformation(requestEntry)) {
 			return new IMessage(OK, "/");
 		}
 

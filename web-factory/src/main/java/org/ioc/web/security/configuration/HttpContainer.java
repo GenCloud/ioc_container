@@ -70,7 +70,7 @@ public class HttpContainer {
 			this.container = container;
 		}
 
-		String getExpiredPath() {
+		public String getExpiredPath() {
 			return expiredPath;
 		}
 

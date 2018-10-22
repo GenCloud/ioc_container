@@ -16,13 +16,14 @@
  * You should have received a copy of the GNU General Public License
  * along with IoC Starter Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.ioc.context.factories;
+package org.ioc.context.factories.facts;
 
 import org.ioc.annotations.context.Order;
+import org.ioc.context.factories.Factory;
+import org.ioc.context.factories.threading.DefaultThreadPoolFactory;
 import org.ioc.context.listeners.*;
 import org.ioc.context.processors.DestroyProcessor;
-import org.ioc.context.sensible.EnvironmentSensible;
-import org.ioc.enviroment.configurations.FactDispatcherAutoConfiguration;
+import org.ioc.context.sensible.factories.ThreadFactorySensible;
 import org.ioc.exceptions.IoCException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +34,6 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -43,21 +43,25 @@ import java.util.concurrent.TimeUnit;
  * @date 09/2018
  */
 @Order(999)
-public class FactDispatcherFactory implements Factory, DestroyProcessor, EnvironmentSensible<FactDispatcherAutoConfiguration> {
+public class FactDispatcherFactory implements Factory, DestroyProcessor, ThreadFactorySensible {
 	private static final Logger log = LoggerFactory.getLogger(FactDispatcherFactory.class);
 
 	private Set<IListener> globalIListeners = new HashSet<>();
 
 	private Queue<FactContainer> events = new ConcurrentLinkedQueue<>();
 
-	private FactDispatcherAutoConfiguration factDispatcherAutoConfiguration;
-
 	private ScheduledFuture<?> future;
+
+	private DefaultThreadPoolFactory threadPoolFactory;
 
 	@Override
 	public void initialize() throws IoCException {
-		final ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(factDispatcherAutoConfiguration.getAvailableDescriptors());
-		future = executor.scheduleAtFixedRate(new QueueScheduling(), 0, 10, TimeUnit.MILLISECONDS);
+		future = threadPoolFactory.async(0, TimeUnit.MILLISECONDS, 10, new QueueScheduling());
+	}
+
+	@Override
+	public void factoryInform(Factory factory) throws IoCException {
+		threadPoolFactory = (DefaultThreadPoolFactory) factory;
 	}
 
 	/**
@@ -116,11 +120,6 @@ public class FactDispatcherFactory implements Factory, DestroyProcessor, Environ
 	 */
 	public synchronized void removeListener(IListener listener) {
 		globalIListeners.remove(listener);
-	}
-
-	@Override
-	public void environmentInform(FactDispatcherAutoConfiguration factDispatcherAutoConfiguration) throws IoCException {
-		this.factDispatcherAutoConfiguration = factDispatcherAutoConfiguration;
 	}
 
 	@Override

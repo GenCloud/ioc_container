@@ -20,24 +20,14 @@ package org.ioc.enviroment.configurations;
 
 import org.ioc.annotations.configuration.Property;
 import org.ioc.annotations.configuration.PropertyFunction;
-import org.ioc.context.factories.FactDispatcherFactory;
+import org.ioc.context.factories.facts.FactDispatcherFactory;
 
 /**
  * @author GenCloud
  * @date 09/2018
  */
-@Property(prefix = "ioc.dispatcher.")
+@Property
 public class FactDispatcherAutoConfiguration {
-	private int availableDescriptors = 4;
-
-	public int getAvailableDescriptors() {
-		return availableDescriptors;
-	}
-
-	public void setAvailableDescriptors(int availableDescriptors) {
-		this.availableDescriptors = availableDescriptors;
-	}
-
 	@PropertyFunction
 	public FactDispatcherFactory factDispatcherFactory() {
 		return new FactDispatcherFactory();

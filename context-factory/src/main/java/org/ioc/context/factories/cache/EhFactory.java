@@ -26,9 +26,9 @@ import net.sf.ehcache.config.Configuration;
 import net.sf.ehcache.config.DiskStoreConfiguration;
 import net.sf.ehcache.store.MemoryStoreEvictionPolicy;
 import org.ioc.annotations.context.Order;
-import org.ioc.context.factories.ICache;
 import org.ioc.context.factories.ICacheFactory;
 import org.ioc.context.model.cache.EhFacade;
+import org.ioc.context.model.cache.ICache;
 import org.ioc.exceptions.IoCException;
 import org.ioc.utils.MethodInvocation;
 

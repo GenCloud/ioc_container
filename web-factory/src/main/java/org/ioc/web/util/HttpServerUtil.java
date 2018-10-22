@@ -26,7 +26,8 @@ import io.netty.handler.codec.http.*;
 import org.apache.commons.io.IOUtils;
 import org.ioc.web.annotations.MappingMethod;
 import org.ioc.web.model.http.Cookie;
-import org.ioc.web.model.http.Response;
+import org.ioc.web.model.http.RequestEntry;
+import org.ioc.web.model.http.ResponseEntry;
 
 import javax.activation.MimetypesFileTypeMap;
 import java.io.*;
@@ -35,8 +36,8 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static io.netty.handler.codec.http.HttpResponseStatus.FOUND;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
+import static io.netty.handler.codec.http.HttpResponseStatus.TEMPORARY_REDIRECT;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
 /**
@@ -52,15 +53,15 @@ public class HttpServerUtil {
 
 	private static final SimpleDateFormat FMT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss zzz", Locale.getDefault());
 
-	public static Response mergeResponse(Response responseTo, Response responseFrom) {
-		responseTo.setBody(responseFrom.getBody());
-		responseTo.setResponseStatus(responseFrom.getResponseStatus());
-		responseTo.setViewPage(responseFrom.getViewPage());
-		responseTo.setModel(responseFrom.getModel());
+	public static ResponseEntry mergeResponse(ResponseEntry responseEntryTo, ResponseEntry responseEntryFrom) {
+		responseEntryTo.setBody(responseEntryFrom.getBody());
+		responseEntryTo.setResponseStatus(responseEntryFrom.getResponseStatus());
+		responseEntryTo.setViewPage(responseEntryFrom.getViewPage());
+		responseEntryTo.setModel(responseEntryFrom.getModel());
 
-		responseFrom.getCookies().stream().filter(Objects::nonNull).forEach(responseTo::addCookie);
-		responseFrom.getHeaders().forEach(responseTo::addHeader);
-		return responseTo;
+		responseEntryFrom.getCookies().stream().filter(Objects::nonNull).forEach(responseEntryTo::addCookie);
+		responseEntryFrom.getHeaders().forEach(responseEntryTo::addHeader);
+		return responseEntryTo;
 	}
 
 	public static String formatErrorPage(HttpResponseStatus status, String request, Throwable cause) throws IOException {
@@ -79,7 +80,7 @@ public class HttpServerUtil {
 		return str;
 	}
 
-	public static HttpResponse buildDefaultFullHttpResponse(Response from) {
+	public static HttpResponse buildDefaultFullHttpResponse(ResponseEntry from) {
 		DefaultHttpResponse fullHttpResponse;
 
 		int length = 0;
@@ -124,34 +125,41 @@ public class HttpServerUtil {
 		return fullHttpResponse;
 	}
 
-	public static DefaultFullHttpResponse buildDefaultFullHttpResponse(Response response, HttpResponseStatus status) {
+	public static DefaultFullHttpResponse buildDefaultFullHttpResponse(ResponseEntry responseEntry, HttpResponseStatus status) {
 		final DefaultFullHttpResponse defaultFullHttpResponse = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, status);
 
-		if (response != null) {
+		if (responseEntry != null) {
 			defaultFullHttpResponse.headers().add(CONTENT_LENGTH, "0");
-			if (response.getCookies() != null) {
-				defaultFullHttpResponse.headers().add(SET_COOKIE, response.getCookies().stream()
+			if (responseEntry.getCookies() != null) {
+				defaultFullHttpResponse.headers().add(SET_COOKIE, responseEntry.getCookies().stream()
 						.map(Cookie::toString)
 						.collect(Collectors.toList()));
 			}
 
-			response.getHeaders().keySet().forEach(head -> defaultFullHttpResponse.headers().add(head, response.getHeaders().get(head)));
+			responseEntry.getHeaders().keySet().forEach(head -> defaultFullHttpResponse.headers().add(head, responseEntry.getHeaders().get(head)));
 		}
 
 		defaultFullHttpResponse.headers().set(SERVER, "127.0.0.1");
 		return defaultFullHttpResponse;
 	}
 
-	public static void sendRedirect(ChannelHandlerContext ctx, String newUri) {
-		final DefaultFullHttpResponse response = buildDefaultFullHttpResponse(null, FOUND);
-		response.headers().set(HttpHeaderNames.LOCATION, newUri);
+	public static void sendRedirect(ChannelHandlerContext ctx, RequestEntry requestEntry, String newUri) {
+		sendRedirect(ctx.channel(), requestEntry, newUri);
+	}
+
+	public static void sendRedirect(ChannelHandlerContext ctx, ResponseEntry entry, String newUri) {
+		final HttpResponse response = buildDefaultFullHttpResponse(entry);
+		response.setStatus(TEMPORARY_REDIRECT);
+		response.headers().add(HttpHeaderNames.LOCATION, newUri);
 
 		ctx.write(response).addListener(ChannelFutureListener.CLOSE);
 	}
 
-	public static void sendRedirect(Channel channel, String newUri) {
-		final DefaultFullHttpResponse response = buildDefaultFullHttpResponse(null, FOUND);
-		response.headers().set(HttpHeaderNames.LOCATION, newUri);
+	public static void sendRedirect(Channel channel, RequestEntry requestEntry, String newUri) {
+		final ResponseEntry entry = ResponseEntry.status(TEMPORARY_REDIRECT, requestEntry).build();
+
+		final HttpResponse response = buildDefaultFullHttpResponse(entry);
+		response.headers().add(HttpHeaderNames.LOCATION, newUri);
 
 		channel.write(response).addListener(ChannelFutureListener.CLOSE);
 	}

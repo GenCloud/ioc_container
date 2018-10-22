@@ -19,7 +19,6 @@
 package org.ioc.context.model.cache;
 
 import com.google.common.cache.LoadingCache;
-import org.ioc.context.factories.ICache;
 
 import java.util.Iterator;
 

@@ -20,8 +20,8 @@ package org.ioc.test.cache;
 
 import org.ioc.annotations.context.IoCComponent;
 import org.ioc.context.factories.Factory;
-import org.ioc.context.factories.ICache;
 import org.ioc.context.factories.cache.EhFactory;
+import org.ioc.context.model.cache.ICache;
 import org.ioc.context.sensible.factories.CacheFactorySensible;
 import org.ioc.exceptions.IoCException;
 import org.slf4j.Logger;

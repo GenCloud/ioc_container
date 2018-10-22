@@ -1,4 +1,4 @@
-package org.ioc.context.factories;
+package org.ioc.context.model.cache;
 
 /**
  * Interface represents a Map structure for cache usage.

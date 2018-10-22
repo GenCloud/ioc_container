@@ -32,12 +32,10 @@ import io.netty.util.internal.PlatformDependent;
 import org.ioc.annotations.context.Mode;
 import org.ioc.annotations.context.Order;
 import org.ioc.annotations.context.PostConstruct;
-import org.ioc.context.factories.DefaultThreadPoolFactory;
 import org.ioc.context.factories.Factory;
 import org.ioc.context.model.TypeMetadata;
 import org.ioc.context.sensible.ContextSensible;
 import org.ioc.context.sensible.EnvironmentSensible;
-import org.ioc.context.sensible.factories.ThreadFactorySensible;
 import org.ioc.context.type.IoCContext;
 import org.ioc.enviroment.configurations.web.WebAutoConfiguration;
 import org.ioc.exceptions.IoCException;
@@ -70,7 +68,7 @@ import static org.ioc.web.util.HttpServerUtil.toHttpMethod;
  * @date 10/2018
  */
 @Order(997)
-public class HttpInitializerFactory implements Factory, ContextSensible, EnvironmentSensible<WebAutoConfiguration>, ThreadFactorySensible {
+public class HttpInitializerFactory implements Factory, ContextSensible, EnvironmentSensible<WebAutoConfiguration> {
 	private static final Logger log = LoggerFactory.getLogger(HttpInitializerFactory.class);
 
 	private static final boolean isEpollType = !PlatformDependent.isWindows() && Epoll.isAvailable();
@@ -81,8 +79,6 @@ public class HttpInitializerFactory implements Factory, ContextSensible, Environ
 	private IoCContext context;
 
 	private WebAutoConfiguration webAutoConfiguration;
-
-	private DefaultThreadPoolFactory threadPoolFactory;
 
 	private ServerBootstrap bootstrap;
 	private EventLoopGroup eventLoopGroup;
@@ -98,7 +94,7 @@ public class HttpInitializerFactory implements Factory, ContextSensible, Environ
 	public void initialize() throws IoCException {
 		bootstrap = new ServerBootstrap();
 
-		sessionManager = new SessionManager(webAutoConfiguration, threadPoolFactory);
+		sessionManager = new SessionManager(webAutoConfiguration);
 
 		final int coreSize = Runtime.getRuntime().availableProcessors();
 		if (isEpollType) {
@@ -152,17 +148,38 @@ public class HttpInitializerFactory implements Factory, ContextSensible, Environ
 		bootstrap.bind(webAutoConfiguration.getPort()).sync().channel().closeFuture().sync();
 	}
 
+	private String normalizePath(Class<?> controller, Method methodController) {
+		String finalPath = "";
+		final UrlMapping controllerMapping = controller.getAnnotation(UrlMapping.class);
+		final UrlMapping methodMapping = methodController.getAnnotation(UrlMapping.class);
+
+		if (controllerMapping != null) {
+			finalPath = finalPath.concat(controllerMapping.value());
+		}
+
+		if (methodMapping != null && !methodMapping.value().isEmpty()) {
+			String value = methodMapping.value();
+			if (value.startsWith("/")) {
+				value = value.replaceFirst("/", "");
+			}
+
+			if (!finalPath.endsWith("/")) {
+				finalPath = finalPath.concat("/");
+			}
+
+			finalPath = finalPath.concat(value);
+		}
+
+		return finalPath;
+	}
+
 	private void registerMapping(Collection<TypeMetadata> collection) {
 		for (TypeMetadata metadata : collection) {
 			for (Method method : metadata.getType().getDeclaredMethods()) {
 				method.setAccessible(true);
-				final UrlMapping urlMappingMainType = metadata.getType().getAnnotation(UrlMapping.class);
 				final UrlMapping urlMapping = method.getAnnotation(UrlMapping.class);
 				if (urlMapping != null) {
-					String path = urlMapping.value();
-					if (urlMappingMainType != null && !urlMappingMainType.value().isEmpty()) {
-						path = urlMappingMainType.value() + urlMapping.value();
-					}
+					final String path = normalizePath(metadata.getType(), method);
 
 					final Mapping mapping = new Mapping(metadata.getInstance(), method,
 							toHttpMethod(urlMapping.method()), path);
@@ -196,10 +213,5 @@ public class HttpInitializerFactory implements Factory, ContextSensible, Environ
 	@Override
 	public void environmentInform(WebAutoConfiguration webAutoConfiguration) throws IoCException {
 		this.webAutoConfiguration = webAutoConfiguration;
-	}
-
-	@Override
-	public void factoryInform(Factory factory) throws IoCException {
-		this.threadPoolFactory = (DefaultThreadPoolFactory) factory;
 	}
 }

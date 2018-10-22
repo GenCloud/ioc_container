@@ -2,6 +2,7 @@ package org.ioc.context.factories;
 
 import org.ioc.annotations.cache.CacheIgnore;
 import org.ioc.annotations.cache.Cacheables;
+import org.ioc.context.model.cache.ICache;
 import org.ioc.context.processors.DestroyProcessor;
 import org.ioc.utils.MethodInvocation;
 import org.slf4j.Logger;

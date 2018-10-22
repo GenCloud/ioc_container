@@ -18,19 +18,22 @@
  */
 package org.ioc.web.model.handlers;
 
-import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.handler.codec.http.*;
+import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.HttpResponse;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import org.ioc.web.exception.ConsumesException;
 import org.ioc.web.exception.SessionNotFoundException;
 import org.ioc.web.model.ModelAndView;
-import org.ioc.web.model.http.Request;
-import org.ioc.web.model.http.Response;
+import org.ioc.web.model.http.RequestEntry;
+import org.ioc.web.model.http.ResponseEntry;
 import org.ioc.web.model.mapping.Mapping;
 import org.ioc.web.model.mapping.MappingContainer;
 import org.ioc.web.model.resolvers.ArgumentResolver;
 import org.ioc.web.model.resolvers.WebArgumentResolver;
+import org.ioc.web.model.session.HttpSession;
 import org.ioc.web.model.session.SessionManager;
 import org.ioc.web.model.view.TemplateResolver;
 import org.ioc.web.security.CheckResult;
@@ -52,6 +55,8 @@ import static org.ioc.web.util.HttpServerUtil.*;
  * @author GenCloud
  * @date 10/2018
  */
+@ChannelHandler.Sharable
+@SuppressWarnings("all")
 public class DefaultRequestHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
 	private final MappingContainer mappingContainer;
 	private final TemplateResolver templateResolver;
@@ -81,36 +86,42 @@ public class DefaultRequestHandler extends SimpleChannelInboundHandler<FullHttpR
 			return;
 		}
 
-		final Request request = new Request(ctx.channel(), httpRequest);
+		final RequestEntry requestEntry = new RequestEntry(ctx.channel(), httpRequest);
+		final HttpSession session = securityConfigureAdapter.getContext().findSession(requestEntry);
+		if (session != null && session.hasExpires()) {
+			String expiredPath = securityConfigureAdapter.getContainer().configureSession().getExpiredPath();
+			expiredPath = expiredPath != null && !expiredPath.isEmpty() ? expiredPath : "/";
+			sessionManager.remove(session.getSessionId());
+			sendRedirect(ctx, requestEntry, expiredPath);
+			return;
+		}
 
-		Response preparedResponse = new Response(sessionManager, request);
+		final ResponseEntry preparedResponseEntry = new ResponseEntry(sessionManager, requestEntry);
 
 		final ModelAndView intercepted = new ModelAndView();
 
 		Mapping mapping;
 		try {
 			final String uri = httpRequest.uri();
-			mapping = mappingContainer.findMapping(request);
+			mapping = mappingContainer.findMapping(requestEntry);
 
 			if (mapping != null && mapping.getConsumes() != null && !mapping.getConsumes().isEmpty()) {
 				if (Arrays.asList(httpRequest.headers().get("Accept").split(","))
 						.contains(mapping.getConsumes())) {
 					final Throwable t = new ConsumesException("Can't authorize request - wrong MIME type!");
-					buildDefaultError(ctx, httpRequest, NOT_FOUND, preparedResponse, t);
+					buildDefaultError(ctx, httpRequest, NOT_FOUND, preparedResponseEntry, t);
 				}
 			}
 
-			final CheckResult result = securityConfigureAdapter.secureRequest(request, preparedResponse, intercepted, mapping);
+			final CheckResult result = securityConfigureAdapter.secureRequest(requestEntry, preparedResponseEntry, intercepted, mapping);
 			if (!result.isOk()) {
 				if (result.getThrowable() instanceof SessionNotFoundException) {
-					final DefaultFullHttpResponse response = buildDefaultFullHttpResponse(preparedResponse, FOUND);
-					response.headers().set(HttpHeaderNames.LOCATION, "/");
-					ctx.write(response).addListener(ChannelFutureListener.CLOSE);
-					return;
+					sendRedirect(ctx, preparedResponseEntry, "/");
 				} else {
-					buildDefaultError(ctx, httpRequest, NOT_FOUND, preparedResponse, result.getThrowable());
-					return;
+					buildDefaultError(ctx, httpRequest, BAD_REQUEST, preparedResponseEntry, result.getThrowable());
 				}
+
+				return;
 			}
 
 			if (mapping == null && result.isResource()) {
@@ -118,30 +129,30 @@ public class DefaultRequestHandler extends SimpleChannelInboundHandler<FullHttpR
 				if (resource != null) {
 					if (!HttpServerUtil.resource(resource, ctx, httpRequest)) {
 						final Exception e = new FileNotFoundException("Cant find resource from path: " + uri);
-						buildDefaultError(ctx, httpRequest, NOT_FOUND, preparedResponse, e);
+						buildDefaultError(ctx, httpRequest, NOT_FOUND, preparedResponseEntry, e);
 						return;
 					}
 				}
 			}
 
-			webArgumentResolver.resolve(securityConfigureAdapter, mapping, request);
+			webArgumentResolver.resolve(securityConfigureAdapter, mapping, requestEntry);
 
 			for (Object r : resolvers) {
-				((ArgumentResolver) r).resolve(securityConfigureAdapter, mapping, request);
+				((ArgumentResolver) r).resolve(securityConfigureAdapter, mapping, requestEntry);
 			}
 		} catch (Exception e) {
 			if (e instanceof NullPointerException) {
-				buildDefaultError(ctx, httpRequest, NO_CONTENT, preparedResponse, e);
+				buildDefaultError(ctx, httpRequest, NO_CONTENT, preparedResponseEntry, e);
 			} else {
-				buildDefaultError(ctx, httpRequest, INTERNAL_SERVER_ERROR, preparedResponse, e);
+				buildDefaultError(ctx, httpRequest, INTERNAL_SERVER_ERROR, preparedResponseEntry, e);
 			}
 			return;
 		}
 
-		handleMapping(ctx, mapping, httpRequest, preparedResponse, intercepted);
+		handleMapping(ctx, mapping, httpRequest, preparedResponseEntry, intercepted);
 	}
 
-	private void handleMapping(ChannelHandlerContext ctx, Mapping mapping, FullHttpRequest httpRequest, Response preparedResponse, ModelAndView intercepted) throws Exception {
+	private void handleMapping(ChannelHandlerContext ctx, Mapping mapping, FullHttpRequest httpRequest, ResponseEntry preparedResponseEntry, ModelAndView intercepted) throws Exception {
 		final Object[] params = Objects.requireNonNull(mapping).getParameters();
 		final Object instance = Objects.requireNonNull(mapping).getInstance();
 		final Object invoked = Objects.requireNonNull(mapping).getMethod().invoke(instance, params);
@@ -152,33 +163,33 @@ public class DefaultRequestHandler extends SimpleChannelInboundHandler<FullHttpR
 		if (invoked instanceof File) {
 			write((File) invoked, ctx, httpRequest);
 			return;
-		} else if (invoked instanceof Response) {
-			preparedResponse = mergeResponse(preparedResponse, (Response) invoked);
+		} else if (invoked instanceof ResponseEntry) {
+			preparedResponseEntry = mergeResponse(preparedResponseEntry, (ResponseEntry) invoked);
 		} else if (invoked instanceof ModelAndView) {
 			final ModelAndView model = (ModelAndView) invoked;
 			tryMergeModel(intercepted, model);
 
-			preparedResponse.setViewPage(templateResolver.resolveArguments(model.getView(), model));
-			preparedResponse.addHeader(CONTENT_TYPE, produces);
+			preparedResponseEntry.setViewPage(templateResolver.resolveArguments(model.getView(), model));
+			preparedResponseEntry.addHeader(CONTENT_TYPE, produces);
 		} else if (mapping.isView()) {
-			final ModelAndView model = preparedResponse.getModel();
+			final ModelAndView model = preparedResponseEntry.getModel();
 			tryMergeModel(intercepted, model);
 
-			preparedResponse.setViewPage(templateResolver.resolveArguments(invoked.toString(), model));
-			preparedResponse.addHeader(CONTENT_TYPE, produces);
+			preparedResponseEntry.setViewPage(templateResolver.resolveArguments(invoked.toString(), model));
+			preparedResponseEntry.addHeader(CONTENT_TYPE, produces);
 		} else {
-			preparedResponse.setBody(invoked);
-			preparedResponse.setResponseStatus(OK);
-			preparedResponse.addHeader(CONTENT_TYPE, "application/json;charset=utf-8");
+			preparedResponseEntry.setBody(invoked);
+			preparedResponseEntry.setResponseStatus(OK);
+			preparedResponseEntry.addHeader(CONTENT_TYPE, "application/json;charset=utf-8");
 		}
 
 		HttpResponse httpResponse;
-		if (preparedResponse.getViewPage() != null) {
-			HttpServerUtil.resource(preparedResponse.getViewPage(), ctx, httpRequest);
+		if (preparedResponseEntry.getViewPage() != null) {
+			HttpServerUtil.resource(preparedResponseEntry.getViewPage(), ctx, httpRequest);
 			return;
 		}
 
-		httpResponse = buildDefaultFullHttpResponse(preparedResponse);
+		httpResponse = buildDefaultFullHttpResponse(preparedResponseEntry);
 		ctx.write(httpResponse);
 	}
 
@@ -208,13 +219,13 @@ public class DefaultRequestHandler extends SimpleChannelInboundHandler<FullHttpR
 		cause.printStackTrace();
 	}
 
-	private void buildDefaultError(ChannelHandlerContext ctx, FullHttpRequest request, HttpResponseStatus status, Response response, Throwable cause) throws IOException {
+	private void buildDefaultError(ChannelHandlerContext ctx, FullHttpRequest request, HttpResponseStatus status, ResponseEntry responseEntry, Throwable cause) throws IOException {
 		final String uri = request == null ? "" : request.uri();
 		final String view = formatErrorPage(status, uri, cause);
-		response.setViewPage(view);
-		response.setResponseStatus(status);
-		response.addHeader(CONTENT_TYPE, "text/html");
+		responseEntry.setViewPage(view);
+		responseEntry.setResponseStatus(status);
+		responseEntry.addHeader(CONTENT_TYPE, "text/html");
 
-		HttpServerUtil.resource(response.getViewPage(), ctx, request);
+		HttpServerUtil.resource(responseEntry.getViewPage(), ctx, request);
 	}
 }

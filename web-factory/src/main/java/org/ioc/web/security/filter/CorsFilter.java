@@ -21,8 +21,8 @@ package org.ioc.web.security.filter;
 import com.google.common.net.HttpHeaders;
 import io.netty.handler.codec.http.HttpMethod;
 import org.ioc.annotations.context.Order;
-import org.ioc.web.model.http.Request;
-import org.ioc.web.model.http.Response;
+import org.ioc.web.model.http.RequestEntry;
+import org.ioc.web.model.http.ResponseEntry;
 import org.ioc.web.security.filter.exception.FilterException;
 
 import static org.ioc.web.security.filter.CsrfFilter.X_CSRF_TOKEN_HEADER;
@@ -34,15 +34,15 @@ import static org.ioc.web.security.filter.CsrfFilter.X_CSRF_TOKEN_HEADER;
 @Order(100)
 public class CorsFilter implements Filter {
 	@Override
-	public boolean doFilter(Request request, Response response) throws FilterException {
-		response.addHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "localhost"); //todo
-		response.addHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS, "true");
+	public boolean doFilter(RequestEntry requestEntry, ResponseEntry responseEntry) throws FilterException {
+		responseEntry.addHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "localhost"); //todo
+		responseEntry.addHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS, "true");
 
-		if (request.getHeader(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD) != null && HttpMethod.OPTIONS.name().equals(request.getHttpMethod().name())) {
+		if (requestEntry.getHeader(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD) != null && HttpMethod.OPTIONS.name().equals(requestEntry.getHttpMethod().name())) {
 			// CORS "pre-flight" request
-			response.addHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, "GET, POST, PUT, DELETE");
-			response.addHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS, HttpHeaders.CONTENT_TYPE + ", " + X_CSRF_TOKEN_HEADER);
-			response.addHeader(HttpHeaders.ACCESS_CONTROL_MAX_AGE, "1");
+			responseEntry.addHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, "GET, POST, PUT, DELETE");
+			responseEntry.addHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS, HttpHeaders.CONTENT_TYPE + ", " + X_CSRF_TOKEN_HEADER);
+			responseEntry.addHeader(HttpHeaders.ACCESS_CONTROL_MAX_AGE, "1");
 		}
 
 		return true;

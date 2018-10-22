@@ -19,16 +19,12 @@
 package org.ioc.web.model.session;
 
 import io.netty.channel.Channel;
-import org.ioc.context.factories.DefaultThreadPoolFactory;
-import org.ioc.context.model.tasks.interfaces.ScheduledTaskFuture;
 import org.ioc.enviroment.configurations.web.WebAutoConfiguration;
-import org.ioc.web.util.HttpServerUtil;
 
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.TimeUnit;
 
 /**
  * @author GenCloud
@@ -37,19 +33,11 @@ import java.util.concurrent.TimeUnit;
 public class SessionManager {
 	private final SessionIdProducer SESSION_ID_PRODUCER = new SessionIdProducer();
 	private final WebAutoConfiguration webAutoConfiguration;
-	private final DefaultThreadPoolFactory threadPoolFactory;
 
 	private ConcurrentMap<String, HttpSession> sessions = new ConcurrentHashMap<>();
 
-	private ScheduledTaskFuture cleanTask;
-
-	private String expiredUri = "/";
-
-	public SessionManager(WebAutoConfiguration webAutoConfiguration, DefaultThreadPoolFactory threadPoolFactory) {
+	public SessionManager(WebAutoConfiguration webAutoConfiguration) {
 		this.webAutoConfiguration = webAutoConfiguration;
-		this.threadPoolFactory = threadPoolFactory;
-
-		startSessionCleaning();
 	}
 
 	public WebAutoConfiguration getWebAutoConfiguration() {
@@ -72,10 +60,6 @@ public class SessionManager {
 		sessions.remove(sessionId);
 	}
 
-	public void setExpiredUri(String expiredUri) {
-		this.expiredUri = expiredUri;
-	}
-
 	public String createSessionId() {
 		return SESSION_ID_PRODUCER.generateSessionId();
 	}
@@ -88,29 +72,5 @@ public class SessionManager {
 			httpSession.setChannel(channel);
 			sessions.putIfAbsent(sessionId, httpSession);
 		}
-	}
-
-	private void startSessionCleaning() {
-		if (cleanTask == null) {
-			cleanTask = threadPoolFactory.async(1, TimeUnit.MINUTES, 1, () ->
-					getSessions()
-							.values()
-							.stream()
-							.filter(HttpSession::hasExpires)
-							.filter(HttpSession::isAuthenticated)
-							.forEach(this::expireSession));
-		}
-	}
-
-	private void stopSessionCleaning() {
-		if (cleanTask != null) {
-			cleanTask.cancel(true);
-			cleanTask = null;
-		}
-	}
-
-	private void expireSession(HttpSession httpSession) {
-		HttpServerUtil.sendRedirect(httpSession.getChannel(), expiredUri);
-		remove(httpSession.getSessionId());
 	}
 }

@@ -21,8 +21,8 @@ package org.ioc.web.security.filter;
 import io.netty.handler.codec.http.HttpMethod;
 import org.ioc.annotations.context.Order;
 import org.ioc.web.model.http.Cookie;
-import org.ioc.web.model.http.Request;
-import org.ioc.web.model.http.Response;
+import org.ioc.web.model.http.RequestEntry;
+import org.ioc.web.model.http.ResponseEntry;
 import org.ioc.web.security.filter.exception.FilterException;
 import org.ioc.web.security.filter.exception.InvalidCsrfTokenException;
 import org.slf4j.Logger;
@@ -43,24 +43,24 @@ public class CsrfFilter implements Filter {
 	private final Pattern allowedMethods = Pattern.compile("^(GET|HEAD|TRACE|OPTIONS)$");
 
 	@Override
-	public boolean doFilter(Request request, Response response) throws FilterException {
-		final HttpMethod method = request.getHttpMethod();
+	public boolean doFilter(RequestEntry requestEntry, ResponseEntry responseEntry) throws FilterException {
+		final HttpMethod method = requestEntry.getHttpMethod();
 		if (!allowedMethods.matcher(method.name()).matches()) {
-			final String csrfTokenValue = request.getHttpRequest().headers().get(X_CSRF_TOKEN_HEADER);
+			final String csrfTokenValue = requestEntry.getHttpRequest().headers().get(X_CSRF_TOKEN_HEADER);
 
 			String csrfCookieValue = null;
-			final Cookie requestCookie = request.getCookie(CSRF_TOKEN_COOKIE);
+			final Cookie requestCookie = requestEntry.getCookie(CSRF_TOKEN_COOKIE);
 			if (requestCookie != null) {
 				csrfCookieValue = requestCookie.getValue();
 			}
 
 			if (csrfTokenValue == null || !csrfTokenValue.equals(csrfCookieValue)) {
-				log.warn("Missing/bad CSRF-TOKEN while CSRF is enabled for request {}", request.getPath());
-				throw new InvalidCsrfTokenException("Missing/bad CSRF-TOKEN while CSRF is enabled for request " + request.getPath());
+				log.warn("Missing/bad CSRF-TOKEN while CSRF is enabled for request {}", requestEntry.getPath());
+				throw new InvalidCsrfTokenException("Missing/bad CSRF-TOKEN while CSRF is enabled for request " + requestEntry.getPath());
 			}
 
 			final Cookie csrf = new Cookie(CSRF_TOKEN_COOKIE, "", 0);
-			response.addCookie(csrf);
+			responseEntry.addCookie(csrf);
 		}
 
 		return true;

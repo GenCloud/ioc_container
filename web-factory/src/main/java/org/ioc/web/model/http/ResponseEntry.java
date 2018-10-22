@@ -18,6 +18,7 @@
  */
 package org.ioc.web.model.http;
 
+import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import org.ioc.web.model.ModelAndView;
 import org.ioc.web.model.session.HttpSession;
@@ -32,7 +33,7 @@ import java.util.Set;
  * @author GenCloud
  * @date 10/2018
  */
-public class Response {
+public class ResponseEntry {
 	private Object body;
 
 	private HttpResponseStatus responseStatus = HttpResponseStatus.NOT_FOUND;
@@ -45,14 +46,27 @@ public class Response {
 
 	private ModelAndView model;
 
-	private Response(Object body, HttpResponseStatus responseStatus, Map<String, String> headers, Set<Cookie> cookies) {
+	private ResponseEntry(HttpResponseStatus responseStatus, Map<String, String> headers, Set<Cookie> cookies) {
+		this.responseStatus = responseStatus;
+		this.headers = headers;
+		this.cookies = cookies;
+	}
+
+	private ResponseEntry(Object body, HttpResponseStatus responseStatus, Map<String, String> headers, Set<Cookie> cookies) {
 		this.body = body;
 		this.responseStatus = responseStatus;
 		this.headers = headers;
 		this.cookies = cookies;
 	}
 
-	private Response(Object body, HttpResponseStatus responseStatus, Map<String, String> headers, Set<Cookie> cookies, String viewPage) {
+	private ResponseEntry(HttpResponseStatus responseStatus, Map<String, String> headers, Set<Cookie> cookies, String viewPage) {
+		this.responseStatus = responseStatus;
+		this.headers = headers;
+		this.cookies = cookies;
+		this.viewPage = viewPage;
+	}
+
+	private ResponseEntry(Object body, HttpResponseStatus responseStatus, Map<String, String> headers, Set<Cookie> cookies, String viewPage) {
 		this.body = body;
 		this.responseStatus = responseStatus;
 		this.headers = headers;
@@ -60,35 +74,35 @@ public class Response {
 		this.viewPage = viewPage;
 	}
 
-	public Response(SessionManager sessionManager, Request request) {
-		if (request.getCookies() != null) {
-			Cookie cookie = request.getCookie("SESSIONID");
+	public ResponseEntry(SessionManager sessionManager, RequestEntry requestEntry) {
+		if (requestEntry.getCookies() != null) {
+			Cookie cookie = requestEntry.getCookie("SESSIONID");
 			HttpSession session;
 			if (cookie == null || !sessionManager.containsSession(cookie.getValue())) {
 				cookie = new Cookie("SESSIONID", sessionManager.createSessionId(), sessionManager.getWebAutoConfiguration().getSessionTimeout());
-				sessionManager.addSession(cookie.getValue(), request.getChannel());
+				sessionManager.addSession(cookie.getValue(), requestEntry.getChannel());
 				addCookie(cookie);
 			} else {
 				session = sessionManager.getSession(cookie.getValue());
 				if (session.hasExpires()) {
 					cookie = new Cookie("SESSIONID", sessionManager.createSessionId(), sessionManager.getWebAutoConfiguration().getSessionTimeout());
-					sessionManager.addSession(cookie.getValue(), request.getChannel());
+					sessionManager.addSession(cookie.getValue(), requestEntry.getChannel());
 					addCookie(cookie);
 				}
 			}
 		}
 	}
 
-	public static Builder success() {
-		return status(HttpResponseStatus.OK);
+	public static Builder success(RequestEntry entry) {
+		return status(HttpResponseStatus.OK, entry);
 	}
 
-	public static Builder badRequest() {
-		return status(HttpResponseStatus.BAD_REQUEST);
+	public static Builder badRequest(RequestEntry entry) {
+		return status(HttpResponseStatus.BAD_REQUEST, entry);
 	}
 
-	public static Builder status(HttpResponseStatus status) {
-		return new Builder(status);
+	public static Builder status(HttpResponseStatus status, RequestEntry entry) {
+		return new Builder(status).addCookies(entry.getCookies()).addHeaders(entry.getHeaders());
 	}
 
 	public ModelAndView getModel() {
@@ -160,14 +174,22 @@ public class Response {
 			return this;
 		}
 
-		public Response build() {
+		public ResponseEntry build() {
 			final Map<String, String> map = new HashMap<>();
 			headers.keySet().forEach(s -> map.putIfAbsent(s, headers.get(s)));
 
-			if (view == null) {
-				return new Response(body, status, map, cookies);
+			if (body == null) {
+				if (view == null) {
+					return new ResponseEntry(status, map, cookies);
+				} else {
+					return new ResponseEntry(status, map, cookies, view);
+				}
 			} else {
-				return new Response(body, status, map, cookies, view);
+				if (view == null) {
+					return new ResponseEntry(body, status, map, cookies);
+				} else {
+					return new ResponseEntry(body, status, map, cookies, view);
+				}
 			}
 		}
 
@@ -176,8 +198,21 @@ public class Response {
 			return this;
 		}
 
+		public Builder addHeaders(HttpHeaders headers) {
+			for (Map.Entry<String, String> entry : headers) {
+				this.headers.putIfAbsent(entry.getKey(), entry.getValue());
+			}
+
+			return this;
+		}
+
 		public Builder addCookie(String name, String value, long maxAge) {
 			cookies.add(new Cookie(name, value, maxAge));
+			return this;
+		}
+
+		public Builder addCookies(Set<Cookie> cookies) {
+			this.cookies.addAll(cookies);
 			return this;
 		}
 

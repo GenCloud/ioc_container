@@ -16,9 +16,10 @@
  * You should have received a copy of the GNU General Public License
  * along with IoC Starter Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.ioc.context.factories;
+package org.ioc.context.factories.threading;
 
 import org.ioc.annotations.context.Order;
+import org.ioc.context.factories.Factory;
 import org.ioc.context.model.tasks.impl.PoolTasksImpl;
 import org.ioc.context.model.tasks.interfaces.PoolTasks;
 import org.ioc.context.model.tasks.interfaces.ScheduledTaskFuture;

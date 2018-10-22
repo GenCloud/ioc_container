@@ -18,8 +18,8 @@
  */
 package org.ioc.web.security.filter;
 
-import org.ioc.web.model.http.Request;
-import org.ioc.web.model.http.Response;
+import org.ioc.web.model.http.RequestEntry;
+import org.ioc.web.model.http.ResponseEntry;
 import org.ioc.web.security.filter.exception.FilterException;
 
 /**
@@ -27,5 +27,5 @@ import org.ioc.web.security.filter.exception.FilterException;
  * @date 10/2018
  */
 public interface Filter {
-	boolean doFilter(Request request, Response response) throws FilterException;
+	boolean doFilter(RequestEntry requestEntry, ResponseEntry responseEntry) throws FilterException;
 }

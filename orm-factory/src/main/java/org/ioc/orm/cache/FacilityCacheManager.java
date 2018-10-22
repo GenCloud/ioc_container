@@ -18,7 +18,7 @@
  */
 package org.ioc.orm.cache;
 
-import org.ioc.context.factories.ICache;
+import org.ioc.context.model.cache.ICache;
 import org.ioc.orm.metadata.type.FacilityMetadata;
 import org.ioc.utils.Assertion;
 import org.slf4j.Logger;

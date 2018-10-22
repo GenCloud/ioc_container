@@ -18,7 +18,7 @@
  */
 package org.ioc.web.model.resolvers;
 
-import org.ioc.web.model.http.Request;
+import org.ioc.web.model.http.RequestEntry;
 import org.ioc.web.model.mapping.Mapping;
 import org.ioc.web.security.configuration.SecurityConfigureAdapter;
 
@@ -27,5 +27,5 @@ import org.ioc.web.security.configuration.SecurityConfigureAdapter;
  * @date 10/2018
  */
 public interface ArgumentResolver {
-	void resolve(SecurityConfigureAdapter securityConfigureAdapter, Mapping mapping, Request Request) throws Exception;
+	void resolve(SecurityConfigureAdapter securityConfigureAdapter, Mapping mapping, RequestEntry RequestEntry) throws Exception;
 }

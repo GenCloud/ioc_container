@@ -20,6 +20,7 @@ package org.ioc.web.model.http;
 
 import io.netty.channel.Channel;
 import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMethod;
 
 import java.util.Objects;
@@ -31,7 +32,7 @@ import java.util.TreeSet;
  * @author GenCloud
  * @date 10/2018
  */
-public class Request {
+public class RequestEntry {
 	private FullHttpRequest httpRequest;
 
 	private HttpMethod method;
@@ -40,7 +41,7 @@ public class Request {
 
 	private Set<Cookie> cookies = new TreeSet<>();
 
-	public Request(Channel channel, FullHttpRequest httpRequest) {
+	public RequestEntry(Channel channel, FullHttpRequest httpRequest) {
 		this.httpRequest = httpRequest;
 		this.channel = channel;
 
@@ -80,7 +81,11 @@ public class Request {
 	}
 
 	public String getHeader(String header) {
-		return httpRequest.headers().get(header);
+		return getHeaders().get(header);
+	}
+
+	public HttpHeaders getHeaders() {
+		return httpRequest.headers();
 	}
 
 	public String getPath() {

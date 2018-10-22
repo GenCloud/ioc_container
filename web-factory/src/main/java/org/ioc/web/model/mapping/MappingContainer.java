@@ -22,7 +22,7 @@ import io.netty.handler.codec.http.HttpMethod;
 import org.ioc.context.model.TypeMetadata;
 import org.ioc.context.type.IoCContext;
 import org.ioc.web.annotations.PathVariable;
-import org.ioc.web.model.http.Request;
+import org.ioc.web.model.http.RequestEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,9 +72,9 @@ public class MappingContainer {
 		}
 	}
 
-	public Mapping findMapping(Request request) {
-		final String path = request.getPath();
-		final HttpMethod method = request.getHttpMethod();
+	public Mapping findMapping(RequestEntry requestEntry) {
+		final String path = requestEntry.getPath();
+		final HttpMethod method = requestEntry.getHttpMethod();
 
 		int splitIndex = path.indexOf('?');
 		if (splitIndex == -1) {

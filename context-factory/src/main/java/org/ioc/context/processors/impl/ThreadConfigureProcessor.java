@@ -19,8 +19,8 @@
 package org.ioc.context.processors.impl;
 
 import org.ioc.annotations.threading.SimpleTask;
-import org.ioc.context.factories.DefaultThreadPoolFactory;
 import org.ioc.context.factories.Factory;
+import org.ioc.context.factories.threading.DefaultThreadPoolFactory;
 import org.ioc.context.processors.TypeProcessor;
 import org.ioc.context.sensible.ContextSensible;
 import org.ioc.context.sensible.factories.ThreadFactorySensible;
