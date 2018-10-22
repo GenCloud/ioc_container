@@ -43,14 +43,14 @@ public class SampleRepository<Entity, ID> implements ProxyRepository<Entity, ID>
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public <E> E fetch(ID id) {
-		return (E) facilityManager.fetch(entityClass, id);
+	public Entity fetch(ID id) {
+		return facilityManager.fetch(entityClass, id);
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public <E> List<E> fetchAll() {
-		return (List<E>) facilityManager.fetchAll(entityClass);
+	public List<Entity> fetchAll() {
+		return facilityManager.fetchAll(entityClass);
 	}
 
 	@Override
