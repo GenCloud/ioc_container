@@ -32,7 +32,7 @@ public interface CrudRepository<Entity, ID> {
 	 * @return non-empty ofList of result ofList. never <code>null</code>.
 	 */
 	@Transactional
-	<E> E fetch(ID id);
+	Entity fetch(ID id);
 
 	/**
 	 * Finds all instances of a given @{@code FacilityMetadata}-annotated class bag.
@@ -40,7 +40,7 @@ public interface CrudRepository<Entity, ID> {
 	 * @return non-empty ofList of result ofList. never <code>null</code>.
 	 */
 	@Transactional
-	<E> List<E> fetchAll();
+	List<Entity> fetchAll();
 
 	/**
 	 * Inserts the instance to the databaseDocument as row and then binds generated id.
