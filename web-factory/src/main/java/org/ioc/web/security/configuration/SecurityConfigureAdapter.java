@@ -57,7 +57,6 @@ public class SecurityConfigureAdapter {
 
 	private final IoCContext context;
 	private final HttpContainer container;
-	private final SessionManager sessionManager;
 
 	private final List<Filter> filters = new LinkedList<>();
 	private final List<HttpRequestInterceptor> requestInterceptors = new LinkedList<>();
@@ -68,7 +67,6 @@ public class SecurityConfigureAdapter {
 
 	public SecurityConfigureAdapter(IoCContext context, SessionManager sessionManager) {
 		this.context = context;
-		this.sessionManager = sessionManager;
 
 		container = new HttpContainer();
 
@@ -105,7 +103,7 @@ public class SecurityConfigureAdapter {
 			if (UserDetailsProcessor.class.isAssignableFrom(type)) {
 				final List<UserDetailsProcessor> userDetailsProcessors = getContext().getUserDetailsProcessors();
 				if (userDetailsProcessors.isEmpty()) {
-					userDetailsProcessors.add((UserDetailsProcessor) instance);
+					getContext().addUserDetailsProcessor((UserDetailsProcessor) instance);
 				}
 			}
 

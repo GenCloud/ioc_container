@@ -20,8 +20,11 @@ package org.ioc.context.factories;
 
 import org.ioc.context.factories.core.InstanceFactory;
 import org.ioc.context.model.TypeMetadata;
+import org.ioc.exceptions.IoCInstantiateException;
 
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Internal storage structure of the generic AbstractFactory.
@@ -35,6 +38,21 @@ public abstract class AbstractFactory {
 
 	public AbstractFactory(InstanceFactory instanceFactory) {
 		this.instanceFactory = instanceFactory;
+	}
+
+	protected TypeMetadata getMetadata(Class<?> type) {
+		final List<TypeMetadata> collect = getTypes().values()
+				.stream()
+				.filter(t -> type.isAssignableFrom(t.getType()))
+				.collect(Collectors.toList());
+
+		if (collect.size() == 1) {
+			return collect.get(0);
+		} else if (collect.size() > 1) {
+			throw new IoCInstantiateException("IoCError - Unavailable create instance of type [" + type + "]. Found 2 or more instances in context!");
+		}
+
+		return null;
 	}
 
 	/**

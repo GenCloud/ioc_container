@@ -23,6 +23,9 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.handler.codec.http.*;
+import io.netty.handler.codec.http.multipart.Attribute;
+import io.netty.handler.codec.http.multipart.HttpPostRequestDecoder;
+import io.netty.handler.codec.http.multipart.InterfaceHttpData;
 import org.apache.commons.io.IOUtils;
 import org.ioc.web.annotations.MappingMethod;
 import org.ioc.web.model.http.Cookie;
@@ -52,6 +55,26 @@ public class HttpServerUtil {
 	public static final String SERVER = "Server";
 
 	private static final SimpleDateFormat FMT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss zzz", Locale.getDefault());
+
+	public static String findParameterInRequest(RequestEntry entry, String argument) {
+		final HttpPostRequestDecoder decoder = new HttpPostRequestDecoder(entry.getHttpRequest());
+		final List<InterfaceHttpData> interfaceHttpData = decoder.getBodyHttpDatas();
+
+		for (InterfaceHttpData httpData : interfaceHttpData) {
+			if (httpData.getHttpDataType().equals(InterfaceHttpData.HttpDataType.Attribute)) {
+				final Attribute attribute = (Attribute) httpData;
+				if (Objects.equals(attribute.getName(), argument)) {
+					try {
+						return attribute.getValue();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+		}
+
+		return null;
+	}
 
 	public static ResponseEntry mergeResponse(ResponseEntry responseEntryTo, ResponseEntry responseEntryFrom) {
 		responseEntryTo.setBody(responseEntryFrom.getBody());

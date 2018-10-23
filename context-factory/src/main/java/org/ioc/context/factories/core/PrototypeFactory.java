@@ -24,10 +24,7 @@ import org.ioc.exceptions.IoCInstantiateException;
 
 import java.util.Collections;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static org.ioc.utils.ReflectionUtils.resolveTypeName;
 
 /**
  * Factory of the prototype domain.
@@ -52,8 +49,12 @@ public class PrototypeFactory extends AbstractFactory {
 
 	@Override
 	public Object getType(Class<?> type) {
-		final Optional<Object> any = Optional.ofNullable(getType(resolveTypeName(type)));
-		return any.orElse(null);
+		final TypeMetadata metadata = getMetadata(type);
+		if (metadata != null) {
+			return instanceFactory.instantiate(metadata.getConstructor());
+		}
+
+		return null;
 	}
 
 	@Override

@@ -63,12 +63,18 @@ public class InstanceFactory {
 	private Object instantiateFields(Object o) {
 		Arrays.stream(getOrigin(o.getClass()).getDeclaredFields())
 				.forEach(field -> {
-					if (field.isAnnotationPresent(IoCDependency.class)) {
+					final IoCDependency ioCDependency = field.getAnnotation(IoCDependency.class);
+					if (ioCDependency != null) {
 						field.setAccessible(true);
+
 						try {
-							field.set(o, context.getType(field.getType()));
+							if (!ioCDependency.value().isEmpty()) {
+								field.set(o, context.getType(ioCDependency.value()));
+							} else {
+								field.set(o, context.getType(field.getType()));
+							}
 						} catch (IllegalAccessException e) {
-							throw new IoCInstantiateException("IoCError - Unavailable create instance of bag [" + o.getClass() + "].", e);
+							throw new IoCInstantiateException("IoCError - Unavailable create instance of type [" + o.getClass() + "].", e);
 						}
 					}
 				});

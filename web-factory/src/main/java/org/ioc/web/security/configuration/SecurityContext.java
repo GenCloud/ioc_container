@@ -46,6 +46,10 @@ public class SecurityContext {
 		return userDetailsProcessors;
 	}
 
+	void addUserDetailsProcessor(UserDetailsProcessor instance) {
+		userDetailsProcessors.add(instance);
+	}
+
 	public UserDetails authenticate(String username, String password, Encoder encoder) {
 		UserDetails currentUserDetails;
 		for (UserDetailsProcessor roleDetails : userDetailsProcessors) {

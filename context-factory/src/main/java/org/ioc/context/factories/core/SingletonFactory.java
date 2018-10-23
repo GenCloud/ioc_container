@@ -25,11 +25,10 @@ import org.ioc.context.model.TypeMetadata;
 import org.ioc.exceptions.IoCInstantiateException;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static org.ioc.utils.ReflectionUtils.resolveTypeName;
+import java.util.stream.Collectors;
 
 /**
  * Factory for singleton domain.
@@ -67,22 +66,25 @@ public class SingletonFactory extends AbstractFactory {
 
 	@Override
 	public Object getType(Class<?> type) {
-		final Optional<Object> any = Optional.ofNullable(getType(resolveTypeName(type)));
-
-		if (any.isPresent()) {
-			return any.get();
+		final TypeMetadata metadata = getMetadata(type);
+		if (metadata != null) {
+			return metadata;
 		} else {
-			final Optional<TypeMetadata> lazy = Optional.ofNullable(lazyMap.get(resolveTypeName(type)));
-			if (lazy.isPresent()) {
-				final TypeMetadata component = lazy.get();
-
+			final List<TypeMetadata> lazy = lazyMap.values()
+					.stream()
+					.filter(t -> type.isAssignableFrom(t.getType()))
+					.collect(Collectors.toList());
+			if (lazy.size() == 1) {
+				final TypeMetadata component = lazy.get(0);
 				lazyMap.remove(component.getName());
-
 				return component.getInstance();
+			} else if (lazy.size() > 1) {
+				throw new IoCInstantiateException("IoCError - Unavailable create instance of type [" + type + "]. " +
+						"Found 2 or more instances in context! Use type-name on component.");
 			}
-
-			return null;
 		}
+
+		return null;
 	}
 
 	@Override
