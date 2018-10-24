@@ -55,8 +55,8 @@ public class ThreadConfigureProcessor implements TypeProcessor, ContextSensible,
 	}
 
 	@Override
-	public void contextInform(IoCContext ioCContext) throws IoCException {
-		this.context = ioCContext;
+	public void contextInform(IoCContext context) throws IoCException {
+		this.context = context;
 	}
 
 	@Override

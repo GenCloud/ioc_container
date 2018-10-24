@@ -93,7 +93,7 @@ public class WebArgumentResolver implements ArgumentResolver {
 	}
 
 	@Override
-	public void resolve(SecurityConfigureAdapter securityConfigureAdapter, Mapping mapping, RequestEntry requestEntry) {
+	public void resolve(SecurityConfigureAdapter sca, Mapping mapping, RequestEntry requestEntry) {
 		final String path = requestEntry.getPath();
 
 		requestArgumentResolver(requestEntry, mapping);
@@ -117,7 +117,7 @@ public class WebArgumentResolver implements ArgumentResolver {
 
 		modelArgumentResolve(mapping);
 
-		userDetailsArgumentResolve(requestEntry, securityConfigureAdapter, mapping);
+		userDetailsArgumentResolve(requestEntry, sca, mapping);
 	}
 
 	private void userDetailsArgumentResolve(RequestEntry requestEntry, SecurityConfigureAdapter securityConfigureAdapter,

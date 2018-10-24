@@ -16,24 +16,14 @@
  * You should have received a copy of the GNU General Public License
  * along with IoC Starter Project.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.ioc.context.sensible;
-
-import org.ioc.context.type.IoCContext;
-import org.ioc.exceptions.IoCException;
+package org.ioc.exceptions;
 
 /**
- * Any component can implement this interface to obtain information about the running {@link IoCContext}.
- *
  * @author GenCloud
- * @date 09/2018
+ * @date 10/2018
  */
-@FunctionalInterface
-public interface ContextSensible extends Sensible {
-	/**
-	 * Set the {@link IoCContext} to component.
-	 *
-	 * @param context initialized application contexts
-	 * @throws IoCException throw if contexts throwing by methods
-	 */
-	void contextInform(IoCContext context) throws IoCException;
+public class ResourceMessageNotFoundException extends IoCException {
+	public ResourceMessageNotFoundException(String message) {
+		super(message);
+	}
 }

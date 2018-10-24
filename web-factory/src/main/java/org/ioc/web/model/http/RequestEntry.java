@@ -22,11 +22,9 @@ import io.netty.channel.Channel;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.QueryStringDecoder;
 
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.*;
 
 /**
  * @author GenCloud
@@ -62,6 +60,19 @@ public class RequestEntry {
 
 	public Channel getChannel() {
 		return channel;
+	}
+
+	public String getParameter(String paramName) {
+		final String uri = httpRequest.uri();
+		final QueryStringDecoder decoder = new QueryStringDecoder(uri);
+		final Map<String, List<String>> map = decoder.parameters();
+
+		final List<String> list = map.get(paramName);
+		if (list == null || list.isEmpty()) {
+			return null;
+		} else {
+			return list.get(0);
+		}
 	}
 
 	public Set<Cookie> getCookies() {

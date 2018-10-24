@@ -12,6 +12,16 @@
 <body>
 <div class="container">
     <h1>IoC Starter Test</h1>
+
+    #if($!helloMsg)
+        <h4>Test locale's</h4>
+        <br>
+        <h5>Current locale: $locale</h5>
+        <br>
+        <h5>Message: $helloMsg</h5>
+        <br>
+    #end
+
     <br>
     <h4>Create user</h4>
     <br>

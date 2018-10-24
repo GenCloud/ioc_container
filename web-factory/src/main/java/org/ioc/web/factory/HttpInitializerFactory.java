@@ -39,7 +39,6 @@ import org.ioc.context.sensible.EnvironmentSensible;
 import org.ioc.context.type.IoCContext;
 import org.ioc.enviroment.configurations.web.WebAutoConfiguration;
 import org.ioc.exceptions.IoCException;
-import org.ioc.utils.ReflectionUtils;
 import org.ioc.web.annotations.UrlMapping;
 import org.ioc.web.model.mapping.Mapping;
 import org.ioc.web.model.mapping.MappingContainer;
@@ -59,7 +58,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.ioc.utils.ReflectionUtils.findClassesByInstance;
 import static org.ioc.utils.ReflectionUtils.resolveTypeName;
 import static org.ioc.web.util.HttpServerUtil.toHttpMethod;
 
@@ -123,11 +121,11 @@ public class HttpInitializerFactory implements Factory, ContextSensible, Environ
 	public void start() throws InterruptedException {
 		final Collection<TypeMetadata> types = context.getMetadatas(Mode.REQUEST);
 
-		final List<Class<?>> findedResolvers = findClassesByInstance(ArgumentResolver.class, context.getPackages());
+		final Collection<TypeMetadata> values = context.getSingletonFactory().getTypes().values();
 
-		final List<Object> initiatedResolvers = findedResolvers
-				.stream()
-				.map(ReflectionUtils::instantiateClass)
+		final List<Object> findedResolvers = values.stream()
+				.filter(t -> ArgumentResolver.class.isAssignableFrom(t.getType()))
+				.map(TypeMetadata::getInstance)
 				.collect(Collectors.toList());
 
 		final SecurityConfigureAdapter securityConfigureAdapter = new SecurityConfigureAdapter(context, sessionManager);
@@ -142,7 +140,7 @@ public class HttpInitializerFactory implements Factory, ContextSensible, Environ
 		bootstrap
 				.group(eventLoopGroup)
 				.channel(serverSocketChannel)
-				.childHandler(new HttpChannelInitializer(sslContext, sessionManager, securityConfigureAdapter, mappingContainer, initiatedResolvers, templateResolver));
+				.childHandler(new HttpChannelInitializer(sslContext, sessionManager, securityConfigureAdapter, mappingContainer, findedResolvers, templateResolver));
 
 		log.info("Http server started on port(s): {} (http)", webAutoConfiguration.getPort());
 		bootstrap.bind(webAutoConfiguration.getPort()).sync().channel().closeFuture().sync();

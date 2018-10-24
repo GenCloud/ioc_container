@@ -51,7 +51,7 @@ public class DefaultProcessor implements TypeProcessor, ContextSensible {
 	}
 
 	@Override
-	public void contextInform(IoCContext ioCContext) throws IoCException {
-		log.info("I'm informed for context - [{}]", ioCContext);
+	public void contextInform(IoCContext context) throws IoCException {
+		log.info("I'm informed for context - [{}]", context);
 	}
 }

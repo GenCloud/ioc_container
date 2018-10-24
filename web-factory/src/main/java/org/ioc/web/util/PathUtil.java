@@ -19,7 +19,6 @@ public class PathUtil {
 	private static final int CACHE_TURNOFF_THRESHOLD = 65536;
 	private static boolean caseSensitive = true;
 	private static String pathSeparator = DEFAULT_PATH_SEPARATOR;
-	private static PathSeparatorPatternCache pathSeparatorPatternCache = new PathSeparatorPatternCache(DEFAULT_PATH_SEPARATOR);
 	private final Map<String, String[]> tokenizedPatternCache = new ConcurrentHashMap<>(256);
 	private final Map<String, AntPathStringMatcher> stringMatcherCache = new ConcurrentHashMap<>(256);
 	private boolean trimTokens = false;
@@ -77,7 +76,7 @@ public class PathUtil {
 				break;
 			}
 
-			if (!matchStrings(pattDir, pathDirs[pathIdxStart], uriTemplateVariables)) {
+			if (notMatchStrings(pattDir, pathDirs[pathIdxStart], uriTemplateVariables)) {
 				return false;
 			}
 
@@ -115,7 +114,7 @@ public class PathUtil {
 				break;
 			}
 
-			if (!matchStrings(pattDir, pathDirs[pathIdxEnd], uriTemplateVariables)) {
+			if (notMatchStrings(pattDir, pathDirs[pathIdxEnd], uriTemplateVariables)) {
 				return false;
 			}
 
@@ -151,7 +150,7 @@ public class PathUtil {
 				for (int j = 0; j < patLength; j++) {
 					final String subPat = pattDirs[pattIdxStart + j + 1];
 					final String subStr = pathDirs[pathIdxStart + i + j];
-					if (!matchStrings(subPat, subStr, uriTemplateVariables)) {
+					if (notMatchStrings(subPat, subStr, uriTemplateVariables)) {
 						continue strLoop;
 					}
 				}
@@ -204,8 +203,8 @@ public class PathUtil {
 		return tokenizeToStringArray(path, pathSeparator, this.trimTokens, true);
 	}
 
-	private boolean matchStrings(String pattern, String str, Map<String, String> uriTemplateVariables) {
-		return getStringMatcher(pattern).matchStrings(str, uriTemplateVariables);
+	private boolean notMatchStrings(String pattern, String str, Map<String, String> uriTemplateVariables) {
+		return !getStringMatcher(pattern).matchStrings(str, uriTemplateVariables);
 	}
 
 	private AntPathStringMatcher getStringMatcher(String pattern) {
@@ -301,10 +300,6 @@ public class PathUtil {
 
 		private final List<String> variableNames = new LinkedList<>();
 
-		public AntPathStringMatcher(String pattern) {
-			this(pattern, true);
-		}
-
 		AntPathStringMatcher(String pattern, boolean caseSensitive) {
 			final StringBuilder patternBuilder = new StringBuilder();
 			final Matcher matcher = GLOB_PATTERN.matcher(pattern);
@@ -372,28 +367,6 @@ public class PathUtil {
 			} else {
 				return false;
 			}
-		}
-	}
-
-
-	/**
-	 * A simple cache for patterns that depend on the configured path separator.
-	 */
-	private static class PathSeparatorPatternCache {
-		private final String endsOnWildCard;
-		private final String endsOnDoubleWildCard;
-
-		PathSeparatorPatternCache(String pathSeparator) {
-			this.endsOnWildCard = pathSeparator + "*";
-			this.endsOnDoubleWildCard = pathSeparator + "**";
-		}
-
-		public String getEndsOnWildCard() {
-			return this.endsOnWildCard;
-		}
-
-		public String getEndsOnDoubleWildCard() {
-			return this.endsOnDoubleWildCard;
 		}
 	}
 }

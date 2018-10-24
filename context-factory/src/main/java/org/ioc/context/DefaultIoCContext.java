@@ -45,6 +45,7 @@ import org.ioc.context.sensible.factories.CacheFactorySensible;
 import org.ioc.context.sensible.factories.DatabaseFactorySensible;
 import org.ioc.context.sensible.factories.ThreadFactorySensible;
 import org.ioc.context.type.IoCContext;
+import org.ioc.enviroment.configurations.BundleAutoConfiguration;
 import org.ioc.enviroment.configurations.CacheAutoConfiguration;
 import org.ioc.enviroment.configurations.FactDispatcherAutoConfiguration;
 import org.ioc.enviroment.configurations.ThreadingAutoConfiguration;
@@ -123,6 +124,7 @@ public class DefaultIoCContext extends AbstractIoCContext {
 		configurations.add(CacheAutoConfiguration.class);
 		configurations.add(ThreadingAutoConfiguration.class);
 		configurations.add(FactDispatcherAutoConfiguration.class);
+		configurations.add(BundleAutoConfiguration.class);
 
 		processors.add((TypeProcessor) instantiateClass(ThreadConfigureProcessor.class));
 
@@ -141,11 +143,7 @@ public class DefaultIoCContext extends AbstractIoCContext {
 			configurations = configurations.stream().filter(c -> !Arrays.asList(excluded).contains(c)).collect(Collectors.toList());
 		}
 
-		configurations.sort((o1, o2) -> {
-			final int order_1 = getOrder(o1);
-			final int order_2 = getOrder(o2);
-			return order_2 - order_1;
-		});
+		configurations.sort((o1, o2) -> getOrder(o2) - getOrder(o1));
 
 		registerEnvironments(configurations);
 
@@ -336,11 +334,8 @@ public class DefaultIoCContext extends AbstractIoCContext {
 				.stream()
 				.filter(t -> Factory.class.isAssignableFrom(t.getType()))
 				.filter(t -> !t.isInitialized())
-				.sorted((o1, o2) -> {
-					final int order_1 = getOrder(o1.getType());
-					final int order_2 = getOrder(o2.getType());
-					return order_2 - order_1;
-				}).collect(Collectors.toList());
+				.sorted((o1, o2) -> getOrder(o2.getType()) - getOrder(o1.getType()))
+				.collect(Collectors.toList());
 
 		metadatas.forEach(this::installFactory);
 	}
@@ -367,14 +362,12 @@ public class DefaultIoCContext extends AbstractIoCContext {
 	@SuppressWarnings("deprecation")
 	private void registerEnvironments(List<Class<?>> list) {
 		final List<TypeMetadata> types = new LinkedList<>();
-		for (Class<?> propertyClass : list) {
+		list.forEach(propertyClass -> {
 			final Property property = propertyClass.getAnnotation(Property.class);
 			if (property.ignore()) {
-				continue;
+				return;
 			}
-
 			final Path path = Paths.get(property.path());
-
 			try {
 				final Object instance = propertyClass.newInstance();
 				EnvironmentLoader.parse(instance, path.toFile());
@@ -384,14 +377,16 @@ public class DefaultIoCContext extends AbstractIoCContext {
 				for (Method method : propertyClass.getDeclaredMethods()) {
 					if (method.isAnnotationPresent(PropertyFunction.class)) {
 						final Object returned = method.invoke(instance);
-						types.add(new TypeMetadata(resolveTypeName(returned.getClass()), returned, resolveLoadingMode(method)));
+						if (returned != null) {
+							types.add(new TypeMetadata(resolveTypeName(returned.getClass()), returned, resolveLoadingMode(method)));
+						}
 					}
 				}
 
 			} catch (Exception e) {
 				throw new IoCException("IoCError - Failed to Load " + path + " Config File", e);
 			}
-		}
+		});
 
 		registerTypes(types);
 	}
@@ -442,10 +437,10 @@ public class DefaultIoCContext extends AbstractIoCContext {
 	 * @param typeProcessors found processors in the classpath
 	 */
 	private void registerTypeProcessor(List<TypeProcessor> typeProcessors) {
-		for (TypeProcessor typeProcessor : typeProcessors) {
+		typeProcessors.forEach(typeProcessor -> {
 			instantiateSensibles(typeProcessor);
 			this.typeProcessors.add(typeProcessor);
-		}
+		});
 	}
 
 	/**
@@ -522,19 +517,14 @@ public class DefaultIoCContext extends AbstractIoCContext {
 
 	@SuppressWarnings("unchecked")
 	private void findParametrizedType(EnvironmentSensible instance, Type[] genericInterfaces) {
-		for (Type t : genericInterfaces) {
-			if (t instanceof ParameterizedType) {
-				final ParameterizedType parameterizedType = (ParameterizedType) t;
-				if (EnvironmentSensible.class.isAssignableFrom((Class<?>) parameterizedType.getRawType())) {
-					final Class<?> param = (Class) parameterizedType.getActualTypeArguments()[0];
-					final Object env = getType(param);
-					if (env != null) {
-						instance.environmentInform(env);
-						break;
-					}
-				}
-			}
-		}
+		Arrays.stream(genericInterfaces)
+				.filter(t -> t instanceof ParameterizedType)
+				.map(t -> (ParameterizedType) t)
+				.filter(parameterizedType -> EnvironmentSensible.class.isAssignableFrom((Class<?>) parameterizedType.getRawType()))
+				.map(parameterizedType -> (Class) parameterizedType.getActualTypeArguments()[0])
+				.map(this::getType).filter(Objects::nonNull)
+				.findFirst()
+				.ifPresent(instance::environmentInform);
 	}
 
 	/**

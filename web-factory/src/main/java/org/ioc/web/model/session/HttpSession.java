@@ -22,6 +22,7 @@ import io.netty.channel.Channel;
 import org.ioc.web.security.user.UserDetails;
 
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -31,13 +32,16 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * @date 10/2018
  */
 public class HttpSession {
-	private final long createTime = System.currentTimeMillis();
-	private final Map<String, Object> attributes = new HashMap<>();
 	private String sessionId;
 	private UserDetails userDetails;
 	private Channel channel;
+
+	private final long createTime = System.currentTimeMillis();
+
 	private boolean isAuthenticated;
 	private long maxAge = 7200;
+	private final Map<String, Object> attributes = new HashMap<>();
+	private Locale locale;
 
 	public HttpSession() {
 	}
@@ -82,12 +86,24 @@ public class HttpSession {
 		this.userDetails = userDetails;
 	}
 
+	public Locale getLocale() {
+		return locale;
+	}
+
+	public void setLocale(Locale locale) {
+		this.locale = locale;
+	}
+
 	public void addAttribute(String key, Object value) {
 		attributes.put(key, value);
 	}
 
 	public Map<String, Object> getAttributes() {
 		return attributes;
+	}
+
+	public Object getAttribute(String name) {
+		return attributes.get(name);
 	}
 
 	public boolean isAuthenticated() {

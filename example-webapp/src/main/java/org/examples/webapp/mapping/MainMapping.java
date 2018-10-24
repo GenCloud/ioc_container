@@ -21,6 +21,7 @@ package org.examples.webapp.mapping;
 import org.examples.webapp.domain.entity.TblAccount;
 import org.examples.webapp.responces.IMessage;
 import org.examples.webapp.service.AccountService;
+import org.examples.webapp.service.LocaleService;
 import org.ioc.annotations.context.IoCDependency;
 import org.ioc.annotations.web.IoCController;
 import org.ioc.web.annotations.Credentials;
@@ -29,6 +30,8 @@ import org.ioc.web.annotations.RequestParam;
 import org.ioc.web.annotations.UrlMapping;
 import org.ioc.web.model.ModelAndView;
 import org.ioc.web.model.http.RequestEntry;
+import org.ioc.web.model.session.HttpSession;
+import org.ioc.web.security.configuration.SecurityConfigureAdapter;
 
 /**
  * @author GenCloud
@@ -40,9 +43,21 @@ public class MainMapping {
 	@IoCDependency
 	private AccountService accountService;
 
+	@IoCDependency
+	private LocaleService localeService;
+
+	@IoCDependency
+	private SecurityConfigureAdapter sca;
+
 	@UrlMapping
-	public ModelAndView index() {
+	public ModelAndView index(RequestEntry requestEntry) {
 		final ModelAndView modelAndView = new ModelAndView();
+		final HttpSession session = sca.getContext().findSession(requestEntry);
+		if (session != null) {
+			modelAndView.addAttribute("locale", session.getLocale());
+			modelAndView.addAttribute("helloMsg", localeService.getMessage("hello", session.getLocale()));
+		}
+
 		modelAndView.setView("index");
 		return modelAndView;
 	}

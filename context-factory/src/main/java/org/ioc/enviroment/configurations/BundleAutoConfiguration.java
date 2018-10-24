@@ -21,24 +21,40 @@ package org.ioc.enviroment.configurations;
 import org.ioc.annotations.configuration.Property;
 import org.ioc.annotations.configuration.PropertyFunction;
 import org.ioc.context.factories.Factory;
-import org.ioc.utils.ReflectionUtils;
 
-import static org.ioc.context.factories.Factory.defaultCacheFactory;
+import static org.ioc.context.factories.Factory.defaultResourceManagerFactory;
+import static org.ioc.utils.ReflectionUtils.instantiateClass;
 
 /**
  * @author GenCloud
- * @date 09/2018
+ * @date 10/2018
  */
-@Property(prefix = "cache.")
-public class CacheAutoConfiguration {
-	@Property("factory")
-	private String factoryClass = "org.ioc.context.factories.cache.EhFactory";
+@Property(prefix = "messages.")
+public class BundleAutoConfiguration {
+	private boolean enabled;
+
+	@Property("file.name")
+	private String fileName;
+
+	@Property(value = "allowed.locales", splitter = ",")
+	private String[] allowedLocales;
+
+	public String getFileName() {
+		return fileName;
+	}
+
+	public String[] getAllowedLocales() {
+		return allowedLocales;
+	}
 
 	@PropertyFunction
 	@SuppressWarnings("unchecked")
-	public Object cacheFactory() {
-		final Class<? extends Factory> factory = factoryClass == null ? defaultCacheFactory()
-				: (Class<? extends Factory>) ReflectionUtils.loadClass(factoryClass);
-		return ReflectionUtils.instantiateClass(factory);
+	public Object resourceFactory() {
+		if (enabled) {
+			final Class<? extends Factory> factory = defaultResourceManagerFactory();
+			return instantiateClass(factory);
+		}
+
+		return null;
 	}
 }

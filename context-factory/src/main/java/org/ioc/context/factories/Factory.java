@@ -17,6 +17,8 @@ public interface Factory {
 
 	String DEFAULT_WEB_FACTORY = "org.ioc.web.factory.HttpInitializerFactory";
 
+	String RESOURCE_MANAGER_FACTORY = "org.ioc.web.i18n.ResourceManagerFactory";
+
 	@SuppressWarnings("unchecked")
 	static Class<Factory> defaultThreadFactory() {
 		try {
@@ -50,6 +52,15 @@ public interface Factory {
 			return (Class<Factory>) Class.forName(DEFAULT_WEB_FACTORY);
 		} catch (ClassNotFoundException e) {
 			throw new IoCException("IoCError - can't instantiate default Web Factory", e);
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	static Class<Factory> defaultResourceManagerFactory() {
+		try {
+			return (Class<Factory>) Class.forName(RESOURCE_MANAGER_FACTORY);
+		} catch (ClassNotFoundException e) {
+			throw new IoCException("IoCError - can't instantiate default Resource Manager Factory", e);
 		}
 	}
 
