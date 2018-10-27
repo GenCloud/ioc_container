@@ -95,12 +95,12 @@ public class GuavaFactory implements ICacheFactory {
 	}
 
 	@Override
-	public <K, V> void invalidate(ICache<K, V> ICache) {
-		if (ICache instanceof GuavaFacade) {
+	public <K, V> void invalidate(ICache<K, V> cache) {
+		if (cache instanceof GuavaFacade) {
 			if (log.isDebugEnabled()) {
-				log.debug("Disposing cache {}", ICache);
+				log.debug("Disposing cache {}", cache);
 			}
-			((GuavaFacade<K, V>) ICache).getCache().invalidateAll();
+			((GuavaFacade<K, V>) cache).getCache().invalidateAll();
 		} else {
 			log.warn("Trying to invalidate {} cache when it is not EhCacheFacade collection");
 		}

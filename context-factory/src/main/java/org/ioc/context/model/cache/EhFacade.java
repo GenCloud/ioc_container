@@ -18,10 +18,10 @@
  */
 package org.ioc.context.model.cache;
 
+import net.sf.ehcache.Cache;
 import net.sf.ehcache.Element;
 
 import java.util.Iterator;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -30,20 +30,22 @@ import java.util.stream.Collectors;
  * @author GenCloud
  * @date 09/2018
  */
+@SuppressWarnings("unchecked")
 public class EhFacade<K, V> implements ICache<K, V> {
-	private final net.sf.ehcache.Cache cache;
+	private final Cache cache;
 
-	public EhFacade(net.sf.ehcache.Cache cache) {
+	public EhFacade(Cache cache) {
 		this.cache = cache;
 	}
 
-	public net.sf.ehcache.Cache getCache() {
+	public Cache getCache() {
 		return cache;
 	}
 
 	@Override
-	public void put(K key, V value) {
+	public V put(K key, V value) {
 		cache.put(new Element(key, value));
+		return value;
 	}
 
 	@Override
@@ -62,8 +64,12 @@ public class EhFacade<K, V> implements ICache<K, V> {
 	}
 
 	@Override
-	public void remove(K key) {
-		cache.remove(key);
+	public V remove(K key) {
+		final V element = get(key);
+		if (element != null) {
+			cache.remove(key);
+		}
+		return element;
 	}
 
 	@Override
@@ -77,10 +83,13 @@ public class EhFacade<K, V> implements ICache<K, V> {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
-	public Iterator<V> iterator() {
-		final Map<Object, Element> mapElements = cache.getAll(cache.getKeys());
-		return (Iterator<V>) mapElements.values()
+	public Iterator<K> keys() {
+		return cache.getKeys().iterator();
+	}
+
+	@Override
+	public Iterator<V> values() {
+		return (Iterator<V>) cache.getAll(cache.getKeys()).values()
 				.stream()
 				.map(Element::getObjectValue)
 				.collect(Collectors.toList())

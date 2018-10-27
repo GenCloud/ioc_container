@@ -102,17 +102,17 @@ public class EhFactory implements ICacheFactory {
 	}
 
 	@Override
-	public <K, V> void invalidate(ICache<K, V> iCache) {
+	public <K, V> void invalidate(ICache<K, V> cache) {
 		if (manager.getStatus() == Status.STATUS_SHUTDOWN) {
 			return;
 		}
 
-		if (iCache instanceof EhFacade) {
+		if (cache instanceof EhFacade) {
 			if (log.isDebugEnabled()) {
-				log.debug("Disposing cache {}", iCache);
+				log.debug("Disposing cache {}", cache);
 			}
 
-			manager.removeCache(((EhFacade<K, V>) iCache).getCache().getName());
+			manager.removeCache(((EhFacade<K, V>) cache).getCache().getName());
 		} else {
 			log.warn("Trying to invalidate {} cache when it is not EhCacheFacade collection");
 		}

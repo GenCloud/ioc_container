@@ -24,14 +24,13 @@ import org.examples.webapp.service.AccountService;
 import org.examples.webapp.service.LocaleService;
 import org.ioc.annotations.context.IoCDependency;
 import org.ioc.annotations.web.IoCController;
-import org.ioc.web.annotations.Credentials;
-import org.ioc.web.annotations.MappingMethod;
-import org.ioc.web.annotations.RequestParam;
-import org.ioc.web.annotations.UrlMapping;
+import org.ioc.web.annotations.*;
 import org.ioc.web.model.ModelAndView;
 import org.ioc.web.model.http.RequestEntry;
 import org.ioc.web.model.session.HttpSession;
 import org.ioc.web.security.configuration.SecurityConfigureAdapter;
+
+import static java.util.concurrent.TimeUnit.MINUTES;
 
 /**
  * @author GenCloud
@@ -63,6 +62,7 @@ public class MainMapping {
 	}
 
 	@UrlMapping(value = "/signup", method = MappingMethod.POST)
+	@RateLimit(timeUnit = MINUTES)
 	public IMessage createUser(@RequestParam("username") String username,
 							   @RequestParam("password") String password,
 							   @RequestParam("repeatedPassword") String repeatedPassword) {

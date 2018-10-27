@@ -11,7 +11,16 @@ $(function () {
             xhrFields: {
                 withCredentials: true
             },
-            type: "POST"
+            type: "POST",
+
+            error: function () {
+                new PNotify({
+                    title: 'Error',
+                    text: 'Rate limit: Wait 1 Min Please!',
+                    type: 'error',
+                    hide: false
+                });
+            }
         }).done(function (data) {
             switch (data.type) {
                 case 'OK':

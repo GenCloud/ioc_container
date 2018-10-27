@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2018 IoC Starter (Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
  *
- * This addView is part of IoC Starter Project.
+ * This file is part of IoC Starter Project.
  *
  * IoC Starter Project is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

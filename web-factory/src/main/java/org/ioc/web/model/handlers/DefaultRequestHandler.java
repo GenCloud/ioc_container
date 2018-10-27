@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2018 IoC Starter (Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
  *
- * This addView is part of IoC Starter Project.
+ * This file is part of IoC Starter Project.
  *
  * IoC Starter Project is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@ import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import org.ioc.web.exception.ConsumesException;
+import org.ioc.web.exception.RateLimitException;
 import org.ioc.web.exception.SessionNotFoundException;
 import org.ioc.web.model.ModelAndView;
 import org.ioc.web.model.http.RequestEntry;
@@ -117,6 +118,8 @@ public class DefaultRequestHandler extends SimpleChannelInboundHandler<FullHttpR
 			if (!result.isOk()) {
 				if (result.getThrowable() instanceof SessionNotFoundException) {
 					sendRedirect(ctx, preparedResponseEntry, "/");
+				} else if (result.getThrowable() instanceof SessionNotFoundException) {
+
 				} else {
 					buildDefaultError(ctx, httpRequest, BAD_REQUEST, preparedResponseEntry, result.getThrowable());
 				}
@@ -143,19 +146,23 @@ public class DefaultRequestHandler extends SimpleChannelInboundHandler<FullHttpR
 		} catch (Exception e) {
 			if (e instanceof NullPointerException) {
 				buildDefaultError(ctx, httpRequest, NO_CONTENT, preparedResponseEntry, e);
+			} else if (e instanceof RateLimitException) {
+				buildDefaultError(ctx, httpRequest, TOO_MANY_REQUESTS, preparedResponseEntry, e);
 			} else {
 				buildDefaultError(ctx, httpRequest, INTERNAL_SERVER_ERROR, preparedResponseEntry, e);
 			}
 			return;
 		}
 
-		handleMapping(ctx, mapping, httpRequest, preparedResponseEntry, intercepted);
+		handleMapping(ctx, mapping, requestEntry, httpRequest, preparedResponseEntry, intercepted);
 	}
 
-	private void handleMapping(ChannelHandlerContext ctx, Mapping mapping, FullHttpRequest httpRequest, ResponseEntry preparedResponseEntry, ModelAndView intercepted) throws Exception {
+	private void handleMapping(ChannelHandlerContext ctx, Mapping mapping, RequestEntry requestEntry, FullHttpRequest httpRequest, ResponseEntry responseEntry, ModelAndView intercepted) throws Exception {
 		final Object[] params = Objects.requireNonNull(mapping).getParameters();
 		final Object instance = Objects.requireNonNull(mapping).getInstance();
 		final Object invoked = Objects.requireNonNull(mapping).getMethod().invoke(instance, params);
+
+		securityConfigureAdapter.postHandle(requestEntry, responseEntry, intercepted, mapping);
 
 		String produces = mapping.getProduces();
 		produces = produces != null && produces.isEmpty() ? "text/html" : produces;
@@ -164,32 +171,32 @@ public class DefaultRequestHandler extends SimpleChannelInboundHandler<FullHttpR
 			write((File) invoked, ctx, httpRequest);
 			return;
 		} else if (invoked instanceof ResponseEntry) {
-			preparedResponseEntry = mergeResponse(preparedResponseEntry, (ResponseEntry) invoked);
+			responseEntry = mergeResponse(responseEntry, (ResponseEntry) invoked);
 		} else if (invoked instanceof ModelAndView) {
 			final ModelAndView model = (ModelAndView) invoked;
 			tryMergeModel(intercepted, model);
 
-			preparedResponseEntry.setViewPage(templateResolver.resolveArguments(model.getView(), model));
-			preparedResponseEntry.addHeader(CONTENT_TYPE, produces);
+			responseEntry.setViewPage(templateResolver.resolveArguments(model.getView(), model));
+			responseEntry.addHeader(CONTENT_TYPE, produces);
 		} else if (mapping.isView()) {
-			final ModelAndView model = preparedResponseEntry.getModel();
+			final ModelAndView model = responseEntry.getModel();
 			tryMergeModel(intercepted, model);
 
-			preparedResponseEntry.setViewPage(templateResolver.resolveArguments(invoked.toString(), model));
-			preparedResponseEntry.addHeader(CONTENT_TYPE, produces);
+			responseEntry.setViewPage(templateResolver.resolveArguments(invoked.toString(), model));
+			responseEntry.addHeader(CONTENT_TYPE, produces);
 		} else {
-			preparedResponseEntry.setBody(invoked);
-			preparedResponseEntry.setResponseStatus(OK);
-			preparedResponseEntry.addHeader(CONTENT_TYPE, "application/json;charset=utf-8");
+			responseEntry.setBody(invoked);
+			responseEntry.setResponseStatus(OK);
+			responseEntry.addHeader(CONTENT_TYPE, "application/json;charset=utf-8");
 		}
 
 		HttpResponse httpResponse;
-		if (preparedResponseEntry.getViewPage() != null) {
-			HttpServerUtil.resource(preparedResponseEntry.getViewPage(), ctx, httpRequest);
+		if (responseEntry.getViewPage() != null) {
+			HttpServerUtil.resource(responseEntry.getViewPage(), ctx, httpRequest);
 			return;
 		}
 
-		httpResponse = buildDefaultFullHttpResponse(preparedResponseEntry);
+		httpResponse = buildDefaultFullHttpResponse(responseEntry);
 		ctx.write(httpResponse);
 	}
 
@@ -224,7 +231,10 @@ public class DefaultRequestHandler extends SimpleChannelInboundHandler<FullHttpR
 		final String view = formatErrorPage(status, uri, cause);
 		responseEntry.setViewPage(view);
 		responseEntry.setResponseStatus(status);
-		responseEntry.addHeader(CONTENT_TYPE, "text/html");
+		responseEntry.setBody(cause);
+
+		final HttpResponse response = HttpServerUtil.buildDefaultFullHttpResponse(responseEntry);
+		ctx.writeAndFlush(response);
 
 		HttpServerUtil.resource(responseEntry.getViewPage(), ctx, request);
 	}

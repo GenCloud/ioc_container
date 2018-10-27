@@ -20,6 +20,8 @@ package org.examples.webapp.config;
 
 import org.ioc.annotations.configuration.Property;
 import org.ioc.annotations.configuration.PropertyFunction;
+import org.ioc.context.factories.cache.ExpiringCacheFactory;
+import org.ioc.web.interceptors.RateLimitInterceptor;
 import org.ioc.web.security.configuration.HttpContainer;
 import org.ioc.web.security.configuration.SecurityConfigureProcessor;
 import org.ioc.web.security.encoder.Encoder;
@@ -44,6 +46,11 @@ public class SecurityConfig implements SecurityConfigureProcessor {
 				and().
 				configureSession().
 				expiredPath("/");
+	}
+
+	@PropertyFunction
+	public RateLimitInterceptor rateLimitInterceptor() {
+		return new RateLimitInterceptor(new ExpiringCacheFactory());
 	}
 
 	@PropertyFunction

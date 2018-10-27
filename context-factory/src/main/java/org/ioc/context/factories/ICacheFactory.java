@@ -1,5 +1,7 @@
 package org.ioc.context.factories;
 
+import net.sf.cglib.proxy.Enhancer;
+import net.sf.cglib.proxy.InvocationHandler;
 import org.ioc.annotations.cache.CacheIgnore;
 import org.ioc.annotations.cache.Cacheables;
 import org.ioc.context.model.cache.ICache;
@@ -7,8 +9,6 @@ import org.ioc.context.processors.DestroyProcessor;
 import org.ioc.utils.MethodInvocation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.lang.reflect.Proxy;
 
 /**
  * This is an transparent Cache system. It proxies an interface implementing
@@ -78,12 +78,12 @@ public interface ICacheFactory extends Factory, DestroyProcessor {
 	 *
 	 * @param <K>    cache key collection
 	 * @param <V>    cache value collection
-	 * @param ICache cache
+	 * @param cache cache
 	 */
-	<K, V> void invalidate(ICache<K, V> ICache);
+	<K, V> void invalidate(ICache<K, V> cache);
 
 	/**
-	 * @param interfaceICache installed collection cache
+	 * @param interfaceCache installed collection cache
 	 * @param interfaceType   interface collection. Remember, this must be an interface!
 	 * @param instance        instance implementing interface
 	 * @param <T>             instance collection
@@ -91,26 +91,25 @@ public interface ICacheFactory extends Factory, DestroyProcessor {
 	 * @see ICacheFactory#invoke(Class, Object)
 	 */
 	@SuppressWarnings("unchecked")
-	default <T> T invoke(ICache<MethodInvocation, Object> interfaceICache, Class<T> interfaceType, T instance) {
+	default <T> T invoke(ICache<MethodInvocation, Object> interfaceCache, Class<T> interfaceType, T instance) {
 		if (log.isDebugEnabled()) {
 			log.debug("Decorating {} with cache", interfaceType);
 		}
 
 		if (interfaceType.isAnnotationPresent(Cacheables.class)) {
-			return (T) Proxy.newProxyInstance(getClass().getClassLoader(), new Class[]{interfaceType},
-					((proxy, method, args) -> {
-						if (method.isAnnotationPresent(CacheIgnore.class)) {
-							return method.invoke(instance, args);
-						}
+			return (T) Enhancer.create(interfaceType, (InvocationHandler) (o, method, args) -> {
+				if (method.isAnnotationPresent(CacheIgnore.class)) {
+					return method.invoke(instance, args);
+				}
 
-						final MethodInvocation invocation = new MethodInvocation(method, args);
-						Object result = interfaceICache.get(invocation);
-						if (result == null) {
-							result = method.invoke(instance, args);
-							interfaceICache.put(invocation, result);
-						}
-						return result;
-					}));
+				final MethodInvocation invocation = new MethodInvocation(method, args);
+				Object result = interfaceCache.get(invocation);
+				if (result == null) {
+					result = method.invoke(instance, args);
+					interfaceCache.put(invocation, result);
+				}
+				return result;
+			});
 		}
 
 		return null;

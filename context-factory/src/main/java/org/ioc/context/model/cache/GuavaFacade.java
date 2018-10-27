@@ -38,8 +38,9 @@ public class GuavaFacade<K, V> implements ICache<K, V> {
 	}
 
 	@Override
-	public void put(K key, V value) {
+	public V put(K key, V value) {
 		cache.put(key, value);
+		return value;
 	}
 
 	@Override
@@ -53,8 +54,12 @@ public class GuavaFacade<K, V> implements ICache<K, V> {
 	}
 
 	@Override
-	public void remove(K key) {
-		cache.invalidate(key);
+	public V remove(K key) {
+		V element = get(key);
+		if (element != null) {
+			cache.invalidate(key);
+		}
+		return element;
 	}
 
 	@Override
@@ -68,7 +73,12 @@ public class GuavaFacade<K, V> implements ICache<K, V> {
 	}
 
 	@Override
-	public Iterator<V> iterator() {
+	public Iterator<K> keys() {
+		return cache.asMap().keySet().iterator();
+	}
+
+	@Override
+	public Iterator<V> values() {
 		return cache.asMap().values().iterator();
 	}
 }

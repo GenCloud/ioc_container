@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2018 IoC Starter (Owner: Maxim Ivanov) authors and/or its affiliates. All rights reserved.
  *
- * This addView is part of IoC Starter Project.
+ * This file is part of IoC Starter Project.
  *
  * IoC Starter Project is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -112,6 +112,8 @@ public class SecurityConfigureAdapter {
 				configuredUser = true;
 			}
 		});
+
+
 	}
 
 	public CheckResult secureRequest(RequestEntry requestEntry, ResponseEntry responseEntry, ModelAndView modelAndView, Mapping mapping) {
@@ -132,6 +134,10 @@ public class SecurityConfigureAdapter {
 				.allMatch(interceptor -> interceptor.preHandle(requestEntry, responseEntry, modelAndView, mapping));
 		result.setOk(ok);
 		return result;
+	}
+
+	public void postHandle(RequestEntry requestEntry, ResponseEntry responseEntry, ModelAndView modelAndView, Mapping mapping) {
+		requestInterceptors.forEach(interceptor -> interceptor.postHandle(requestEntry, responseEntry, modelAndView, mapping));
 	}
 
 	public SecurityContext getContext() {
