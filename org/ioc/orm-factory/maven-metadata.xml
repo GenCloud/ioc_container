@@ -3,10 +3,11 @@
   <groupId>org.ioc</groupId>
   <artifactId>orm-factory</artifactId>
   <versioning>
-    <release>2.3.0.RELEASE</release>
+    <release>2.3.1.STABLE</release>
     <versions>
       <version>2.3.0.RELEASE</version>
+      <version>2.3.1.STABLE</version>
     </versions>
-    <lastUpdated>20181024202646</lastUpdated>
+    <lastUpdated>20181028170400</lastUpdated>
   </versioning>
 </metadata>
