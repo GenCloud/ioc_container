@@ -72,7 +72,7 @@ public class Main extends Assert {
 
 		t04_testOrm();
 
-		t05_testStartWeb();
+//		t05_testStartWeb();
 	}
 
 	private static void t02_testAOP() {

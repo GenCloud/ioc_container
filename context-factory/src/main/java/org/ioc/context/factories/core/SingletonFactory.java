@@ -68,7 +68,7 @@ public class SingletonFactory extends AbstractFactory {
 	public Object getType(Class<?> type) {
 		final TypeMetadata metadata = getMetadata(type);
 		if (metadata != null) {
-			return metadata;
+			return metadata.getInstance();
 		} else {
 			final List<TypeMetadata> lazy = lazyMap.values()
 					.stream()

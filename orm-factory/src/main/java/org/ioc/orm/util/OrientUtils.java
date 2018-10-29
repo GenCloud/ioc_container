@@ -101,13 +101,14 @@ public class OrientUtils {
 
 	@SuppressWarnings("unchecked")
 	private static Object convertRaw(ColumnMetadata columnMetadata, Object value) {
-		if (null == columnMetadata || null == value) {
+		if (columnMetadata == null || value == null) {
 			return null;
 		}
 
 		if (value instanceof ORecordLazySet) {
 			return value;
 		}
+
 		if (value instanceof ORecordLazyList) {
 			return value;
 		}

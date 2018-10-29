@@ -153,6 +153,7 @@ public class DefaultIoCContext extends AbstractIoCContext {
 
 		registerListeners(packages);
 
+		types.sort((o1, o2) -> getOrder(o2.getType()) - getOrder(o1.getType()));
 		registerTypes(types);
 
 		initPostConstruction(getSingletonFactory().getTypes().values());
@@ -398,11 +399,7 @@ public class DefaultIoCContext extends AbstractIoCContext {
 	 */
 	private void initPostConstruction(Collection<TypeMetadata> values) {
 		List<TypeMetadata> toSort = new ArrayList<>(values);
-		toSort.sort((o1, o2) -> {
-			final int order_1 = getOrder(o1.getType());
-			final int order_2 = getOrder(o2.getType());
-			return order_2 - order_1;
-		});
+		toSort.sort((o1, o2) -> getOrder(o2.getType()) - getOrder(o1.getType()));
 
 		for (TypeMetadata type : toSort) {
 			final Class<?> toCheck = type.getType();

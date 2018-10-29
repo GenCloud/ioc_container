@@ -65,7 +65,7 @@ import static org.ioc.web.util.HttpServerUtil.toHttpMethod;
  * @author GenCloud
  * @date 10/2018
  */
-@Order(997)
+@Order
 public class HttpInitializerFactory implements Factory, ContextSensible, EnvironmentSensible<WebAutoConfiguration> {
 	private static final Logger log = LoggerFactory.getLogger(HttpInitializerFactory.class);
 

@@ -23,8 +23,6 @@ import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.index.OIndex;
 import com.orientechnologies.orient.core.iterator.ORecordIteratorClass;
-import com.orientechnologies.orient.core.iterator.ORecordIteratorCluster;
-import com.orientechnologies.orient.core.record.ORecord;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.sql.query.OSQLQuery;
 import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
@@ -366,14 +364,6 @@ public class OrientDatabaseSessionFactory extends AbstractTx implements Database
 		}
 
 		return databaseDocument.load(identity);
-	}
-
-	/**
-	 * @param type
-	 * @return
-	 */
-	private ORecordIteratorCluster<ORecord> findAllDocuments(String type) {
-		return databaseDocument.browseCluster(type);
 	}
 
 	public OIdentifiable findIdentifyByMap(FacilityMetadata facilityMetadata, Map<ColumnMetadata, Object> keys) {
