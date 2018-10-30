@@ -31,7 +31,6 @@ import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.util.internal.PlatformDependent;
 import org.ioc.annotations.context.Mode;
 import org.ioc.annotations.context.Order;
-import org.ioc.annotations.context.PostConstruct;
 import org.ioc.context.factories.Factory;
 import org.ioc.context.model.TypeMetadata;
 import org.ioc.context.sensible.ContextSensible;
@@ -44,7 +43,6 @@ import org.ioc.web.model.mapping.Mapping;
 import org.ioc.web.model.mapping.MappingContainer;
 import org.ioc.web.model.resolvers.ArgumentResolver;
 import org.ioc.web.model.session.SessionManager;
-import org.ioc.web.model.view.TemplateResolver;
 import org.ioc.web.model.view.VelocityResolver;
 import org.ioc.web.security.configuration.SecurityConfigureAdapter;
 import org.slf4j.Logger;
@@ -82,6 +80,8 @@ public class HttpInitializerFactory implements Factory, ContextSensible, Environ
 	private EventLoopGroup eventLoopGroup;
 	private Class<? extends ServerSocketChannel> serverSocketChannel;
 	private SslContext sslContext;
+	private SecurityConfigureAdapter securityConfigureAdapter;
+	private VelocityResolver templateResolver;
 
 	/**
 	 * Default function for initialize installed object factories.
@@ -114,10 +114,17 @@ public class HttpInitializerFactory implements Factory, ContextSensible, Environ
 				e.printStackTrace();
 			}
 		}
+
+		securityConfigureAdapter = new SecurityConfigureAdapter(context, sessionManager);
+		templateResolver = new VelocityResolver(webAutoConfiguration);
+
+		context.setType(resolveTypeName(templateResolver.getClass()), templateResolver);
+		context.setType(resolveTypeName(sessionManager.getClass()), sessionManager);
+		context.setType(resolveTypeName(securityConfigureAdapter.getClass()), securityConfigureAdapter);
 	}
 
 	@SuppressWarnings("unchecked")
-	@PostConstruct
+//	@PostConstruct
 	public void start() throws InterruptedException {
 		final Collection<TypeMetadata> types = context.getMetadatas(Mode.REQUEST);
 
@@ -127,13 +134,6 @@ public class HttpInitializerFactory implements Factory, ContextSensible, Environ
 				.filter(t -> ArgumentResolver.class.isAssignableFrom(t.getType()))
 				.map(TypeMetadata::getInstance)
 				.collect(Collectors.toList());
-
-		final SecurityConfigureAdapter securityConfigureAdapter = new SecurityConfigureAdapter(context, sessionManager);
-		final TemplateResolver templateResolver = new VelocityResolver(webAutoConfiguration);
-
-		context.setType(resolveTypeName(templateResolver.getClass()), templateResolver);
-		context.setType(resolveTypeName(sessionManager.getClass()), sessionManager);
-		context.setType(resolveTypeName(securityConfigureAdapter.getClass()), securityConfigureAdapter);
 
 		registerMapping(types);
 

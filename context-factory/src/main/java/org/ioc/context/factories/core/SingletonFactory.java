@@ -53,15 +53,13 @@ public class SingletonFactory extends AbstractFactory {
 			return;
 		}
 
-		if (typeMap.containsKey(typeName)) {
-			throw new IoCInstantiateException();
-		}
+		if (!typeMap.containsKey(typeName)) {
+			if (type.getInstance() == null) {
+				type.setInstance(instanceFactory.instantiate(type.getConstructor()));
+			}
 
-		if (type.getInstance() == null) {
-			type.setInstance(instanceFactory.instantiate(type.getConstructor()));
+			typeMap.put(typeName, type);
 		}
-
-		typeMap.put(typeName, type);
 	}
 
 	@Override

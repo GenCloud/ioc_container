@@ -16,6 +16,8 @@ import java.util.List;
 public interface IoCContext {
 	String[] getPackages();
 
+	List<TypeMetadata> getTypes();
+
 	/**
 	 * Returns the component from the factories.
 	 * Depending on its bag, the initialized component or an existing one.

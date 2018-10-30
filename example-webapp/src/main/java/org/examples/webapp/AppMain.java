@@ -22,6 +22,8 @@ import org.ioc.annotations.context.ScanPackage;
 import org.ioc.annotations.modules.DatabaseModule;
 import org.ioc.annotations.modules.WebModule;
 import org.ioc.context.starter.IoCStarter;
+import org.ioc.context.type.IoCContext;
+import org.ioc.web.factory.HttpInitializerFactory;
 
 /**
  * @author GenCloud
@@ -32,6 +34,12 @@ import org.ioc.context.starter.IoCStarter;
 @ScanPackage(packages = {"org.examples.webapp"})
 public class AppMain {
 	public static void main(String[] args) {
-		IoCStarter.start(AppMain.class);
+		IoCContext context = IoCStarter.start(AppMain.class);
+		HttpInitializerFactory factory = context.getType(HttpInitializerFactory.class);
+		try {
+			factory.start();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 	}
 }

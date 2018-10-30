@@ -49,7 +49,7 @@ public abstract class AbstractFactory {
 		if (collect.size() == 1) {
 			return collect.get(0);
 		} else if (collect.size() > 1) {
-			throw new IoCInstantiateException("IoCError - Unavailable create instance of type [" + type + "]. Found 2 or more instances in context!");
+			throw new IoCInstantiateException("IoCError - Unavailable create instance of type [" + type + "]. Found 2 or more instances in context! Use qualified name of type in @IoCDependency");
 		}
 
 		return null;

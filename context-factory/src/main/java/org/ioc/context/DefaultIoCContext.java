@@ -86,6 +86,8 @@ public class DefaultIoCContext extends AbstractIoCContext {
 
 	private String[] packages;
 
+	private List<TypeMetadata> types;
+
 	@Override
 	public String[] getPackages() {
 		return packages;
@@ -100,7 +102,7 @@ public class DefaultIoCContext extends AbstractIoCContext {
 	public void init(Class<?> mainSource, String... packages) {
 		this.packages = packages;
 
-		final List<TypeMetadata> types = findMetadataInClassPath(packages)
+		types = findMetadataInClassPath(packages)
 				.stream()
 				.filter(t -> !t.getType().isAnnotationPresent(Lazy.class))
 				.collect(Collectors.toList());
@@ -157,6 +159,11 @@ public class DefaultIoCContext extends AbstractIoCContext {
 		registerTypes(types);
 
 		initPostConstruction(getSingletonFactory().getTypes().values());
+	}
+
+	@Override
+	public List<TypeMetadata> getTypes() {
+		return Collections.unmodifiableList(types);
 	}
 
 	@Override
