@@ -63,50 +63,59 @@ public class InstanceFactory {
 	 * @return instantiated object
 	 */
 	private Object instantiateFields(Object o) {
-		Arrays.stream(getOrigin(o.getClass()).getDeclaredFields())
-				.forEach(field -> {
-					final IoCDependency ioCDependency = field.getAnnotation(IoCDependency.class);
-					if (ioCDependency != null) {
-						field.setAccessible(true);
+		Class<?> type = o.getClass();
+		do {
+			final Class<?> origin = getOrigin(type);
+			if (origin != null) {
+				Arrays.stream(origin.getDeclaredFields())
+						.forEach(field -> {
+							final IoCDependency ioCDependency = field.getAnnotation(IoCDependency.class);
+							if (ioCDependency != null) {
+								field.setAccessible(true);
 
-						try {
-							Object instance;
-							if (!ioCDependency.value().isEmpty()) {
-								instance = context.getType(ioCDependency.value());
-								if (instance == null) {
-									final List<TypeMetadata> types = context.getTypes();
-									final Optional<TypeMetadata> finded = types.stream()
-											.filter(t -> Objects.equals(t.getName(), ioCDependency.value()))
-											.findFirst();
-									if (finded.isPresent()) {
-										instance = context.registerTypes(Collections.singletonList(finded.get())).get(0).getInstance();
+								try {
+									Object instance;
+									if (!ioCDependency.value().isEmpty()) {
+										instance = context.getType(ioCDependency.value());
+										if (instance == null) {
+											final List<TypeMetadata> types = context.getTypes();
+											final Optional<TypeMetadata> finded = types.stream()
+													.filter(t -> Objects.equals(t.getName(), ioCDependency.value()))
+													.findFirst();
+											if (finded.isPresent()) {
+												instance = context.registerTypes(Collections.singletonList(finded.get())).get(0).getInstance();
+											} else {
+												throw new IoCInstantiateException("IoCError - Unavailable create instance of type [" + field.getType() + "]. Cant find type with specified qualified name [" + ioCDependency.value() + "].");
+											}
+										}
 									} else {
-										throw new IoCInstantiateException("IoCError - Unavailable create instance of type [" + field.getType() + "]. Cant find type with specified qualified name [" + ioCDependency.value() + "].");
+										instance = context.getType(field.getType());
+										if (instance == null) {
+											final List<TypeMetadata> types = context.getTypes();
+											final List<TypeMetadata> finded = types.stream()
+													.filter(t -> field.getType().isAssignableFrom(t.getType()))
+													.collect(Collectors.toList());
+											if (finded.size() == 1) {
+												instance = context.registerTypes(Collections.singletonList(finded.get(0))).get(0).getInstance();
+											} else if (finded.size() > 1) {
+												throw new IoCInstantiateException("IoCError - Unavailable create instance of type [" + field.getType() + "]. Found 2 or more instances in context! Use qualified name of type in @IoCDependency");
+											} else {
+												throw new IoCInstantiateException("IoCError - Unavailable create instance of type [" + field.getType() + "].");
+											}
+										}
 									}
-								}
-							} else {
-								instance = context.getType(field.getType());
-								if (instance == null) {
-									final List<TypeMetadata> types = context.getTypes();
-									final List<TypeMetadata> finded = types.stream()
-											.filter(t -> field.getType().isAssignableFrom(t.getType()))
-											.collect(Collectors.toList());
-									if (finded.size() == 1) {
-										instance = context.registerTypes(Collections.singletonList(finded.get(0))).get(0).getInstance();
-									} else if (finded.size() > 1) {
-										throw new IoCInstantiateException("IoCError - Unavailable create instance of type [" + field.getType() + "]. Found 2 or more instances in context! Use qualified name of type in @IoCDependency");
-									} else {
-										throw new IoCInstantiateException("IoCError - Unavailable create instance of type [" + field.getType() + "].");
-									}
+
+									field.set(o, instance);
+								} catch (IllegalAccessException e) {
+									throw new IoCInstantiateException("IoCError - Unavailable create instance of type [" + o.getClass() + "].", e);
 								}
 							}
+						});
+			}
 
-							field.set(o, instance);
-						} catch (IllegalAccessException e) {
-							throw new IoCInstantiateException("IoCError - Unavailable create instance of type [" + o.getClass() + "].", e);
-						}
-					}
-				});
+			type = type.getSuperclass();
+		}
+		while (type != Object.class && !type.isInterface());
 		return o;
 	}
 

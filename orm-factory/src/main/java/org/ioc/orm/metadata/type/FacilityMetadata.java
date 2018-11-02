@@ -18,6 +18,7 @@
  */
 package org.ioc.orm.metadata.type;
 
+import org.ioc.orm.exceptions.OrmException;
 import org.ioc.orm.generator.IdProducer;
 import org.ioc.orm.generator.type.UUIDProducer;
 import org.ioc.orm.metadata.visitors.column.ColumnVisitor;
@@ -26,6 +27,8 @@ import org.ioc.orm.metadata.visitors.column.type.NullIdVisitor;
 import org.ioc.utils.Assertion;
 import org.ioc.utils.collections.ArrayListSet;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.*;
 
 import static org.ioc.utils.ReflectionUtils.instantiateClass;
@@ -47,6 +50,8 @@ public class FacilityMetadata implements Iterable<ColumnMetadata>, Comparable<Fa
 
 	private String table;
 	private IdVisitor idVisitor = NullIdVisitor.getInstance();
+
+	private Method postLoadMethod;
 
 	public FacilityMetadata(String name, String table, Collection<Class<?>> collection) {
 		Assertion.checkNotNull(name, "name null");
@@ -340,6 +345,24 @@ public class FacilityMetadata implements Iterable<ColumnMetadata>, Comparable<Fa
 		Assertion.checkNotNull(idVisitor, "id visitor null");
 
 		this.idVisitor = idVisitor;
+	}
+
+	public void invokePostLoad(Object entity) {
+		if (postLoadMethod != null) {
+			try {
+				postLoadMethod.invoke(entity);
+			} catch (IllegalAccessException | InvocationTargetException e) {
+				throw new OrmException("Cant invoke post load method in entity - [" + entity.getClass() + "]. Throwing error!", e);
+			}
+		}
+	}
+
+	public Method getPostLoadMethod() {
+		return postLoadMethod;
+	}
+
+	public void setPostLoadMethod(Method postLoadMethod) {
+		this.postLoadMethod = postLoadMethod;
 	}
 
 	public String getName() {

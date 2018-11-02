@@ -146,11 +146,7 @@ public class RepositoryHandler implements InvocationHandler {
 						throw new RepositoryMappingException("Could not get NamedQuery in Schema - " + query);
 					}
 
-					if (!isList) {
-						return schemaQuery.first();
-					} else {
-						return schemaQuery.list();
-					}
+					return resolveResult(isList, schemaQuery);
 				}
 			}
 
@@ -161,14 +157,26 @@ public class RepositoryHandler implements InvocationHandler {
 				}
 
 				final SchemaQuery schemaQuery = repository.executePreparedQueryWithoutParams(query);
-				if (!isList) {
-					return schemaQuery.first();
-				} else {
-					return schemaQuery.list();
-				}
+				return resolveResult(isList, schemaQuery);
 			}
 		}
 
 		return null;
+	}
+
+	private Object resolveResult(boolean isList, SchemaQuery schemaQuery) {
+		if (!isList) {
+			final Object o = schemaQuery.first();
+			if (o != null) {
+				facilityMetadata.invokePostLoad(o);
+			}
+			return o;
+		} else {
+			final Collection<?> list = schemaQuery.list();
+			if (list != null) {
+				list.forEach(facilityMetadata::invokePostLoad);
+			}
+			return list;
+		}
 	}
 }

@@ -20,7 +20,6 @@ package org.ioc.context.factories.core;
 
 import org.ioc.context.factories.AbstractFactory;
 import org.ioc.context.model.TypeMetadata;
-import org.ioc.exceptions.IoCInstantiateException;
 
 import java.util.Collections;
 import java.util.Map;
@@ -40,11 +39,9 @@ public class PrototypeFactory extends AbstractFactory {
 	}
 
 	public void addType(TypeMetadata type) {
-		if (typeMap.containsKey(type.getName())) {
-			throw new IoCInstantiateException();
+		if (!typeMap.containsKey(type.getName())) {
+			typeMap.put(type.getName(), type);
 		}
-
-		typeMap.put(type.getName(), type);
 	}
 
 	@Override

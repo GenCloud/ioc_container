@@ -106,6 +106,7 @@ public class FacilityManager extends AbstractTx {
 
 		final Object o = databaseSession.fetch(metadata, key);
 		if (o != null) {
+			metadata.invokePostLoad(o);
 			return (T) o;
 		}
 
@@ -123,6 +124,7 @@ public class FacilityManager extends AbstractTx {
 
 		final List<Object> result = databaseSession.fetchAll(metadata);
 		if (result != null) {
+			result.forEach(metadata::invokePostLoad);
 			return (List<T>) result;
 		}
 

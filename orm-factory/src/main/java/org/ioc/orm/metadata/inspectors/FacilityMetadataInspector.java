@@ -327,6 +327,8 @@ public class FacilityMetadataInspector {
 		list.add(Id.class);
 		readFields(entity, list);
 
+		configurePostLoad(entity);
+
 		entity.getTypes().forEach(entityClazz -> {
 			final ColumnMetadata columnMetadata = getInheritColumn(entityClazz);
 			if (columnMetadata != null) {
@@ -336,6 +338,25 @@ public class FacilityMetadataInspector {
 			}
 		});
 		return true;
+	}
+
+	private void configurePostLoad(FacilityMetadata entity) {
+		if (entity == null) {
+			return;
+		}
+
+		entity.getTypes()
+				.stream()
+				.flatMap(entityClazz ->
+						Arrays.stream(entityClazz.getDeclaredMethods()))
+				.filter(method -> method.isAnnotationPresent(PostLoad.class))
+				.filter(method -> entity.getPostLoadMethod() == null)
+				.forEach(method -> {
+					if (log.isDebugEnabled()) {
+						log.debug("Configuring PostLoad for [" + method.getName() + "] in [" + entity + "].");
+					}
+					entity.setPostLoadMethod(method);
+				});
 	}
 
 	private int readFields(FacilityMetadata entity, Collection<Class<? extends Annotation>> annotations) {
@@ -689,6 +710,6 @@ public class FacilityMetadataInspector {
 	}
 
 	private Collection<Class<? extends Annotation>> jpaAnnotations() {
-		return Arrays.asList(Column.class, Embedded.class, EmbeddedId.class, Id.class, ElementCollection.class, JoinColumn.class, OneToMany.class, ManyToOne.class, ManyToMany.class, OneToOne.class, Transient.class);
+		return Arrays.asList(Column.class, Embedded.class, EmbeddedId.class, Id.class, ElementCollection.class, JoinColumn.class, OneToMany.class, ManyToOne.class, ManyToMany.class, OneToOne.class, Transient.class, PostLoad.class);
 	}
 }
