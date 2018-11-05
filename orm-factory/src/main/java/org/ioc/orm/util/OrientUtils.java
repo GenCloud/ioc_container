@@ -100,7 +100,7 @@ public class OrientUtils {
 	}
 
 	@SuppressWarnings("unchecked")
-	private static Object convertRaw(ColumnMetadata columnMetadata, Object value) {
+	public static Object convertRaw(ColumnMetadata columnMetadata, Object value) {
 		if (columnMetadata == null || value == null) {
 			return null;
 		}
@@ -157,16 +157,15 @@ public class OrientUtils {
 		if (value instanceof ORecordLazyList) {
 			return value;
 		}
+		if (columnMetadata.isJsonString()) {
+			return DataUtils.objectToJson(value);
+		}
 
 		final Class<?> clazz = columnMetadata.getType();
 
 		if (columnMetadata.isBag() && value instanceof Collection) {
-			final Collection list = (Collection) value;
-			final List<Object> packed = new ArrayList<>(list.size());
-			for (Object item : list) {
-				final Object pack = packPrimitive(columnMetadata, item);
-				packed.add(pack);
-			}
+			final Collection<?> list = (Collection) value;
+			final List<Object> packed = new ArrayList<>(list);
 
 			if (List.class.isAssignableFrom(clazz)) {
 				return new ArrayList<>(packed);
@@ -175,7 +174,7 @@ public class OrientUtils {
 			}
 		}
 
-		return packPrimitive(columnMetadata, value);
+		return packPrimitive(value);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -227,7 +226,7 @@ public class OrientUtils {
 		return value;
 	}
 
-	private static Object packPrimitive(ColumnMetadata columnMetadata, Object value) {
+	private static Object packPrimitive(Object value) {
 		if (value == null) {
 			return null;
 		}
@@ -274,12 +273,15 @@ public class OrientUtils {
 			}
 		}
 
-		if (byte[].class.equals(value.getClass())) {
-			return value;
+		if (value instanceof Collection) {
+			final Collection<?> unpacked = (Collection<?>) value;
+			return unpacked.stream()
+					.map(OrientUtils::packPrimitive)
+					.collect(Collectors.toList());
 		}
 
-		if (columnMetadata.isJsonString()) {
-			return DataUtils.objectToJson(value);
+		if (byte[].class.equals(value.getClass())) {
+			return value;
 		}
 
 		if (value instanceof Serializable) {
@@ -287,6 +289,16 @@ public class OrientUtils {
 		}
 
 		throw new OrmException("Unexpected value [" + value + "].");
+	}
+
+	public static boolean isLinkType(ColumnMetadata columnMetadata) {
+		if (columnMetadata instanceof EmbeddedBagMetadata) {
+			return true;
+		} else if (columnMetadata instanceof JoinColumnMetadata) {
+			return true;
+		} else {
+			return columnMetadata instanceof JoinBagMetadata;
+		}
 	}
 
 	public static OType columnType(ColumnMetadata columnMetadata) {

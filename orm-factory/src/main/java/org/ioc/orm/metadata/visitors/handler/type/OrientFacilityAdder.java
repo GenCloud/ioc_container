@@ -29,6 +29,7 @@ import org.ioc.orm.util.OrientUtils;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * @author GenCloud
@@ -76,13 +77,26 @@ public class OrientFacilityAdder implements FacilityAdder {
 			if (value != null) {
 				final OType type = OrientUtils.columnType(column);
 				final Object packed = OrientUtils.convertValue(column, value);
-				document.field(name, packed, type);
+				if (existing != null) {
+					if (document.containsField(name)) {
+						final Object raw = document.field(name);
+						final Object oldValue = raw != null ? OrientUtils.convertRaw(column, raw) : null;
+
+						if (!OrientUtils.isLinkType(column)) {
+							if (!Objects.equals(oldValue, value)) {
+								document.field(name, packed);
+							}
+						}
+					}
+				} else {
+					document.field(name, packed, type);
+				}
 			} else {
 				document.removeField(name);
 			}
 		}
 
 		final ODocument saved = document.save();
-		return null != saved;
+		return saved != null;
 	}
 }

@@ -513,7 +513,7 @@ public class FacilityMetadataInspector {
 		}
 
 		if (field.getAnnotation(Column.class) != null || field.getAnnotation(Embedded.class) != null) {
-			if (searchAnnotations(type, Embeddable.class).isEmpty()) {
+			if (!type.isAnnotationPresent(Embeddable.class)) {
 				final ColumnVisitor visitor = columnVisitorFactory.of(field, type);
 				final ColumnMetadata column = new ColumnMetadata(name, field.getName(), type, false, false, false);
 				if (entity.addColumnMetadata(column)) {
@@ -710,6 +710,6 @@ public class FacilityMetadataInspector {
 	}
 
 	private Collection<Class<? extends Annotation>> jpaAnnotations() {
-		return Arrays.asList(Column.class, Embedded.class, EmbeddedId.class, Id.class, ElementCollection.class, JoinColumn.class, OneToMany.class, ManyToOne.class, ManyToMany.class, OneToOne.class, Transient.class, PostLoad.class);
+		return Arrays.asList(Column.class, Embedded.class, EmbeddedId.class, Embeddable.class, Id.class, ElementCollection.class, JoinColumn.class, OneToMany.class, ManyToOne.class, ManyToMany.class, OneToOne.class, Transient.class, PostLoad.class);
 	}
 }

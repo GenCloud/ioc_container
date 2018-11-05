@@ -48,6 +48,27 @@ public class FacilityCacheManager {
 		this.cache = cache;
 	}
 
+	public <T> Map<Object, T> getAll(FacilityMetadata facilityMetadata, Class<T> clazz) {
+		if (facilityMetadata == null) {
+			return null;
+		}
+
+		final Map<Object, WeakReference> entities = cache.get(facilityMetadata);
+		if (entities == null) {
+			return null;
+		}
+
+		final Map<Object, T> map = new HashMap<>();
+		entities.forEach((k, v) -> {
+			final Object instance = v.get();
+			if (instance != null) {
+				map.putIfAbsent(k, (T) instance);
+			}
+		});
+
+		return Collections.unmodifiableMap(map);
+	}
+
 	/**
 	 * Getting entity from cache.
 	 *

@@ -19,8 +19,6 @@
 package org.ioc.orm.repositories.proxy;
 
 import net.sf.cglib.proxy.InvocationHandler;
-import net.sf.cglib.reflect.FastClass;
-import net.sf.cglib.reflect.FastMethod;
 import org.ioc.orm.annotations.Query;
 import org.ioc.orm.exceptions.RepositoryInvocationException;
 import org.ioc.orm.exceptions.RepositoryMappingException;
@@ -35,7 +33,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.transaction.Transactional;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -88,19 +85,18 @@ public class RepositoryHandler implements InvocationHandler {
 	}
 
 	private Object analyzeAndInvoke(Method method, Object[] args) {
-		final FastClass fastClass = FastClass.create(repository.getClass());
 		final boolean skip = ignoredMethods.stream().anyMatch(ignore -> method.getName().equals(ignore));
-		final FastMethod fastMethod;
+		final Method fastMethod;
 		try {
-			fastMethod = fastClass.getMethod(method.getName(), method.getParameterTypes());
+			fastMethod = repository.getClass().getMethod(method.getName(), method.getParameterTypes());
 			if (!skip && fastMethod != null) {
 				try {
 					return fastMethod.invoke(repository, args);
-				} catch (InvocationTargetException e) {
+				} catch (ReflectiveOperationException e) {
 					throw new RepositoryInvocationException(e);
 				}
 			}
-		} catch (NoSuchMethodError error) {
+		} catch (NoSuchMethodException e) {
 			boolean isList = false;
 
 			final Type type = method.getGenericReturnType();

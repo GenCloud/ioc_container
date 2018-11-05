@@ -42,8 +42,10 @@ public class BaseColumnVisitor extends FieldColumnVisitor implements ColumnVisit
 
 		this.clazz = clazz;
 
-		primitive = clazz.equals(long.class) || clazz.equals(int.class) || clazz.equals(char.class)
-				|| clazz.equals(short.class) || clazz.equals(boolean.class);
+		primitive = clazz.equals(long.class) || clazz.equals(int.class)
+				|| clazz.equals(float.class) || clazz.equals(double.class)
+				|| clazz.equals(short.class) || clazz.equals(byte.class)
+				|| clazz.equals(char.class) || clazz.equals(boolean.class);
 	}
 
 	@Override
