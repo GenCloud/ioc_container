@@ -141,9 +141,11 @@ public class OrientSchemaFactory implements Schema, ContextSensible, DestroyProc
 		final FacilityMetadataInspector parser = new FacilityMetadataInspector(columnFactory, types);
 		schemaMetadata = new SchemaMetadata(parser.analyze());
 
-		final ICache<FacilityMetadata, Map<Object, WeakReference>> cache =
-				cacheFactory.installEternal("facility-cache", 1000);
-		cacheManager = new FacilityCacheManager(cache);
+		if (configuration.isEnableEntityCache()) {
+			final ICache<FacilityMetadata, Map<Object, WeakReference>> cache =
+					cacheFactory.installEternal("facility-cache", 1000);
+			cacheManager = new FacilityCacheManager(cache);
+		}
 
 		Orient.instance().startup();
 		createSchema();

@@ -140,8 +140,10 @@ public class OrientDatabaseSessionFactory extends AbstractTx implements Database
 
 			tx.success();
 
-			final Object key = facilityMetadata.getIdVisitor().fromObject(instance);
-			facilityCacheManager.add(facilityMetadata, key, instance);
+			if (facilityCacheManager != null) {
+				final Object key = facilityMetadata.getIdVisitor().fromObject(instance);
+				facilityCacheManager.add(facilityMetadata, key, instance);
+			}
 		} catch (Exception e) {
 			throw new OrmException("Unable to create/save new document.", e);
 		}
@@ -168,9 +170,10 @@ public class OrientDatabaseSessionFactory extends AbstractTx implements Database
 
 			tx.success();
 
-			final Object key = facilityMetadata.getIdVisitor().fromObject(element);
-			facilityCacheManager.delete(facilityMetadata, key);
-
+			if (facilityCacheManager != null) {
+				final Object key = facilityMetadata.getIdVisitor().fromObject(element);
+				facilityCacheManager.delete(facilityMetadata, key);
+			}
 		} catch (Exception e) {
 			throw new OrmException("Unable to delete database document.", e);
 		}
@@ -209,21 +212,24 @@ public class OrientDatabaseSessionFactory extends AbstractTx implements Database
 			return null;
 		}
 
-		final Object existing = facilityCacheManager.get(facilityMetadata, key, Object.class);
-		if (existing != null) {
-			return existing;
+		if (facilityCacheManager != null) {
+			final Object existing = facilityCacheManager.get(facilityMetadata, key, Object.class);
+			if (existing != null) {
+				return existing;
+			}
 		}
 
 		try {
 			final OIdentifiable rid = findIdentifyByKey(facilityMetadata, key);
 			final ODocument document = findDocument(rid);
 			if (document != null) {
-				final Map<ColumnMetadata, Object> data = new LinkedHashMap<>();
-				data.putAll(convertValues(facilityMetadata, document));
+				final Map<ColumnMetadata, Object> data = new LinkedHashMap<>(convertValues(facilityMetadata, document));
 				if (facilityMetadata.validate(data)) {
 					final FacilityBuilder builder = new FacilityBuilder(this, new OrientContainerFactory(this));
 					final Object instance = builder.build(facilityMetadata, data);
-					facilityCacheManager.add(facilityMetadata, key, instance);
+					if (facilityCacheManager != null) {
+						facilityCacheManager.add(facilityMetadata, key, instance);
+					}
 					return instance;
 				}
 			}
@@ -243,17 +249,24 @@ public class OrientDatabaseSessionFactory extends AbstractTx implements Database
 		}
 
 		final Set<Object> hashSet = new HashSet<>(Arrays.asList(keys));
-		final Map<Object, Object> cached = facilityCacheManager.get(facilityMetadata, Arrays.asList(keys), Object.class);
-		final List<Object> cachedElements;
-		hashSet.removeAll(cached.keySet());
-		try {
-			cachedElements = new ArrayList<>(cached.values());
+		List<Object> result;
+		if (facilityCacheManager != null) {
+			final Map<Object, Object> cached = facilityCacheManager.get(facilityMetadata, Arrays.asList(keys), Object.class);
+			final List<Object> cachedElements;
+			hashSet.removeAll(cached.keySet());
+			try {
+				cachedElements = new ArrayList<>(cached.values());
 
-			if (hashSet.isEmpty()) {
-				return Collections.unmodifiableList(cachedElements);
+				if (hashSet.isEmpty()) {
+					return Collections.unmodifiableList(cachedElements);
+				}
+
+				result = new ArrayList<>(cachedElements);
+			} catch (Exception e) {
+				throw new OrmException("Unable to map and convert entities.", e);
 			}
-		} catch (Exception e) {
-			throw new OrmException("Unable to map and convert entities.", e);
+		} else {
+			result = new ArrayList<>();
 		}
 
 		final Map<Object, Map<ColumnMetadata, Object>> entityData = new HashMap<>();
@@ -270,14 +283,16 @@ public class OrientDatabaseSessionFactory extends AbstractTx implements Database
 			}
 		}
 
-		final List<Object> result = new ArrayList<>(cachedElements);
 		entityData.forEach((o, data) -> {
 			if (facilityMetadata.validate(data)) {
 				final FacilityBuilder builder = new FacilityBuilder(this, new OrientContainerFactory(this));
 				final Object instance = builder.build(facilityMetadata, data);
 				if (instance != null) {
-					final Object key = facilityMetadata.getIdVisitor().fromObject(data);
-					facilityCacheManager.add(facilityMetadata, key, instance);
+					if (facilityCacheManager != null) {
+						final Object key = facilityMetadata.getIdVisitor().fromObject(data);
+						facilityCacheManager.add(facilityMetadata, key, instance);
+					}
+
 					result.add(instance);
 				}
 			}
@@ -289,7 +304,6 @@ public class OrientDatabaseSessionFactory extends AbstractTx implements Database
 	public List<Object> fetchAll(FacilityMetadata facilityMetadata) throws OrmException {
 		Assertion.checkNotNull(facilityMetadata);
 
-		final Map<Object, Object> cachedElements = facilityCacheManager.getAll(facilityMetadata, Object.class);
 		final Set<Object> keys = new HashSet<>();
 		final ORecordIteratorClass<ODocument> oRecords = databaseDocument.browseClass(facilityMetadata.getTable());
 		while (oRecords.hasNext()) {
@@ -301,6 +315,12 @@ public class OrientDatabaseSessionFactory extends AbstractTx implements Database
 					keys.add(key);
 				}
 			}
+		}
+
+		Map<Object, Object> cachedElements = null;
+		if (facilityCacheManager != null) {
+			cachedElements = facilityCacheManager.getAll(facilityMetadata, Object.class);
+			keys.removeAll(cachedElements.keySet());
 		}
 
 		final Map<Object, Map<ColumnMetadata, Object>> entityData = new HashMap<>();
@@ -326,15 +346,13 @@ public class OrientDatabaseSessionFactory extends AbstractTx implements Database
 
 		entityData.forEach((o, data) -> {
 			if (facilityMetadata.validate(data)) {
-				Object instance = facilityCacheManager.get(facilityMetadata, o, Object.class);
-				if (instance != null) {
-					return;
-				}
-
 				final FacilityBuilder builder = new FacilityBuilder(this, new OrientContainerFactory(this));
-				instance = builder.build(facilityMetadata, data);
+				final Object instance = builder.build(facilityMetadata, data);
 				if (instance != null) {
-					facilityCacheManager.add(facilityMetadata, o, instance);
+					if (facilityCacheManager != null) {
+						facilityCacheManager.add(facilityMetadata, o, instance);
+					}
+
 					result.add(instance);
 				}
 			}
@@ -537,8 +555,11 @@ public class OrientDatabaseSessionFactory extends AbstractTx implements Database
 			return null;
 		}
 
-		final Object key = facilityMetadata.getIdVisitor().fromObject(element);
-		facilityCacheManager.add(facilityMetadata, key, element);
+		if (facilityCacheManager != null) {
+			final Object key = facilityMetadata.getIdVisitor().fromObject(element);
+			facilityCacheManager.add(facilityMetadata, key, element);
+		}
+
 		return element;
 	}
 }

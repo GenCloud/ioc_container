@@ -20,7 +20,6 @@ package org.ioc.orm.metadata.relation.bag;
 
 import org.ioc.orm.factory.SessionFactory;
 import org.ioc.orm.metadata.relation.BagMapper;
-import org.ioc.orm.metadata.type.FacilityMetadata;
 import org.ioc.orm.metadata.visitors.container.DataContainer;
 
 import java.util.HashSet;
@@ -31,12 +30,15 @@ import java.util.Set;
  * @date 10/2018
  */
 public class LazyFacilitySetBag<T> extends LazyFacilityBag<T> implements Set<T> {
-	public LazyFacilitySetBag(SessionFactory sessionFactory, FacilityMetadata facilityMetadata, DataContainer container, BagMapper<T> mapper) {
-		super(sessionFactory, facilityMetadata, container, mapper, HashSet::new);
+	public LazyFacilitySetBag(SessionFactory sessionFactory, DataContainer container, BagMapper<T> mapper) {
+		super(sessionFactory, container, mapper, HashSet::new);
 	}
 
 	@Override
 	public LazyFacilitySetBag<T> copy() {
-		return new LazyFacilitySetBag<>(sessionFactory, facilityMetadata, dataContainer, tiBagMapper);
+		final LazyFacilitySetBag<T> bag = new LazyFacilitySetBag<>(sessionFactory, dataContainer, tiBagMapper);
+		bag.clear();
+		bag.addAll(this);
+		return bag;
 	}
 }

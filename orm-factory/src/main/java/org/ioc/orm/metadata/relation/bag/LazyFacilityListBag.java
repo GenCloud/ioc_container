@@ -20,7 +20,6 @@ package org.ioc.orm.metadata.relation.bag;
 
 import org.ioc.orm.factory.SessionFactory;
 import org.ioc.orm.metadata.relation.BagMapper;
-import org.ioc.orm.metadata.type.FacilityMetadata;
 import org.ioc.orm.metadata.visitors.container.DataContainer;
 
 import java.util.ArrayList;
@@ -33,18 +32,21 @@ import java.util.ListIterator;
  * @date 10/2018
  */
 public class LazyFacilityListBag<T> extends LazyFacilityBag<T> implements List<T> {
-	public LazyFacilityListBag(SessionFactory sessionFactory, FacilityMetadata facilityMetadata, DataContainer container, BagMapper<T> mapper) {
-		super(sessionFactory, facilityMetadata, container, mapper, ArrayList::new);
+	public LazyFacilityListBag(SessionFactory sessionFactory, DataContainer container, BagMapper<T> mapper) {
+		super(sessionFactory, container, mapper, ArrayList::new);
 	}
 
 	@Override
 	public LazyFacilityListBag<T> copy() {
-		return new LazyFacilityListBag<>(sessionFactory, facilityMetadata, dataContainer, tiBagMapper);
+		final LazyFacilityListBag<T> bag = new LazyFacilityListBag<>(sessionFactory, dataContainer, tiBagMapper);
+		bag.clear();
+		bag.addAll(this);
+		return bag;
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
-	protected List<T> getBag() {
+	List<T> getBag() {
 		return (List) super.getBag();
 	}
 

@@ -31,7 +31,7 @@ import static org.ioc.utils.ReflectionUtils.instantiateClass;
  */
 @Property(prefix = "datasource.orient.")
 public class OrientDatasourceAutoConfiguration {
-	@Property(value = "database-type")
+	@Property("database-type")
 	private OrientType databaseType = OrientType.LOCAL;
 
 	private String url = "./database";
@@ -42,10 +42,13 @@ public class OrientDatasourceAutoConfiguration {
 
 	private String password = "admin";
 
-	@Property(value = "ddl-auto")
+	@Property("ddl-auto")
 	private DDL ddlAuto = DDL.dropCreate;
 
-	@Property(value = "showSql")
+	@Property("enable.entity.cache")
+	private boolean enableEntityCache;
+
+	@Property("showSql")
 	private boolean logQueries;
 
 	public OrientType getDatabaseType() {
@@ -70,6 +73,10 @@ public class OrientDatasourceAutoConfiguration {
 
 	public DDL getDdlAuto() {
 		return ddlAuto == null ? DDL.dropCreate : ddlAuto;
+	}
+
+	public boolean isEnableEntityCache() {
+		return enableEntityCache;
 	}
 
 	public boolean isLogQueries() {

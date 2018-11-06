@@ -27,7 +27,6 @@ import org.ioc.context.starter.IoCStarter;
 import org.ioc.test.cache.CacheComponentTest;
 import org.ioc.test.database.DatabaseComponent;
 import org.ioc.test.database.entity.ChildEntity;
-import org.ioc.test.database.entity.OneToOneEntity;
 import org.ioc.test.database.entity.SampleEntity;
 import org.ioc.test.database.entity.User;
 import org.ioc.test.types.TypeB;
@@ -103,57 +102,53 @@ public class Main extends Assert {
 		final DatabaseComponent databaseComponent = context.getType(DatabaseComponent.class);
 
 		log.info("Inserting test dataContainer into Schema");
-		final SampleEntity sampleEntity = new SampleEntity();
+		SampleEntity sampleEntity = new SampleEntity();
 		sampleEntity.setName("sample27");
 		sampleEntity.setYear("2018");
 
-		final OneToOneEntity oneToOneEntity = new OneToOneEntity();
-		sampleEntity.setOneToOneEntity(oneToOneEntity);
-		oneToOneEntity.setSampleEntity(sampleEntity);
-		databaseComponent.saveOneToOneEntity(oneToOneEntity);
-
-		final ChildEntity childEntity = new ChildEntity();
+		ChildEntity childEntity = new ChildEntity();
 		childEntity.setName("child5");
+		childEntity.setSampleEntity(sampleEntity);
+
+		databaseComponent.saveChildEntity(childEntity);
+
+		sampleEntity.getChildEntities().add(childEntity);
+		databaseComponent.saveSampleEntity(sampleEntity);
+
+		log.info("Fetch test data from Schema by CRUD operation");
+		sampleEntity = databaseComponent.findSampleEntity(sampleEntity.getId());
+		assertNotNull(sampleEntity);
+		log.info(sampleEntity.toString());
+
+		childEntity = new ChildEntity();
+		childEntity.setName("child6");
 		childEntity.setSampleEntity(sampleEntity);
 		databaseComponent.saveChildEntity(childEntity);
 
 		sampleEntity.getChildEntities().add(childEntity);
 		databaseComponent.saveSampleEntity(sampleEntity);
 
-		final SampleEntity sampleEntity1 = new SampleEntity();
-		sampleEntity1.setName("sample28");
-		sampleEntity1.setYear("2018");
-		databaseComponent.saveSampleEntity(sampleEntity1);
+		childEntity = new ChildEntity();
+		childEntity.setName("child7");
+		childEntity.setSampleEntity(sampleEntity);
 
-		final SampleEntity sampleEntity2 = new SampleEntity();
-		sampleEntity2.setName("sample29");
-		sampleEntity2.setYear("2018");
-		databaseComponent.saveSampleEntity(sampleEntity2);
+		databaseComponent.saveChildEntity(childEntity);
 
-		final SampleEntity sampleEntity3 = new SampleEntity();
-		sampleEntity3.setName("sample30");
-		sampleEntity3.setYear("2018");
-		databaseComponent.saveSampleEntity(sampleEntity3);
-
-		log.info("Fetch test data from Schema by generated query");
-		final SampleEntity get0 = databaseComponent.findSampleEntityByName("sample28");
-		assertNotNull(get0);
-		log.info(get0.toString());
-
-		log.info("Fetch test data from Schema by named query");
-		final SampleEntity customQuery = databaseComponent.findByNamedQuery(sampleEntity.getId());
-		assertNotNull(customQuery);
-		log.info(customQuery.toString());
+		sampleEntity.getChildEntities().add(childEntity);
+		databaseComponent.saveSampleEntity(sampleEntity);
 
 		log.info("Fetch all test data from Schema");
 		final List<SampleEntity> get1 = databaseComponent.findAll();
 		assertNotNull(get1);
 		log.info(get1.toString());
 
-		log.info("Fetch all test data from Schema by generated query");
-		final List<SampleEntity> sampleEntityList = databaseComponent.findAllByName("sample28");
-		assertNotNull(sampleEntityList);
-		log.info(sampleEntityList.toString());
+		sampleEntity = get1.get(0);
+		sampleEntity.getChildEntities().remove(childEntity);
+		databaseComponent.saveSampleEntity(sampleEntity);
+
+		final List<SampleEntity> get2 = databaseComponent.findAll();
+		assertNotNull(get2);
+		log.info(get2.toString());
 
 		final User user = new User();
 		user.setUsername("admin");

@@ -21,6 +21,7 @@ package org.ioc.orm.metadata.visitors.column.type;
 import org.ioc.orm.exceptions.OrmException;
 import org.ioc.orm.factory.SessionFactory;
 import org.ioc.orm.metadata.relation.bag.LazyPersistenceListBag;
+import org.ioc.orm.metadata.relation.bag.LazyPersistenceSetBag;
 import org.ioc.orm.metadata.visitors.column.BagColumnVisitor;
 import org.ioc.orm.metadata.visitors.container.DataContainer;
 
@@ -28,6 +29,7 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 /**
  * @author GenCloud
@@ -41,7 +43,11 @@ public class ListColumnVisitor extends BagColumnVisitor {
 	@Override
 	public boolean setValue(Object o, DataContainer dataContainer, SessionFactory sessionFactory) throws OrmException {
 		if (isLazyLoading()) {
-			return setBag(o, new LazyPersistenceListBag(sessionFactory, dataContainer));
+			if (Set.class.isAssignableFrom(getRawField().getType())) {
+				return setBag(o, new LazyPersistenceSetBag(sessionFactory, dataContainer));
+			} else {
+				return setBag(o, new LazyPersistenceListBag(sessionFactory, dataContainer));
+			}
 		} else {
 			final Object value = dataContainer.of();
 			return setBag(o, (Collection) value);

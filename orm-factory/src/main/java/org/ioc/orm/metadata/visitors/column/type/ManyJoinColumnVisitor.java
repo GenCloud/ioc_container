@@ -114,14 +114,21 @@ public class ManyJoinColumnVisitor extends FieldColumnVisitor implements ColumnV
 		try {
 			final Collection objects = getBag(o);
 			if (objects instanceof LazyBag) {
-				return ((LazyBag) objects).copy();
+				final LazyBag<?> lazyBag = ((LazyBag) objects).copy();
+				final List<?> keys = bagMapper.formObjects(sessionFactory, lazyBag.toArray());
+
+				if (objects instanceof LazyFacilitySetBag) {
+					return Collections.unmodifiableSet(new ArrayListSet<>(keys));
+				} else {
+					return Collections.unmodifiableList(keys);
+				}
 			}
 
 			if (objects.isEmpty()) {
 				return Collections.emptyList();
 			}
 
-			final List<?> keys = bagMapper.formObjects(sessionFactory, getBag(o).toArray());
+			final List<?> keys = bagMapper.formObjects(sessionFactory, objects.toArray());
 			if (Set.class.isAssignableFrom(getRawField().getType())) {
 				return Collections.unmodifiableSet(new ArrayListSet<>(keys));
 			} else {
@@ -138,9 +145,9 @@ public class ManyJoinColumnVisitor extends FieldColumnVisitor implements ColumnV
 		if (lazy) {
 			try {
 				if (Set.class.isAssignableFrom(getRawField().getType())) {
-					return setValue(o, new LazyFacilitySetBag(sessionFactory, facilityMetadata, dataContainer, bagMapper));
+					return setValue(o, new LazyFacilitySetBag(sessionFactory, dataContainer, bagMapper));
 				} else {
-					return setValue(o, new LazyFacilityListBag(sessionFactory, facilityMetadata, dataContainer, bagMapper));
+					return setValue(o, new LazyFacilityListBag(sessionFactory, dataContainer, bagMapper));
 				}
 			} catch (Exception e) {
 				throw new OrmException("Unable to setValue lazy join-column collection from dataContainer holder [" + dataContainer + "].", e);

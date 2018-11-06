@@ -38,7 +38,10 @@ public class LazyPersistenceListBag<T> extends LazyPersistenceBag<T> implements 
 
 	@Override
 	public LazyBag<T> copy() {
-		return new LazyPersistenceListBag<>(sessionFactory, dataContainer);
+		final LazyPersistenceListBag<T> bag = new LazyPersistenceListBag<>(sessionFactory, dataContainer);
+		bag.clear();
+		bag.addAll(this);
+		return bag;
 	}
 
 	@Override

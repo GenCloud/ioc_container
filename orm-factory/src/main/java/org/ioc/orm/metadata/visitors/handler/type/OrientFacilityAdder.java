@@ -82,10 +82,8 @@ public class OrientFacilityAdder implements FacilityAdder {
 						final Object raw = document.field(name);
 						final Object oldValue = raw != null ? OrientUtils.convertRaw(column, raw) : null;
 
-						if (!OrientUtils.isLinkType(column)) {
-							if (!Objects.equals(oldValue, value)) {
-								document.field(name, packed);
-							}
+						if (!Objects.equals(oldValue, value)) {
+							document.field(name, packed, type);
 						}
 					}
 				} else {

@@ -23,7 +23,6 @@ import org.ioc.orm.factory.SessionFactory;
 import org.ioc.orm.metadata.relation.BagFactory;
 import org.ioc.orm.metadata.relation.BagMapper;
 import org.ioc.orm.metadata.relation.LazyBag;
-import org.ioc.orm.metadata.type.FacilityMetadata;
 import org.ioc.orm.metadata.visitors.container.DataContainer;
 import org.ioc.utils.Assertion;
 
@@ -38,25 +37,21 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public abstract class LazyFacilityBag<T> implements LazyBag<T> {
 	final DataContainer dataContainer;
-	final FacilityMetadata facilityMetadata;
 	final SessionFactory sessionFactory;
 	final BagMapper<T> tiBagMapper;
 	private final BagFactory<T> tiBagFactory;
 	private final AtomicBoolean initialized = new AtomicBoolean(false);
 	private Collection<T> entities;
 
-	LazyFacilityBag(SessionFactory sessionFactory, FacilityMetadata facilityMetadata,
-					final DataContainer dataContainer, BagMapper<T> tiBagMapper,
-					final BagFactory<T> tiBagFactory) {
+	LazyFacilityBag(SessionFactory sessionFactory, DataContainer dataContainer,
+					BagMapper<T> tiBagMapper, BagFactory<T> tiBagFactory) {
 		Assertion.checkNotNull(dataContainer, "dataContainer container");
 		Assertion.checkNotNull(sessionFactory, "sessionFactory");
-		Assertion.checkNotNull(facilityMetadata, "metadata");
 		Assertion.checkNotNull(tiBagMapper, "collection mapper");
 		Assertion.checkNotNull(tiBagFactory, "collection factory");
 
 		this.dataContainer = dataContainer;
 		this.sessionFactory = sessionFactory;
-		this.facilityMetadata = facilityMetadata;
 		this.tiBagMapper = tiBagMapper;
 		this.tiBagFactory = tiBagFactory;
 	}

@@ -43,9 +43,6 @@ public class SampleEntity implements Serializable {
 	@Column(name = "year")
 	private String year;
 
-	@OneToOne(fetch = FetchType.LAZY, cascade = ALL)
-	private OneToOneEntity oneToOneEntity;
-
 	@OneToMany(fetch = FetchType.LAZY, cascade = ALL)
 	private List<ChildEntity> childEntities = new ArrayList<>();
 
@@ -75,18 +72,6 @@ public class SampleEntity implements Serializable {
 
 	public List<ChildEntity> getChildEntities() {
 		return childEntities;
-	}
-
-	public void setChildEntities(List<ChildEntity> childEntities) {
-		this.childEntities = childEntities;
-	}
-
-	public OneToOneEntity getOneToOneEntity() {
-		return oneToOneEntity;
-	}
-
-	public void setOneToOneEntity(OneToOneEntity oneToOneEntity) {
-		this.oneToOneEntity = oneToOneEntity;
 	}
 
 	@Override
